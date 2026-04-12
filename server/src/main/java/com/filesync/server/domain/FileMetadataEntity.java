@@ -3,6 +3,7 @@ package com.filesync.server.domain;
 import jakarta.persistence.*;
 
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -17,10 +18,16 @@ public class FileMetadataEntity {
     private String sha256Hash;
     private long size;
     private Instant lastModified;
+
     @Column(columnDefinition = "TEXT")
     private String versionVectorJson;
     private String ownerId;
-    private String sharedWith;
+
+    @ElementCollection
+    @CollectionTable(name = "file_shared_with", joinColumns = @JoinColumn(name = "file_id"))
+    @Column(name = "user_id")
+    private Set<String> sharedWith = new HashSet<>();
+
     @Enumerated(EnumType.STRING)
     private SyncStatus status;
 
@@ -83,11 +90,11 @@ public class FileMetadataEntity {
         this.ownerId = ownerId;
     }
 
-    public String getSharedWith() {
+    public Set<String> getSharedWith() {
         return sharedWith;
     }
 
-    public void setSharedWith(String sharedWith) {
+    public void setSharedWith(Set<String> sharedWith) {
         this.sharedWith = sharedWith;
     }
 

@@ -1,0 +1,12 @@
+{
+  "ownerId": "user123",
+  "clientFiles": [
+    {
+      "relativePath": "/docs/hello.txt",
+      "sha256Hash": "abc123",
+      "size": 0,
+      "lastModified": "2026-04-12T10:00:00Z",
+      "status": "SYNCED"
+    }
+  ]
+}

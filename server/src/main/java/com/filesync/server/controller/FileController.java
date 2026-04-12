@@ -2,10 +2,9 @@ package com.filesync.server.controller;
 
 import com.filesync.server.domain.FileMetadataEntity;
 import com.filesync.server.service.FileMetaDataService;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/files")
@@ -23,4 +22,11 @@ public class FileController {
     {
         return fileMetaDataService.saveFileMetaData(fileMetadataEntity);
     }
+
+    @GetMapping("/user/{ownerId}")
+    public List<FileMetadataEntity> getFilesByOwner(@PathVariable("ownerId") String ownerId)
+    {
+        return fileMetaDataService.getFilesByOwner(ownerId);
+    }
+
 }
