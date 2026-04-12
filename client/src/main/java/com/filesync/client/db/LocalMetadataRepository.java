@@ -1,4 +1,4 @@
-package main.java.com.filesync.client.db;
+package com.filesync.client.db;
 
 import java.sql.*;
 import java.util.HashMap;
