@@ -5,6 +5,8 @@ import com.filesync.server.repository.FileMetadataRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class FileMetaDataService {
     @Autowired
@@ -13,4 +15,9 @@ public class FileMetaDataService {
     {
         return repository.save(entity);
     }
+    public List<FileMetadataEntity> getFilesByOwner(String ownerId)
+    {
+        return repository.findByOwnerId(ownerId);
+    }
+
 }

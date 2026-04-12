@@ -1,11 +1,11 @@
 {
   "id": "file-001",
   "relativePath": "/docs/hello.txt",
-  "sha256Hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "sha256Hash": "abc123",
   "size": 0,
   "lastModified": "2026-04-12T10:00:00Z",
   "versionVectorJson": "{}",
   "ownerId": "user123",
-  "sharedWith": "",
+  "sharedWith": [],
   "status": "SYNCED"
 }
