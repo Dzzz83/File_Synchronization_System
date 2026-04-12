@@ -14,10 +14,11 @@ public class SecurityConfig {
         return http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/health").permitAll()
+                        .requestMatchers("/health", "/api/**", "/h2-console/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form.disable())
+                .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.disable()))
                 .build();
     }
 }
