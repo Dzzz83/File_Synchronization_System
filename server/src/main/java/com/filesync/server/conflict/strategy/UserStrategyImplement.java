@@ -3,10 +3,10 @@ package com.filesync.server.conflict.strategy;
 import com.filesync.common.dto.ConflictContextDto;
 import org.springframework.stereotype.Component;
 
-@Component("serverStrategy")
-public class UseServerStrategy implements ConflictResolutionStrategy {
+@Component("userStrategy")
+public class UserStrategyImplement implements ConflictStrategyInterface {
     @Override
     public String resolve(ConflictContextDto context) {
-        return context.getServerContent();
+        return context.getUserContent();
     }
 }

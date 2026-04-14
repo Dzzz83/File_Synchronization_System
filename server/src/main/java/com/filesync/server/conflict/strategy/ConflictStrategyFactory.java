@@ -9,12 +9,12 @@ public class ConflictStrategyFactory {
     @Autowired
     private ApplicationContext context;
 
-    public ConflictResolutionStrategy getStrategy(String type) {
+    public ConflictStrategyInterface getStrategy(String type) {
         switch (type) {
             case "server":
-                return context.getBean("serverStrategy", ConflictResolutionStrategy.class);
+                return context.getBean("serverStrategy", ConflictStrategyInterface.class);
             case "user":
-                return context.getBean("userStrategy", ConflictResolutionStrategy.class);
+                return context.getBean("userStrategy", ConflictStrategyInterface.class);
             default:
                 throw new IllegalArgumentException("Unknown strategy: " + type);
         }
