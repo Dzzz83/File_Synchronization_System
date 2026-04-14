@@ -22,14 +22,14 @@ public class FileController {
     public FileMetadataEntity saveMetaData(@RequestBody FileMetadataDto dto) {
         // Convert DTO to entity
         FileMetadataEntity entity = new FileMetadataEntity();
-        entity.setId(dto.getFileId());                 // critical: set the ID from client
+        entity.setId(dto.getFileId());
         entity.setRelativePath(dto.getRelativePath());
         entity.setSha256Hash(dto.getSha256Hash());
         entity.setSize(dto.getSize());
         entity.setLastModified(dto.getLastModified());
         entity.setVersionVectorJson(dto.getVersionVectorJson());
         entity.setOwnerId(dto.getOwnerId());
-        entity.setSharedWith(dto.getSharedWith());    // Set<String> directly
+        entity.setSharedWith(dto.getSharedWith());
         entity.setStatus(dto.getStatus());
         return fileMetaDataService.saveFileMetaData(entity);
     }

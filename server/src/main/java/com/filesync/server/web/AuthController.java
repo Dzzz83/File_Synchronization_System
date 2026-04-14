@@ -30,6 +30,7 @@ public class AuthController {
 
     @PostMapping("/register")
     public String registerUser(@Valid User user, BindingResult result, Model model) {
+        //
         if (userRepo.findByUsername(user.getUsername()).isPresent()) {
             result.rejectValue("username", "error.user", "Username already exists");
         }

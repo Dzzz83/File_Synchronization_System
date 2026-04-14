@@ -22,17 +22,24 @@ public class FileContentService {
         this.hashCalculator = hashCalculator;
     }
 
+
     public String readContent(String fileId) {
+        // load the file in byte
         byte[] data = storageService.load(fileId);
         return new String(data, StandardCharsets.UTF_8);
     }
 
     public void writeContent(String fileId, String content) {
+        // load the file in bytes
         byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
+        // save the byte data
         storageService.save(fileId, new ByteArrayInputStream(bytes), (long) bytes.length);
         FileMetadataEntity entity = metadataRepository.findById(fileId).orElseThrow();
+        // compute new hash
         entity.setSha256Hash(hashCalculator.computeHash(bytes));
+        // set the new size
         entity.setSize((long) bytes.length);
+        // set the time modified
         entity.setLastModified(Instant.now());
         metadataRepository.save(entity);
     }

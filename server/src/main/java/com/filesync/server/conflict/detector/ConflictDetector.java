@@ -11,7 +11,7 @@ public class ConflictDetector {
     public ConflictDetector(FileMetadataRepository metadataRepository) {
         this.metadataRepository = metadataRepository;
     }
-
+    // check if there is a conflict by checking the hash
     public boolean hasConflict(String fileId, String originalHash) {
         FileMetadataEntity current = metadataRepository.findById(fileId).orElseThrow();
         return !current.getSha256Hash().equals(originalHash);

@@ -40,7 +40,9 @@ public class FileStorageService {
 
     public void save(String fileId, MultipartFile file) {
         try {
+            // get the path to save in
             Path destination = rootLocation.resolve(fileId);
+            // replace the old file with the new file
             Files.copy(file.getInputStream(), destination, StandardCopyOption.REPLACE_EXISTING);
             System.out.println("Saving file to: " + destination.toAbsolutePath());
         } catch (IOException e) {

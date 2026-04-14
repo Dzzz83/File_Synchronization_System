@@ -4,7 +4,7 @@ import com.filesync.common.dto.ConflictContextDto;
 import com.filesync.server.conflict.strategy.ConflictStrategyFactory;
 import com.filesync.server.domain.FileMetadataEntity;
 import com.filesync.server.repository.FileMetadataRepository;
-import com.filesync.server.service.EditOrchestrator;
+import com.filesync.server.service.EditLogicInterface;
 import com.filesync.server.storage.FileStorageService;
 import com.filesync.server.service.HashCalculator;
 import org.springframework.http.HttpHeaders;
@@ -30,18 +30,18 @@ public class FileBrowserController {
     private final FileMetadataRepository fileMetadataRepository;
     private final FileStorageService fileStorageService;
     private final HashCalculator hashCalculator;
-    private final EditOrchestrator editOrchestrator;
+    private final EditLogicInterface editLogicInterface;
     private final ConflictStrategyFactory strategyFactory;
 
     public FileBrowserController(FileMetadataRepository fileMetadataRepository,
                                  FileStorageService fileStorageService,
                                  HashCalculator hashCalculator,
-                                 EditOrchestrator editOrchestrator,
+                                 EditLogicInterface editLogicInterface,
                                  ConflictStrategyFactory strategyFactory) {
         this.fileMetadataRepository = fileMetadataRepository;
         this.fileStorageService = fileStorageService;
         this.hashCalculator = hashCalculator;
-        this.editOrchestrator = editOrchestrator;
+        this.editLogicInterface = editLogicInterface;
         this.strategyFactory = strategyFactory;
     }
 
@@ -91,8 +91,8 @@ public class FileBrowserController {
 
     @GetMapping("/edit/{fileId}")
     public String editForm(@PathVariable("fileId") String fileId, Model model) {
-        var file = editOrchestrator.getFileMetadata(fileId);
-        String content = editOrchestrator.getFileContent(fileId);
+        var file = editLogicInterface.getFileMetadata(fileId);
+        String content = editLogicInterface.getFileContent(fileId);
         model.addAttribute("file", file);
         model.addAttribute("content", content);
         model.addAttribute("originalHash", file.getSha256Hash());
@@ -103,7 +103,7 @@ public class FileBrowserController {
     public String saveEdit(@PathVariable("fileId") String fileId,
                            @RequestParam("content") String userContent,
                            @RequestParam("originalHash") String originalHash) throws IOException {
-        ConflictContextDto conflict = editOrchestrator.trySave(fileId, originalHash, userContent);
+        ConflictContextDto conflict = editLogicInterface.trySave(fileId, originalHash, userContent);
         if (conflict != null) {
             String encodedServer = URLEncoder.encode(conflict.getServerContent(), StandardCharsets.UTF_8);
             String encodedUser = URLEncoder.encode(conflict.getUserContent(), StandardCharsets.UTF_8);
@@ -133,9 +133,9 @@ public class FileBrowserController {
             var strategy = strategyFactory.getStrategy(strategyType);
             var conflictContext = new ConflictContextDto(fileId, "", resolvedContent);
             String finalContent = strategy.resolve(conflictContext);
-            editOrchestrator.resolveAndSave(fileId, finalContent);
+            editLogicInterface.resolveAndSave(fileId, finalContent);
         } else {
-            editOrchestrator.resolveAndSave(fileId, resolvedContent);
+            editLogicInterface.resolveAndSave(fileId, resolvedContent);
         }
         return "redirect:/files";
     }
