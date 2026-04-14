@@ -22,20 +22,6 @@ public class SyncHttpClient {
         this.webClient = WebClient.builder().baseUrl(baseUrl).build();
     }
 
-//    public SyncResponseDto sync(SyncRequestDto request)
-//    {
-//        // sends the data to the server
-//        return webClient.post()
-//                // uri = Uniform Resource Identifier
-//                .uri("/api/sync")
-//                // SyncRequestDto object
-//                .bodyValue(request)
-//                .retrieve()
-//                // wrap SyncResponseDto in a reactive Mono
-//                .bodyToMono(SyncResponseDto.class)
-//                // make the call wait for the response
-//                .block();
-//    }
     public SyncResponseDto sync(SyncRequestDto request) {
         String raw = webClient.post()
                 .uri("/api/sync")

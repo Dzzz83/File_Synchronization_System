@@ -1,6 +1,6 @@
 package com.filesync.server.controller;
 
-import com.filesync.server.service.FileStorageService;
+import com.filesync.server.storage.FileStorageService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +22,7 @@ public class FileTransferController {
     {
         // save the file to the server's database
         fileStorageServices.save(fileId, file);
+        System.out.println("Uploading fileId: " + fileId + ", size: " + file.getSize());
         return ResponseEntity.ok("File uploaded successfully");
     }
 
