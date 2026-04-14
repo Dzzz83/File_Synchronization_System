@@ -16,6 +16,7 @@ public class LocalMetadataRepository {
     {
         String sql = "CREATE TABLE IF NOT EXISTS local_file (" +
                 "relative_path VARCHAR(255) PRIMARY KEY, " +
+                "file_id VARCHAR(255), " +
                 "sha256_hash VARCHAR(64), " +
                 "last_sync TIMESTAMP )";
         try
@@ -28,14 +29,15 @@ public class LocalMetadataRepository {
             throw new RuntimeException(e);
         }
     }
-    public void saveFile(String relativePath, String sha256Hash) throws SQLException
+    public void saveFile(String relativePath, String fileId, String sha256Hash) throws SQLException
     {
-        String sql = "MERGE INTO local_file KEY(relative_path) VALUES (?, ?, CURRENT_TIMESTAMP)";
+        String sql = "MERGE INTO local_file KEY(relative_path) VALUES (?, ?, ?, CURRENT_TIMESTAMP)";
         try
         {
             PreparedStatement preparedStatement = connection.prepareStatement(sql);
             preparedStatement.setString(1, relativePath);
-            preparedStatement.setString(2, sha256Hash);
+            preparedStatement.setString(2, fileId);
+            preparedStatement.setString(3, sha256Hash);
             preparedStatement.executeUpdate();
         }
         catch (SQLException e) {
@@ -71,6 +73,17 @@ public class LocalMetadataRepository {
             preparedStatement.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException(e);
+        }
+    }
+    public String getFileId(String relativePath) throws SQLException {
+        String sql = "SELECT file_id FROM local_file WHERE relative_path = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, relativePath);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getString("file_id");
+            }
+            return null;
         }
     }
 }

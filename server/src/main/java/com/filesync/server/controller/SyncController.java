@@ -19,9 +19,11 @@ public class SyncController {
     }
 
     @PostMapping
-    public SyncResponseDto sync(@RequestBody SyncRequestDto request)
-    {
-        return syncService.sync(request);
+    public SyncResponseDto sync(@RequestBody SyncRequestDto request) {
+        System.out.println("=== SyncController called, owner: " + request.getOwnerId());
+        SyncResponseDto response = syncService.sync(request);
+        System.out.println("=== Response actions count: " + response.getActions().size());
+        return response;
     }
 
 }
