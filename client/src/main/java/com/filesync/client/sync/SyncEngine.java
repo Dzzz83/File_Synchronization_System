@@ -1,5 +1,6 @@
 package com.filesync.client.sync;
 
+import com.filesync.client.conflict.ConflictResolver;
 import com.filesync.client.db.LocalMetadataRepository;
 import com.filesync.client.file.FolderScanner;
 import com.filesync.client.http.SyncHttpClient;
@@ -62,8 +63,7 @@ public class SyncEngine {
                     System.out.println("Downloaded " + file.getRelativePath());
                     break;
                 case CONFLICT:
-                    // print out the conflict file
-                    System.out.println("Conflict " + file.getRelativePath() + " - " + actionDto.getMessage());
+                    ConflictResolver.resolve(file, localPath, httpClient, localMetadataRepository);
                     break;
                 case NO_ACTION:
                     break;
