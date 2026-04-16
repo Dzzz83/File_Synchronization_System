@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ButtonBar?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox spacing="10" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.admin.EditDialogController">
+    <padding>
+        <Insets top="10" right="10" bottom="10" left="10"/>
+    </padding>
+
+    <TextArea fx:id="textArea" wrapText="true" prefHeight="400" prefWidth="600"/>
+
+    <ButtonBar>
+        <buttons>
+            <Button fx:id="saveButton" text="Save" defaultButton="true" onAction="#handleSave"/>
+            <Button fx:id="cancelButton" text="Cancel" cancelButton="true" onAction="#handleCancel"/>
+        </buttons>
+    </ButtonBar>
+</VBox>

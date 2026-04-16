@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<?import javafx.geometry.Insets?>
+<VBox spacing="10" alignment="CENTER" xmlns:fx="http://javafx.com/fxml" fx:controller="com.filesync.client.admin.ServerFileListController">
+    <padding>
+        <Insets top="10" right="10" bottom="10" left="10"/>
+    </padding>
+
+    <TableView fx:id="fileTable" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="pathColumn" text="File Path" prefWidth="300"/>
+            <TableColumn fx:id="sizeColumn" text="Size (bytes)" prefWidth="100"/>
+            <TableColumn fx:id="lastModifiedColumn" text="Last Modified" prefWidth="150"/>
+        </columns>
+    </TableView>
+    <HBox spacing="10" alignment="CENTER">
+        <Button text="Upload" onAction="#handleUpload"/>
+        <Button text="Download" onAction="#handleDownload"/>
+        <Button text="Edit" onAction="#handleEdit"/>
+        <Button text="Delete" onAction="#handleDelete"/>
+        <Button text="Refresh" onAction="#handleRefresh"/>
+    </HBox>
+</VBox>

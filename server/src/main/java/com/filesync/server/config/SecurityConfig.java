@@ -36,12 +36,9 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // Public API endpoints
-                        .requestMatchers("/api/**", "/health", "/h2-console/**").permitAll()
-                        // Public web pages
-                        .requestMatchers("/", "/register", "/login", "/forgot-password", "/reset-password", "/css/**", "/js/**").permitAll()
-                        // Everything else requires authentication
+                        .requestMatchers("/api/**", "/health", "/h2-console/**", "/", "/register", "/login", "/forgot-password", "/reset-password", "/css/**", "/js/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form
@@ -53,7 +50,6 @@ public class SecurityConfig {
                         .logoutSuccessUrl("/login?logout")
                         .permitAll()
                 )
-                .csrf(csrf -> csrf.disable())
                 .headers(headers -> headers.frameOptions(frame -> frame.disable()));
         return http.build();
     }
