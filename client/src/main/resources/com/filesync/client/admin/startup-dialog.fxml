@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="10" alignment="CENTER" xmlns:fx="http://javafx.com/fxml" fx:controller="com.filesync.client.admin.StartupController">
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Label text="Server URL:"/>
+    <TextField fx:id="serverUrlField" text="http://localhost:8080"/>
+
+    <TabPane>
+        <Tab text="Login">
+            <VBox spacing="10" alignment="CENTER">
+                <Label text="Username (ownerId):"/>
+                <TextField fx:id="ownerIdField"/>
+                <Button text="Login" onAction="#handleLogin"/>
+            </VBox>
+        </Tab>
+        <Tab text="Register">
+            <VBox spacing="10" alignment="CENTER">
+                <Label text="Username:"/>
+                <TextField fx:id="registerUsernameField"/>
+                <Label text="Password:"/>
+                <PasswordField fx:id="registerPasswordField"/>
+                <Label text="Email:"/>
+                <TextField fx:id="registerEmailField"/>
+                <Button text="Register" onAction="#handleRegister"/>
+            </VBox>
+        </Tab>
+    </TabPane>
+
+    <HBox spacing="10" alignment="CENTER">
+        <Button text="Forgot Password?" onAction="#handleForgotPassword"/>
+        <Button text="Reset Password" onAction="#handleResetPassword"/>
+    </HBox>
+</VBox>

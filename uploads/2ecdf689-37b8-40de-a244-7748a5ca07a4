@@ -1,3 +1,0 @@
-.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileId + "\"")
-.contentType(MediaType.APPLICATION_OCTET_STREAM)
-.body(data);

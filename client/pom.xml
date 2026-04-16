@@ -74,7 +74,6 @@
                 </configuration>
             </plugin>
 
-            <!-- JavaFX Maven Plugin -->
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
@@ -85,6 +84,17 @@
                         <option>--module-path</option>
                         <option>C:\Java\javafx-sdk-25\javafx-sdk-25.0.1\lib</option>
                     </options>
+                </configuration>
+            </plugin>
+
+            <!-- Add this plugin -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <mainClass>com.filesync.client.admin.ServerAdminApp</mainClass>
+                    <cleanupDaemonThreads>false</cleanupDaemonThreads>
                 </configuration>
             </plugin>
         </plugins>

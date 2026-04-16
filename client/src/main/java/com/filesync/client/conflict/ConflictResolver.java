@@ -16,30 +16,25 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 public class ConflictResolver {
-    // track the conflict file that is being resolved
     private static final ConcurrentMap<String, Boolean> resolvingFiles = new ConcurrentHashMap<>();
 
     public static void resolve(FileMetadataDto file, Path localPath, SyncHttpClient httpClient,
                                LocalMetadataRepository localRepo) throws IOException {
         String filePath = file.getRelativePath();
 
-        // if a conflict window has opened for that file, don't open another window
         if (resolvingFiles.putIfAbsent(filePath, true) != null) {
             System.out.println("Conflict already being resolved for " + filePath + ", skipping...");
             return;
         }
 
         try {
-            // download server version
             Path tempServerFile = Files.createTempFile("server_", ".tmp");
             httpClient.downloadFile(file.getFileId(), tempServerFile);
             String serverContent = Files.readString(tempServerFile);
-            // get the local version
             String localContent = Files.readString(localPath);
 
             Platform.runLater(() -> {
                 try {
-                    // create new conflict window
                     FXMLLoader loader = new FXMLLoader(
                             ConflictResolver.class.getResource("/com/filesync/client/conflict/conflict-view.fxml")
                     );
@@ -60,7 +55,10 @@ public class ConflictResolver {
                             file.setLastModified(Files.getLastModifiedTime(localPath).toInstant());
                             httpClient.createMetadata(file);
                             httpClient.uploadFile(file.getFileId(), localPath);
-                            localRepo.saveFile(file.getRelativePath(), file.getFileId(), newHash);
+                            // Only save to local DB if repository is provided
+                            if (localRepo != null) {
+                                localRepo.saveFile(file.getRelativePath(), file.getFileId(), newHash);
+                            }
                             System.out.println("Conflict resolved for " + file.getRelativePath());
                         } catch (Exception e) {
                             e.printStackTrace();

@@ -20,4 +20,12 @@ public class FileMetaDataService {
         return repository.findByOwnerId(ownerId);
     }
 
+    public FileMetadataEntity getFileById(String fileId) {
+        return repository.findById(fileId)
+                .orElseThrow(() -> new RuntimeException("File not found: " + fileId));
+    }
+
+    public void deleteFile(String fileId) {
+        repository.deleteById(fileId);
+    }
 }

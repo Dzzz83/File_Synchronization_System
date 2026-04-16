@@ -10,6 +10,7 @@ import com.filesync.common.dto.SyncRequestDto;
 import com.filesync.common.dto.SyncResponseDto;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.SQLException;
@@ -50,8 +51,21 @@ public class SyncEngine {
                 case UPLOAD:
                     file.setOwnerId(ownerId);
                     httpClient.createMetadata(file);
-                    // upload the file
-                    httpClient.uploadFile(file.getFileId(), localPath);
+
+                    long fileSize = Files.size(localPath);
+                    long THRESHOLD = 5 * 1024 * 1024;
+
+                    if (fileSize > THRESHOLD)
+                    {
+                        // upload the large file
+                        System.out.println("Large file detected, using chunked upload for: " + file.getRelativePath());
+                        httpClient.uploadLargeFile(file.getFileId(), localPath);
+                    }
+                    else
+                    {
+                        // upload small file
+                        httpClient.uploadFile(file.getFileId(), localPath);
+                    }
                     // save the file
                     localMetadataRepository.saveFile(file.getRelativePath(), file.getFileId(), file.getSha256Hash());
                     System.out.println("Uploaded " + file.getRelativePath());
