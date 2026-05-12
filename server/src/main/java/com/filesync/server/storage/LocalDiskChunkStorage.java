@@ -2,6 +2,7 @@ package com.filesync.server.storage;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
@@ -11,14 +12,15 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
+@ConditionalOnProperty(name = "storage.type", havingValue = "local", matchIfMissing = true)
 public class LocalDiskChunkStorage implements ChunkStorageService {
 
     private static final Logger log = LoggerFactory.getLogger(LocalDiskChunkStorage.class);
     private final Path chunkRoot = Paths.get("./uploads/chunks");
-    private final FileStorageService fileStorageService;
+    private final FileStorage fileStorage;
 
-    public LocalDiskChunkStorage(FileStorageService fileStorageService) throws IOException {
-        this.fileStorageService = fileStorageService;
+    public LocalDiskChunkStorage(FileStorage fileStorage) throws IOException {
+        this.fileStorage = fileStorage;
         Files.createDirectories(chunkRoot);
         log.info("Chunk storage initialized at {}", chunkRoot.toAbsolutePath());
     }
@@ -102,7 +104,7 @@ public class LocalDiskChunkStorage implements ChunkStorageService {
                 }
             }
             try (InputStream assembledStream = Files.newInputStream(tempFile)) {
-                fileStorageService.save(destinationFileId, assembledStream, Files.size(tempFile));
+                fileStorage.save(destinationFileId, assembledStream, Files.size(tempFile));
             }
             Path finalPath = Paths.get("./uploads").resolve(destinationFileId);
             System.out.println("Final file path: " + finalPath.toAbsolutePath() + ", exists: " + Files.exists(finalPath));

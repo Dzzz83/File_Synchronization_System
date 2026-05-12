@@ -5,7 +5,8 @@ import com.filesync.server.conflict.strategy.ConflictStrategyFactory;
 import com.filesync.server.domain.FileMetadataEntity;
 import com.filesync.server.repository.FileMetadataRepository;
 import com.filesync.server.service.EditLogicInterface;
-import com.filesync.server.storage.FileStorageService;
+import com.filesync.server.storage.FileStorage;
+import com.filesync.server.storage.LocalFileStorage;
 import com.filesync.server.service.HashCalculator;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -28,18 +29,18 @@ import java.util.UUID;
 public class FileBrowserController {
 
     private final FileMetadataRepository fileMetadataRepository;
-    private final FileStorageService fileStorageService;
+    private final FileStorage fileStorage;
     private final HashCalculator hashCalculator;
     private final EditLogicInterface editLogicInterface;
     private final ConflictStrategyFactory strategyFactory;
 
     public FileBrowserController(FileMetadataRepository fileMetadataRepository,
-                                 FileStorageService fileStorageService,
+                                 FileStorage fileStorage,
                                  HashCalculator hashCalculator,
                                  EditLogicInterface editLogicInterface,
                                  ConflictStrategyFactory strategyFactory) {
         this.fileMetadataRepository = fileMetadataRepository;
-        this.fileStorageService = fileStorageService;
+        this.fileStorage = fileStorage;
         this.hashCalculator = hashCalculator;
         this.editLogicInterface = editLogicInterface;
         this.strategyFactory = strategyFactory;
@@ -77,13 +78,13 @@ public class FileBrowserController {
         entity.setStatus(com.filesync.common.enums.SyncStatus.SYNCED);
 
         fileMetadataRepository.save(entity);
-        fileStorageService.save(fileId, new ByteArrayInputStream(bytes), (long) bytes.length);
+        fileStorage.save(fileId, new ByteArrayInputStream(bytes), (long) bytes.length);
         return "redirect:/files";
     }
 
     @GetMapping("/download/{fileId}")
     public ResponseEntity<byte[]> downloadFile(@PathVariable("fileId") String fileId) {
-        byte[] data = fileStorageService.load(fileId);
+        byte[] data = fileStorage.load(fileId);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileId + "\"")
                 .body(data);
