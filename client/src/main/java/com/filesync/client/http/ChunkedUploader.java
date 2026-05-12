@@ -17,7 +17,7 @@ import java.util.Set;
 
 public class ChunkedUploader {
     private final WebClient webClient;
-    private static final int CHUNK_SIZE = 1024 * 1024; // 1mb
+    private static final int CHUNK_SIZE = 5 * 1024 * 1024; // 1mb
 
     public ChunkedUploader(WebClient webClient)
     {

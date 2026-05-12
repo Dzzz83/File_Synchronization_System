@@ -3,7 +3,8 @@ package com.filesync.server.controller;
 import com.filesync.common.dto.FileMetadataDto;
 import com.filesync.server.domain.FileMetadataEntity;
 import com.filesync.server.service.FileMetaDataService;
-import com.filesync.server.storage.FileStorageService;
+import com.filesync.server.storage.FileStorage;
+import com.filesync.server.storage.LocalFileStorage;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,13 +14,13 @@ import java.util.List;
 @RequestMapping("/api/files")
 public class FileController {
     private final FileMetaDataService fileMetaDataService;
-    private final FileStorageService fileStorageService;
+    private final FileStorage fileStorage;
 
     // constructor
-    public FileController(FileMetaDataService fileMetaDataService, FileStorageService fileStorageService)
+    public FileController(FileMetaDataService fileMetaDataService, FileStorage fileStorage)
     {
         this.fileMetaDataService = fileMetaDataService;
-        this.fileStorageService = fileStorageService;
+        this.fileStorage = fileStorage;
     }
 
     @PostMapping("/metadata")
@@ -81,7 +82,7 @@ public class FileController {
         // 1. Delete metadata from database
         fileMetaDataService.deleteFile(fileId);
         // 2. Delete the actual file from disk
-        fileStorageService.delete(fileId);
+        fileStorage.delete(fileId);
         return ResponseEntity.ok().build();
     }
 

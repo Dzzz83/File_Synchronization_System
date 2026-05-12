@@ -1,20 +1,23 @@
 package com.filesync.server.storage;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 
 @Service
-public class FileStorageService {
+@ConditionalOnProperty(name = "storage.type", havingValue = "local", matchIfMissing = true)
+public class LocalFileStorage implements FileStorage {
     private final Path rootLocation = Paths.get("./uploads");
 
-    public FileStorageService()
+    public LocalFileStorage()
     {
         try
         {
@@ -23,7 +26,7 @@ public class FileStorageService {
             throw new RuntimeException("Could not create upload directory", e);
         }
     }
-
+    @Override
     public void save(String fileId, InputStream data, long size) {
         try {
             Path destination = rootLocation.resolve(fileId);
@@ -40,6 +43,7 @@ public class FileStorageService {
             throw new RuntimeException("Failed to save file " + fileId, e);
         }
     }
+    @Override
     public void save(String fileId, MultipartFile file) {
         try {
             Path destination = rootLocation.resolve(fileId);
@@ -50,12 +54,13 @@ public class FileStorageService {
             throw new RuntimeException("Failed to save file " + fileId, e);
         }
     }
+    @Override
     public boolean exists(String fileId)
     {
         // check if the file exists
         return Files.exists(rootLocation.resolve(fileId));
     }
-
+    @Override
     public void delete(String fileId) {
         try {
             Path filePath = rootLocation.resolve(fileId);
@@ -69,7 +74,7 @@ public class FileStorageService {
             throw new RuntimeException("Failed to delete file " + fileId, e);
         }
     }
-
+    @Override
     public byte[] load(String fileId)
     {
         try
@@ -82,5 +87,16 @@ public class FileStorageService {
             throw new RuntimeException("Failed to load file " + fileId, e);
         }
     }
-
+    @Override
+    public void stream(String fileId, OutputStream outputStream)
+    {
+        try (InputStream inputStream = Files.newInputStream(rootLocation.resolve(fileId)))
+        {
+            inputStream.transferTo(outputStream);
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException("Failed to stream file: " + fileId, e);
+        }
+    }
 }

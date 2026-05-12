@@ -1,39 +1,51 @@
 package com.filesync.server.controller;
 
-import com.filesync.server.storage.FileStorageService;
+import aj.org.objectweb.asm.commons.TryCatchBlockSorter;
+import com.filesync.server.storage.FileStorage;
+import com.filesync.server.storage.LocalFileStorage;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+
 @RestController
 @RequestMapping("/api/files")
 public class FileTransferController {
-    private final FileStorageService fileStorageServices;
+    private final FileStorage fileStorage;
 
-    public FileTransferController(FileStorageService fileStorageService)
+    public FileTransferController(FileStorage fileStorage)
     {
-        this.fileStorageServices = fileStorageService;
+        this.fileStorage = fileStorage;
     }
 
     @PostMapping("/upload/{fileId}")
     public ResponseEntity<String> uploadFile(@PathVariable("fileId") String fileId, @RequestParam("file") MultipartFile file)
     {
         // save the file to the server's database
-        fileStorageServices.save(fileId, file);
+        fileStorage.save(fileId, file);
         System.out.println("Uploading fileId: " + fileId + ", size: " + file.getSize());
         return ResponseEntity.ok("File uploaded successfully");
     }
 
     @GetMapping("/download/{fileId}")
-    public ResponseEntity<byte[]> downloadFile(@PathVariable("fileId") String fileId)
+    public void downloadFile(@PathVariable("fileId") String fileId, HttpServletResponse response)
     {
-        byte[] data = fileStorageServices.load(fileId);
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileId + "\"")
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .body(data);
-
+        response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileId + "\"");
+        response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
+        try
+        {
+            fileStorage.stream(fileId, response.getOutputStream());
+            response.getOutputStream().flush();
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException("Failed to send file", e);
+        }
     }
+
+
 }
