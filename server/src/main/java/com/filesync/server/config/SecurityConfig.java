@@ -38,7 +38,12 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/**", "/health", "/h2-console/**", "/", "/register", "/login", "/forgot-password", "/reset-password", "/css/**", "/js/**").permitAll()
+                        // Explicitly permit all sync endpoints first
+                        .requestMatchers("/api/sync/**").permitAll()
+                        // Then other public endpoints
+                        .requestMatchers("/api/**", "/health", "/h2-console/**", "/",
+                                "/register", "/login", "/forgot-password",
+                                "/reset-password", "/css/**", "/js/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form

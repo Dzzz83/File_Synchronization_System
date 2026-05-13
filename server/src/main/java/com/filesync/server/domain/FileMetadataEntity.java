@@ -23,7 +23,7 @@ public class FileMetadataEntity {
     private String versionVectorJson;
     private String ownerId;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "file_shared_with", joinColumns = @JoinColumn(name = "file_id"))
     @Column(name = "user_id")
     private Set<String> sharedWith = new HashSet<>();
