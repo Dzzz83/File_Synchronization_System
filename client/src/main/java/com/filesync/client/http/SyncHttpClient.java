@@ -9,6 +9,8 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -19,6 +21,7 @@ import java.util.Map;
 
 public class SyncHttpClient {
     private final WebClient webClient;
+    private String authToken;
 
     public SyncHttpClient(String baseUrl) {
         this.webClient = WebClient.builder()
@@ -27,10 +30,44 @@ public class SyncHttpClient {
                 .build();
     }
 
+    public String login(String username, String password)
+    {
+        try
+        {
+            Map<String, String> body = Map.of("username", username, "password", password);
+            Map<?, ?> response = webClient.post()
+                    .uri("/api/auth/login")
+                    .bodyValue(body)
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .block();
+            if (response != null && response.containsKey("token"))
+            {
+                this.authToken = (String) response.get("token");
+                return this.authToken;
+            }
+            throw new RuntimeException("Login failed: no token in response");
+        } catch (WebClientResponseException e)
+        {
+            if (e.getStatusCode().value() == 401)
+            {
+                throw new RuntimeException("Invalid username or password");
+            }
+            throw new RuntimeException("Login error: " + e.getMessage());
+        }
+    }
+
+    private WebClient.RequestHeadersSpec<?> addAuth(WebClient.RequestHeadersSpec<?> spec)
+    {
+        if (authToken != null && !authToken.isEmpty())
+        {
+            return spec.header("Authorization", "Bearer " + authToken);
+        }
+        return spec;
+    }
+
     public String startSync(SyncRequestDto request) {
-        Map<?, ?> response = webClient.post()
-                .uri("/api/sync/start")
-                .bodyValue(request)
+        Map<?, ?> response = addAuth(webClient.post().uri("/api/sync/start").bodyValue(request))
                 .retrieve()
                 .bodyToMono(Map.class)
                 .block();
@@ -39,17 +76,14 @@ public class SyncHttpClient {
 
     @SuppressWarnings("unchecked")
     public Map<String, Object> getSyncStatus(String taskId) {
-        return webClient.get()
-                .uri("/api/sync/status/{taskId}", taskId)
+        return addAuth(webClient.get().uri("/api/sync/status/{taskId}", taskId))
                 .retrieve()
                 .bodyToMono(Map.class)
                 .block();
     }
 
     public void createMetadata(FileMetadataDto dto) {
-        webClient.post()
-                .uri("/api/files/metadata")
-                .bodyValue(dto)
+        addAuth(webClient.post().uri("/api/files/metadata").bodyValue(dto))
                 .retrieve()
                 .bodyToMono(String.class)
                 .block();
@@ -61,15 +95,12 @@ public class SyncHttpClient {
         // create a body part name "file" with the file content wrapped in a FileSystemResource
         builder.part("file", new FileSystemResource(localFile.toFile()));
 
-        webClient.post()
+        addAuth(webClient.post()
                 .uri("/api/files/upload/{fileId}", fileId)
-                // tell the server that the request contains multiple part
                 .contentType(MediaType.MULTIPART_FORM_DATA)
-                .bodyValue(builder.build())
+                .bodyValue(builder.build()))
                 .retrieve()
-                // wrap the string respond in Mono
                 .bodyToMono(String.class)
-                // make the call wait for the upload to finish
                 .block();
     }
 
@@ -84,13 +115,9 @@ public class SyncHttpClient {
         }
 
         // download a file from the server
-        byte[] data = webClient.get()
-                // get the url of the file to download
-                .uri("/api/files/download/{fileId}", fileId)
+        byte[] data = addAuth(webClient.get().uri("/api/files/download/{fileId}", fileId))
                 .retrieve()
-                // wra the byte[] respond in Mono
                 .bodyToMono(byte[].class)
-                // make the call wait for the download to finish
                 .block();
 
         if (data == null) {
@@ -105,9 +132,9 @@ public class SyncHttpClient {
         System.out.println("File written successfully");
     }
 
-    public void uploadLargeFile(String fileId, Path filePath) throws IOException
-    {
+    public void uploadLargeFile(String fileId, Path filePath) throws IOException {
         ChunkedUploader uploader = new ChunkedUploader(webClient);
+        uploader.setAuthToken(authToken);
         uploader.uploadFile(fileId, filePath);
     }
 
@@ -136,39 +163,34 @@ public class SyncHttpClient {
             return false;
         }
     }
+
     public List<FileMetadataDto> getFilesByOwner(String ownerId) {
         try {
-            FileMetadataDto[] files = webClient.get()
-                    .uri("/api/files/user/{ownerId}", ownerId)
+            FileMetadataDto[] files = addAuth(webClient.get().uri("/api/files/user/{ownerId}", ownerId))
                     .retrieve()
                     .bodyToMono(FileMetadataDto[].class)
                     .block();
-            if (files == null) {
-                return List.of();
-            }
-            return List.of(files);
+            return files == null ? List.of() : List.of(files);
         } catch (Exception e) {
-            System.err.println("Failed to get files for owner: " + ownerId);
-            e.printStackTrace();
+            System.err.println("Failed to get files: " + e.getMessage());
             return List.of();
         }
     }
 
     public void deleteFile(String fileId) {
-        webClient.delete()
-                .uri("/api/files/{fileId}", fileId)
+        addAuth(webClient.delete().uri("/api/files/{fileId}", fileId))
                 .retrieve()
                 .bodyToMono(Void.class)
                 .block();
     }
 
     public FileMetadataDto getFileMetadata(String fileId) {
-        return webClient.get()
-                .uri("/api/files/{fileId}", fileId)
+        return addAuth(webClient.get().uri("/api/files/{fileId}", fileId))
                 .retrieve()
                 .bodyToMono(FileMetadataDto.class)
                 .block();
     }
+
     public String forgotPassword(String email) {
         try {
             Map<String, String> body = Map.of("email", email);
@@ -201,5 +223,9 @@ public class SyncHttpClient {
             System.err.println("Reset password failed: " + e.getMessage());
             return false;
         }
+    }
+
+    public void logout() {
+        this.authToken = null;
     }
 }

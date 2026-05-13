@@ -4,6 +4,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
+import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 import org.w3c.dom.Text;
@@ -17,6 +18,7 @@ public class StartupController {
     @FXML private TextField registerUsernameField;
     @FXML private TextField registerPasswordField;
     @FXML private TextField registerEmailField;
+    @FXML private PasswordField loginPasswordField;
 
     private Stage primaryStage;
 
@@ -34,14 +36,14 @@ public class StartupController {
         alert.showAndWait();
     }
 
-    private void openMainWindow(String serverUrl, String ownerId) {
+    private void openMainWindow(SyncHttpClient authenticatedClient, String username) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/filesync/client/admin/server-file-list.fxml"));
             Scene scene = new Scene(loader.load(), 800, 600);
             ServerFileListController controller = loader.getController();
-            controller.initialize(ownerId, serverUrl);
+            controller.initialize(authenticatedClient, username);  // new method
             Stage stage = new Stage();
-            stage.setTitle("File Server Admin - " + ownerId);
+            stage.setTitle("File Server Admin - " + username);
             stage.setScene(scene);
             stage.show();
             primaryStage.close();
@@ -50,18 +52,26 @@ public class StartupController {
             showAlert("Error", "Failed to open main window: " + e.getMessage());
         }
     }
-    @FXML
-    private void handleLogin()
-    {
-        String serverUrl = serverUrlField.getText().trim();
-        String ownerId = ownerIdField.getText().trim();
 
-        if (serverUrl.isEmpty() || ownerId.isEmpty())
-        {
-            showAlert("Error", "Please enter server URL and username");
+    @FXML
+    private void handleLogin() {
+        String serverUrl = serverUrlField.getText().trim();
+        String username = ownerIdField.getText().trim();
+        String password = loginPasswordField.getText().trim();
+
+        if (serverUrl.isEmpty() || username.isEmpty() || password.isEmpty()) {
+            showAlert("Error", "Please enter server URL, username and password");
             return;
         }
-        openMainWindow(serverUrl, ownerId);
+
+        try {
+            // Create a new HTTP client and authenticate
+            SyncHttpClient client = new SyncHttpClient(serverUrl);
+            client.login(username, password);   // throws exception if credentials are wrong
+            openMainWindow(client, username);
+        } catch (Exception e) {
+            showAlert("Login failed", e.getMessage());
+        }
     }
     @FXML
     private void handleRegister() {

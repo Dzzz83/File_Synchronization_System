@@ -21,5 +21,6 @@
         <Button text="Edit" onAction="#handleEdit"/>
         <Button text="Delete" onAction="#handleDelete"/>
         <Button text="Refresh" onAction="#handleRefresh"/>
+        <Button text="Logout" onAction="#handleLogout"/>
     </HBox>
 </VBox>

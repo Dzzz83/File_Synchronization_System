@@ -1,20 +1,30 @@
 package com.filesync.server.config;
 
 import com.filesync.server.repository.UserRepository;
+import com.filesync.server.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.core.userdetails.User;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthFilter;
+
+    // Inject the JWT filter via constructor
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter) {
+        this.jwtAuthFilter = jwtAuthFilter;
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -37,25 +47,26 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
+
+                // make the application stateless
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
                 .authorizeHttpRequests(auth -> auth
-                        // Explicitly permit all sync endpoints first
-                        .requestMatchers("/api/sync/**").permitAll()
-                        // Then other public endpoints
-                        .requestMatchers("/api/**", "/health", "/h2-console/**", "/",
-                                "/register", "/login", "/forgot-password",
-                                "/reset-password", "/css/**", "/js/**").permitAll()
+                        // Public endpoints (no token required)
+                        .requestMatchers(
+                                "/api/auth/login",
+                                "/api/users/register",
+                                "/api/users/forgot-password",
+                                "/api/users/reset-password",
+                                "/health"
+                        ).permitAll()
+                        // other API endpoints require authentication
                         .anyRequest().authenticated()
                 )
-                .formLogin(form -> form
-                        .loginPage("/login")
-                        .defaultSuccessUrl("/files", true)
-                        .permitAll()
-                )
-                .logout(logout -> logout
-                        .logoutSuccessUrl("/login?logout")
-                        .permitAll()
-                )
-                .headers(headers -> headers.frameOptions(frame -> frame.disable()));
+
+                // add filter before the default username/password filter
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
 }

@@ -18,45 +18,48 @@ import java.util.Set;
 public class ChunkedUploader {
     private final WebClient webClient;
     private static final int CHUNK_SIZE = 5 * 1024 * 1024; // 1mb
+    private String authToken;
 
     public ChunkedUploader(WebClient webClient)
     {
         this.webClient = webClient;
     }
 
+    private WebClient.RequestHeadersSpec<?> addAuth(WebClient.RequestHeadersSpec<?> spec) {
+        if (authToken != null && !authToken.isEmpty()) {
+            return spec.header("Authorization", "Bearer " + authToken);
+        }
+        return spec;
+    }
+
     private void assembleFile(String fileId, String finalFileId, int totalChunks) {
-        webClient.post()
+        addAuth(webClient.post()
                 .uri(uriBuilder -> uriBuilder.path("/api/chunk/assemble")
                         .queryParam("fileId", fileId)
                         .queryParam("finalFileId", finalFileId)
                         .queryParam("totalChunks", totalChunks)
-                        .build())
+                        .build()))
                 .retrieve()
                 .bodyToMono(Void.class)
                 .block();
     }
 
-    private Set<Integer> getUploadedChunks(String fileId)
-    {
-        try
-        {
-            UploadStatusDto status = webClient.get()
+    private Set<Integer> getUploadedChunks(String fileId) {
+        try {
+            UploadStatusDto status = addAuth(webClient.get()
                     .uri(uriBuilder -> uriBuilder.path("/api/chunk/status")
                             .queryParam("fileId", fileId)
-                            .build())
+                            .build()))
                     .retrieve()
                     .bodyToMono(UploadStatusDto.class)
                     .block();
-            if (status == null)
-            {
-                return Set.of();
-            }
-            return status.getUploadedChunks();
+            return status == null ? Set.of() : status.getUploadedChunks();
         } catch (Exception e) {
             System.err.println("Failed to get upload status for " + fileId);
             return Set.of();
         }
     }
+
     private byte[] readChunk(Path filePath, int chunkIndex, int totalChunks) throws IOException
     {
         long start = (long) chunkIndex * CHUNK_SIZE;
@@ -72,31 +75,29 @@ public class ChunkedUploader {
         return buffer;
     }
 
-    private void uploadChunk(String fileId, int chunkIndex, int totalChunks, byte[] data)
-    {
+    private void uploadChunk(String fileId, int chunkIndex, int totalChunks, byte[] data) {
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("fileId", fileId);
         body.add("chunkIndex", String.valueOf(chunkIndex));
         body.add("totalChunks", String.valueOf(totalChunks));
 
-        ByteArrayResource resource = new ByteArrayResource(data)
-        {
-           @Override
-            public String getFilename()
-           {
-               return "chunk_" + chunkIndex + ".part";
-           }
+        ByteArrayResource resource = new ByteArrayResource(data) {
+            @Override
+            public String getFilename() {
+                return "chunk_" + chunkIndex + ".part";
+            }
         };
         body.add("chunk", resource);
 
-        webClient.post()
+        addAuth(webClient.post()
                 .uri("/api/chunk/upload")
                 .contentType(MediaType.MULTIPART_FORM_DATA)
-                .bodyValue(body)
+                .bodyValue(body))
                 .retrieve()
                 .bodyToMono(Void.class)
                 .block();
     }
+
     public void uploadFile(String fileId, Path filePath) throws IOException
     {
         long fileSize = Files.size(filePath);
@@ -119,5 +120,10 @@ public class ChunkedUploader {
         }
         assembleFile(fileId, fileId, totalChunks);
         System.out.println("File assembled successfully:" + fileId);
+    }
+
+    public void setAuthToken(String authToken)
+    {
+        this.authToken = authToken;
     }
 }

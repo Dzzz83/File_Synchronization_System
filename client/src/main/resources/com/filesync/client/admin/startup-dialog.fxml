@@ -16,6 +16,8 @@
             <VBox spacing="10" alignment="CENTER">
                 <Label text="Username (ownerId):"/>
                 <TextField fx:id="ownerIdField"/>
+                <Label text="Password:"/>
+                <PasswordField fx:id="loginPasswordField"/>
                 <Button text="Login" onAction="#handleLogin"/>
             </VBox>
         </Tab>
