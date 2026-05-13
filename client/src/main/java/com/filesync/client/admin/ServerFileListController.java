@@ -37,6 +37,17 @@ public class ServerFileListController {
     private String ownerId;
     private ObservableList<ServerFileItem> fileItems = FXCollections.observableArrayList();
 
+    public void initialize(SyncHttpClient httpClient, String ownerId) {
+        this.httpClient = httpClient;
+        this.ownerId = ownerId;
+
+        pathColumn.setCellValueFactory(new PropertyValueFactory<>("relativePath"));
+        sizeColumn.setCellValueFactory(new PropertyValueFactory<>("size"));
+        lastModifiedColumn.setCellValueFactory(new PropertyValueFactory<>("lastModified"));
+        fileTable.setItems(fileItems);
+        refreshWindow();
+    }
+
     // display an alert dialog
     private void showAlert(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
@@ -70,22 +81,6 @@ public class ServerFileListController {
             e.printStackTrace();
             showAlert("Error", "Failed to load files: " + e.getMessage());
         }
-    }
-
-    public void initialize(String ownerId, String serverBaseUrl)
-    {
-        // save the ownerId
-        this.ownerId = ownerId;
-        // create an instance configured with the serverBaseUrl
-        this.httpClient = new SyncHttpClient(serverBaseUrl);
-
-        // set the values for the columns
-        pathColumn.setCellValueFactory(new PropertyValueFactory<>("relativePath"));
-        sizeColumn.setCellValueFactory(new PropertyValueFactory<>("size"));
-        lastModifiedColumn.setCellValueFactory(new PropertyValueFactory<>("lastModified"));
-
-        fileTable.setItems(fileItems);
-        refreshWindow();
     }
 
     // refresh button implementation
@@ -330,6 +325,19 @@ public class ServerFileListController {
         } catch (Exception e) {
             e.printStackTrace();
             showAlert("Edit failed", e.getMessage());
+        }
+    }
+
+    @FXML
+    private void handleLogout() {
+        httpClient.logout();
+        Stage stage = (Stage) fileTable.getScene().getWindow();
+        stage.close();
+        // Reopen login window
+        try {
+            new ServerAdminApp().start(new Stage());
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 }
