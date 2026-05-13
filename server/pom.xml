@@ -14,6 +14,7 @@
 
     <properties>
         <spring-boot.version>3.2.5</spring-boot.version>
+        <jackson.version>2.15.4</jackson.version>
     </properties>
 
     <dependencyManagement>
@@ -34,6 +35,23 @@
             <groupId>com.filesync</groupId>
             <artifactId>common</artifactId>
             <version>1.0-SNAPSHOT</version>
+        </dependency>
+
+        <!-- Force Jackson versions to be consistent -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+            <version>${jackson.version}</version>
         </dependency>
 
         <!-- Spring Boot Web -->

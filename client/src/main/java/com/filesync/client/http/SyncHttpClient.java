@@ -27,24 +27,23 @@ public class SyncHttpClient {
                 .build();
     }
 
-    public SyncResponseDto sync(SyncRequestDto request) {
-        String raw = webClient.post()
-                .uri("/api/sync")
+    public String startSync(SyncRequestDto request) {
+        Map<?, ?> response = webClient.post()
+                .uri("/api/sync/start")
                 .bodyValue(request)
                 .retrieve()
-                .bodyToMono(String.class)
+                .bodyToMono(Map.class)
                 .block();
-        System.out.println("=== RAW RESPONSE FROM SERVER ===\n" + raw + "\n================================");
+        return (String) response.get("taskId");
+    }
 
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.registerModule(new JavaTimeModule());
-        try {
-            return mapper.readValue(raw, SyncResponseDto.class);
-        } catch (Exception e) {
-            System.err.println("Failed to parse response: " + e.getMessage());
-            e.printStackTrace();
-            return new SyncResponseDto(); // fallback to empty list
-        }
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getSyncStatus(String taskId) {
+        return webClient.get()
+                .uri("/api/sync/status/{taskId}", taskId)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .block();
     }
 
     public void createMetadata(FileMetadataDto dto) {

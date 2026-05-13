@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 
 public class SyncEngine {
     private String ownerId;
@@ -31,15 +32,42 @@ public class SyncEngine {
         this.httpClient = new SyncHttpClient(serverBaseUrl);
     }
 
-    public void sync() throws IOException, SQLException
-    {
+    public void sync() throws IOException, SQLException, InterruptedException {
         // scan local folder
         List<FileMetadataDto> localFiles = scanner.scan();
-        // build request and send to server
-        SyncRequestDto requestDto = new SyncRequestDto(ownerId, localFiles);
-        SyncResponseDto responseDto = httpClient.sync(requestDto);
-        // process each action
-        for (SyncActionDto actionDto : responseDto.getActions())
+
+        // start async
+        SyncRequestDto syncRequestDto = new SyncRequestDto(ownerId, localFiles);
+        String taskId = httpClient.startSync(syncRequestDto);
+        System.out.println("Sync task started: " + taskId);
+
+        // checks until the task is completed
+        SyncResponseDto response = null;
+        while (true)
+        {
+            // wait 2 secs
+            Thread.sleep(2000);
+            // get the status
+            Map<String, Object> status = httpClient.getSyncStatus(taskId);
+            // convert to string
+            String state = (String) status.get("status");
+
+            if ("COMPLETED".equals(state))
+            {
+                // get the actions
+                @SuppressWarnings("unchecked")
+                List<SyncActionDto> actionDtos = (List<SyncActionDto>) status.get("actions");
+                response = new SyncResponseDto(actionDtos);
+                break;
+            }
+            else if ("FAILED".equals(state))
+            {
+                String error = (String) status.get("errorMessage");
+                throw new RuntimeException("Sync failed: " + error);
+            }
+        }
+
+        for (SyncActionDto actionDto : response.getActions())
         {
             // get file metadata
             FileMetadataDto file = actionDto.getFileMetadata();
