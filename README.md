@@ -38,14 +38,14 @@ File_Synchronization_System/
 │       └── model/
 ├── server/
 │   └── src/main/java/com/filesync/server/
-│       ├── config/               (SecurityConfig, R2Config)
+│       ├── config/               (SecurityConfig, R2Config, RabbitMQConfig)
 │       ├── controller/           (FileController, SyncController, AuthController, ChunkUploadController)
 │       ├── domain/               (FileMetadataEntity, User, SyncTask)
 │       ├── repository/           (JPA repositories)
-│       ├── service/              (FileMetaDataService, FileContentService, AsyncSyncService, JwtService)
-│       ├── storage/              (FileStorage interface, LocalFileStorage, R2StorageService,
-│       │                          ChunkStorageService interface, LocalDiskChunkStorage, R2ChunkStorageService)
-│       └── web/                  (Thymeleaf controllers – optional)
+│       ├── service/              (FileMetaDataService, FileContentService, JwtService, SyncTaskStatusService)
+│       ├── storage/              (FileStorage, LocalFileStorage, R2StorageService,
+│       │                          ChunkStorageService, LocalDiskChunkStorage, R2ChunkStorageService)
+│       └── consumer/             (RabbitMQ consumer for sync tasks)
 └── client/
     └── src/main/java/com/filesync/client/
         ├── admin/                (ServerAdminApp, StartupController, ServerFileListController,
@@ -71,6 +71,7 @@ File_Synchronization_System/
 - **Asynchronous sync** – endpoint `POST /api/sync/start` returns a task ID. The server performs the file comparison in a background thread and stores the resulting actions (upload, download, conflict, etc.) as JSON. Client polls `GET /api/sync/status/{taskId}` until completion. This prevents HTTP timeouts and supports many concurrent syncs.
 - **PostgreSQL** is now used for metadata storage (instead of H2). Multiple server instances can share the same database.
 - **JWT authentication** – the server is stateless. Endpoint `POST /api/auth/login` returns a token. All protected endpoints (files, sync, chunks) require a valid `Authorization: Bearer <token>` header.
+- **RabbitMQ (message queue)** – sync requests are sent to a queue and processed by a separate consumer. This decouples HTTP handling from background work and makes the system more resilient under load.
 
 ### Client – Admin GUI (JavaFX)
 
@@ -100,14 +101,27 @@ File_Synchronization_System/
 - **Strategy Pattern**: conflict resolution strategies are prepared.
 - **Factory Pattern**: used for creating the appropriate storage backend based on configuration.
 
-## Remaining Work for Production Scalability
+## What’s Already Deployed and Running
 
-The system is fully functional for a single‑node deployment. The following tasks address higher scalability and are planned:
+The server is live on **Render** (free tier) at:  
+`https://file-synchronization-system.onrender.com`
 
-- **Message Queue for Heavy Tasks** – Push long‑running operations (like chunk assembly or full sync execution) into a message queue (RabbitMQ, SQS) to decouple request handling from background processing.
-- **Client‑Side Parallel Chunk Upload** – Currently, the client uploads chunks sequentially. Uploading several chunks concurrently would improve throughput.
-- **Flyway for Schema Migrations** – Replace `ddl-auto=update` with versioned SQL scripts for safe production updates.
-- **Monitoring & Auto‑scaling** – Integrate Micrometer + Prometheus + Grafana, and optionally use Kubernetes Horizontal Pod Autoscaling.
+It uses:
+- Neon.tech PostgreSQL (free)
+- Cloudflare R2 for file storage
+- CloudAMQP RabbitMQ (free “Little Lemur” plan)
+- A `/health` endpoint that an external cron job pings every 10 minutes to keep the instance awake (avoids cold starts during demos).
+
+The JavaFX client works with this public URL – just enter the URL in the login screen.
+
+## What Could Be Added Next (Optional)
+
+The system is already fully functional and horizontally scalable. If you want to go further, here are a few optional enhancements:
+
+- **Parallel chunk upload on the client** – upload several chunks at once to speed up large files.
+- **Flyway for schema migrations** – replace `ddl-auto=update` with versioned SQL scripts for safer production updates.
+- **Monitoring (Prometheus + Grafana)** – see request rates, database pool usage, queue depth, etc.
+- **Horizontal scaling demo** – run two server instances behind Nginx to prove they share PostgreSQL and RabbitMQ.
 
 ## How to Run
 
@@ -146,4 +160,4 @@ The system is fully functional for a single‑node deployment. The following tas
 
 ## Conclusion
 
-The project successfully implements a Dropbox‑like system with a modern architecture. It demonstrates many important software design principles and scalability techniques. Asynchronous sync, PostgreSQL, and JWT authentication are already fully implemented. By completing the remaining tasks (message queue, parallel chunk upload, Flyway, monitoring), the system would be ready for a production environment with hundreds of concurrent users.
+The project successfully implements a Dropbox‑like system with a modern architecture. It demonstrates asynchronous background processing, stateless authentication, cloud object storage, and a message queue – all essential for scalability. The code is live on Render, and the JavaFX client works against the cloud server. With the remaining optional tasks (parallel upload, Flyway, monitoring), the system would be ready for real production use.
