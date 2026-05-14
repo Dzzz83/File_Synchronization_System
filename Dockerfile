@@ -4,17 +4,27 @@ FROM eclipse-temurin:17-jdk-alpine
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy the entire source code (including the client folder, but we won't build it)
+# Copy Maven wrapper files first (these rarely change)
+COPY mvnw .
+COPY .mvn .mvn
+
+# Copy only the parent and module pom.xml files (to cache dependencies)
+COPY pom.xml .
+COPY common/pom.xml common/
+COPY server/pom.xml server/
+
+# Give execute permission to Maven Wrapper and download dependencies
+# (This layer will be cached unless a pom.xml changes)
+RUN chmod +x mvnw && ./mvnw dependency:go-offline -B
+
+# Copy the rest of the source code (changes often)
 COPY . .
 
-# Give execute permission to Maven Wrapper and build ONLY the server module
-# -pl server : build only the server module
-# -am : also build modules that the server depends on (common)
-# -DskipTests : skip tests for faster build
-RUN chmod +x mvnw && ./mvnw clean package -DskipTests -pl server -am
+# Build ONLY the server module (source change only recompiles, not redownloads deps)
+RUN ./mvnw clean package -DskipTests -pl server -am
 
-# Expose the port your Spring Boot server runs on
+# Expose the port
 EXPOSE 8080
 
-# Set the entrypoint to run the built JAR file
+# Run the JAR
 ENTRYPOINT ["java", "-jar", "server/target/server-1.0-SNAPSHOT.jar"]
