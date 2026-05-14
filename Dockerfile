@@ -13,11 +13,14 @@ COPY pom.xml .
 COPY common/pom.xml common/
 COPY server/pom.xml server/
 
+# Create a dummy client directory to satisfy Maven module discovery
+RUN mkdir -p client
+
 # Give execute permission to Maven Wrapper and download dependencies
 # (This layer will be cached unless a pom.xml changes)
 RUN chmod +x mvnw && ./mvnw dependency:go-offline -B
 
-# Copy the rest of the source code (changes often)
+# Copy the rest of the source code (including the real client folder)
 COPY . .
 
 # Build ONLY the server module (source change only recompiles, not redownloads deps)
