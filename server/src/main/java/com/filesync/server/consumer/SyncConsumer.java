@@ -1,4 +1,4 @@
-package com.filesync.server.service;
+package com.filesync.server.consumer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.filesync.common.dto.FileMetadataDto;
@@ -7,29 +7,29 @@ import com.filesync.common.dto.SyncRequestDto;
 import com.filesync.common.enums.SyncActionType;
 import com.filesync.server.domain.FileMetadataEntity;
 import com.filesync.server.domain.SyncTask;
+import com.filesync.server.dto.SyncMessage;
 import com.filesync.server.repository.FileMetadataRepository;
 import com.filesync.server.repository.SyncTaskRepository;
+import com.filesync.server.service.SyncTaskStatusService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.annotation.Propagation;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.stereotype.Component;
+
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 
-@Service
-public class AsyncSyncService
+@Component
+public class SyncConsumer
 {
+    private static final Logger log = LoggerFactory.getLogger(SyncConsumer.class);
     private final FileMetadataRepository fileMetadataRepository;
     private final SyncTaskRepository syncTaskRepository;
     private final ObjectMapper objectMapper;
     private final SyncTaskStatusService syncTaskStatusService;
-    private static final Logger log = LoggerFactory.getLogger(AsyncSyncService.class);
 
-    public AsyncSyncService(FileMetadataRepository fileMetadataRepository, SyncTaskRepository syncTaskRepository,
-                            ObjectMapper objectMapper, SyncTaskStatusService syncTaskStatusService)
+    public SyncConsumer(FileMetadataRepository fileMetadataRepository, SyncTaskRepository syncTaskRepository,
+                        ObjectMapper objectMapper, SyncTaskStatusService syncTaskStatusService)
     {
         this.fileMetadataRepository = fileMetadataRepository;
         this.syncTaskRepository = syncTaskRepository;
@@ -37,25 +37,25 @@ public class AsyncSyncService
         this.syncTaskStatusService = syncTaskStatusService;
     }
 
-    @Async
-    public CompletableFuture<Void> startSync(String taskId, SyncRequestDto requestDto)
+    @RabbitListener(queues = "${sync.queue.name:sync.queue}")
+    public void processSync(SyncMessage syncMessage)
     {
-        System.out.println("!!! ASYNC METHOD ENTERED !!!");
-        log.info("=== ASYNC SYNC STARTED for taskId={}, owner={}", taskId, requestDto.getOwnerId());
+        String taskId = syncMessage.getTaskId();
+        SyncRequestDto syncRequestDto = syncMessage.getSyncRequestDto();
+        log.info("Consumer received sync task {}", taskId);
+
         try
         {
-            // set status to processing
-            SyncTask task = syncTaskRepository.findById(taskId).orElseThrow();
-            task.setStatus("PROCESSING");
-            task.setUpdatedAt(LocalDateTime.now());
-            syncTaskRepository.save(task);
-            syncTaskRepository.flush(); // force commit
-            log.debug("Task {} status set to PROCESSING", taskId);
-            System.out.println("[DEBUG] Task status set to PROCESSING, id=" + taskId); // debug
+            // mark as processing
+            SyncTask syncTask = syncTaskRepository.findById(taskId).orElseThrow();
+            syncTask.setStatus("PROCESSING");
+            syncTask.setUpdatedAt(LocalDateTime.now());
+            syncTaskRepository.save(syncTask);
+            syncTaskRepository.flush();
 
             // get the list of files
-            List<FileMetadataEntity> serverFiles = fileMetadataRepository.findByOwnerId(requestDto.getOwnerId());
-            System.out.println("[DEBUG] Retrieved " + serverFiles.size() + " server files for owner " + requestDto.getOwnerId()); // debug
+            List<FileMetadataEntity> serverFiles = fileMetadataRepository.findByOwnerId(syncRequestDto.getOwnerId());
+            System.out.println("[DEBUG] Retrieved " + serverFiles.size() + " server files for owner " + syncRequestDto.getOwnerId()); // debug
 
             // create a map to store the server files
             Map<String, FileMetadataDto> serverFileMap = new HashMap<>();
@@ -67,7 +67,7 @@ public class AsyncSyncService
             System.out.println("[DEBUG] Converted " + serverFileMap.size() + " server files to DTOs"); // debug
 
             List<SyncActionDto> actionDtos = new ArrayList<>();
-            for (FileMetadataDto clientFile : requestDto.getClientFiles())
+            for (FileMetadataDto clientFile : syncRequestDto.getClientFiles())
             {
                 String path = clientFile.getRelativePath();
                 FileMetadataDto serverFile = serverFileMap.get(path);
@@ -113,11 +113,11 @@ public class AsyncSyncService
                 throw serializationException;
             }
             System.out.println("[DEBUG] Serialization successful. JSON length: " + actionJson.length()); // debug
-            task.setActionsJson(actionJson);
+            syncTask.setActionsJson(actionJson);
             // marked as completed
-            task.setStatus("COMPLETED");
-            task.setUpdatedAt(LocalDateTime.now());
-            syncTaskRepository.save(task);
+            syncTask.setStatus("COMPLETED");
+            syncTask.setUpdatedAt(LocalDateTime.now());
+            syncTaskRepository.save(syncTask);
             syncTaskRepository.flush();
             log.info("=== ASYNC SYNC COMPLETED for taskId={}", taskId);
             System.out.println("[DEBUG] Task marked as COMPLETED"); // debug
@@ -128,7 +128,6 @@ public class AsyncSyncService
             System.out.println("[DEBUG] Exception type: " + e.getClass().getName());
             syncTaskStatusService.markFailed(taskId, e.getMessage());
         }
-        return CompletableFuture.completedFuture(null);
     }
 
     private FileMetadataDto convertToDto(FileMetadataEntity entity) {
