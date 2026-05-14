@@ -6,10 +6,12 @@ import com.filesync.common.dto.SyncActionDto;
 import com.filesync.common.dto.SyncRequestDto;
 import com.filesync.server.domain.SyncTask;
 import com.filesync.server.repository.SyncTaskRepository;
-import com.filesync.server.service.AsyncSyncService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import com.filesync.server.dto.SyncMessage;
+import com.filesync.server.config.RabbitMQConfig;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -20,17 +22,18 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/sync")
 public class SyncController {
-    private final AsyncSyncService asyncSyncService;
     private final SyncTaskRepository taskRepository;
     private final ObjectMapper objectMapper;
+    private final RabbitTemplate rabbitTemplate;
     private static final Logger log = LoggerFactory.getLogger(SyncController.class);
 
-    public SyncController(AsyncSyncService asyncSyncService, SyncTaskRepository taskRepository,
-                          ObjectMapper objectMapper)
+    public SyncController(SyncTaskRepository taskRepository,
+                          ObjectMapper objectMapper,
+                          RabbitTemplate rabbitTemplate)
     {
-        this.asyncSyncService = asyncSyncService;
         this.taskRepository = taskRepository;
         this.objectMapper = objectMapper;
+        this.rabbitTemplate = rabbitTemplate;
     }
 
     // async
@@ -52,7 +55,9 @@ public class SyncController {
         taskRepository.save(task);
         log.debug("Task saved with status PENDING");
         // call the startSync method
-        asyncSyncService.startSync(taskId, requestDto);
+        SyncMessage message = new SyncMessage(taskId, requestDto);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.SYNC_EXCHANGE, RabbitMQConfig.SYNC_ROUTING_KEY, message);
+
         log.info("Async processing started for taskId={}", taskId);
         // return the map of task id
         return Map.of("taskId", taskId);
