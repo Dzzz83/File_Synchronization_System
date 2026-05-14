@@ -152,15 +152,14 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>${spring-boot.version}</version>
                 <configuration>
-                    <!-- Explicitly set your main class -->
                     <mainClass>com.filesync.server.ServerApplication</mainClass>
                     <layout>JAR</layout>
                 </configuration>
                 <executions>
                     <execution>
                         <goals>
-                            <!-- The repackage goal is the key to creating an executable JAR -->
                             <goal>repackage</goal>
                         </goals>
                         <configuration>
