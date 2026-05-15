@@ -14,11 +14,20 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 public class ChunkedUploader {
     private final WebClient webClient;
     private static final int CHUNK_SIZE = 5 * 1024 * 1024; // 1mb
+    private static final int MAX_CONCURRENT_CHUNKS = 5;
     private String authToken;
+
+    private final ExecutorService executor = Executors.newFixedThreadPool(MAX_CONCURRENT_CHUNKS);
 
     public ChunkedUploader(WebClient webClient)
     {
@@ -98,28 +107,68 @@ public class ChunkedUploader {
                 .block();
     }
 
-    public void uploadFile(String fileId, Path filePath) throws IOException
-    {
+    public void uploadFile(String fileId, Path filePath) throws IOException {
         long fileSize = Files.size(filePath);
         int totalChunks = (int) Math.ceil((double) fileSize / CHUNK_SIZE);
-        System.out.println("Starting chunked upload for " + fileId + ", size: " + fileSize + " bytes, chunks: " + totalChunks);
+        System.out.println("Starting parallel chunked upload for " + fileId +
+                ", size: " + fileSize + " bytes, chunks: " + totalChunks +
+                " (concurrency: " + MAX_CONCURRENT_CHUNKS + ")");
 
         Set<Integer> uploadedChunks = getUploadedChunks(fileId);
         System.out.println("Already uploaded chunks: " + uploadedChunks);
 
-        for (int chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++)
-        {
-            if (uploadedChunks.contains(chunkIndex))
-            {
-                System.out.println("Chunk " + chunkIndex + " already uploaded, skipping.");
-                continue;
+        // build list of chunk indices that still need to be uploaded
+        List<Integer> chunksToUpload = new ArrayList<>();
+        for (int i = 0; i < totalChunks; i++) {
+            if (!uploadedChunks.contains(i)) {
+                chunksToUpload.add(i);
             }
-            byte[] chunkData = readChunk(filePath, chunkIndex, totalChunks);
-            uploadChunk(fileId, chunkIndex, totalChunks, chunkData);
-            System.out.println("Uploaded chunk " + chunkIndex + "/" + (totalChunks - 1));
         }
+
+        if (chunksToUpload.isEmpty()) {
+            System.out.println("All chunks already uploaded, assembling...");
+            assembleFile(fileId, fileId, totalChunks);
+            return;
+        }
+
+        // upload chunks in parallel
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+        for (int chunkIndex : chunksToUpload)
+        {
+            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                try
+                {
+                    byte[] chunkData = readChunk(filePath, chunkIndex, totalChunks);
+                    uploadChunk(fileId, chunkIndex, totalChunks, chunkData);
+                    System.out.println("Uploaded chunk " + chunkIndex);
+                } catch (IOException e) {
+                    throw new RuntimeException("Failed to upload chunk " + chunkIndex, e);
+                }
+            }, executor);
+            futures.add(future);
+        }
+
+        // waits for all chunks to be uploaded
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+        // assemble file
         assembleFile(fileId, fileId, totalChunks);
-        System.out.println("File assembled successfully:" + fileId);
+        System.out.println("File assembled successfully" + fileId);
+    }
+
+    public void close()
+    {
+        executor.shutdown();
+        try
+        {
+            if (!executor.awaitTermination(5, TimeUnit.SECONDS))
+            {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
     }
 
     public void setAuthToken(String authToken)

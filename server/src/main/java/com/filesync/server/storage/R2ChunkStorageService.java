@@ -39,25 +39,19 @@ public class R2ChunkStorageService implements ChunkStorageService
     {
         try
         {
-            // get the upload ids
-            String uploadId = uploadIds.get(fileId);
-            // if not, create the uploadId for this file
-            if (uploadId == null)
-            {
-                CreateMultipartUploadRequest request = CreateMultipartUploadRequest.builder()
-                        .bucket(bucketName)
-                        .key(fileId)
-                        .build();
-                CreateMultipartUploadResponse response = s3Client.createMultipartUpload(request);
-                // get uploadId
-                uploadId = response.uploadId();
-
-                uploadIds.put(fileId, uploadId);
-                uploadedParts.put(fileId, ConcurrentHashMap.newKeySet());
-                partETags.put(fileId, new ConcurrentHashMap<>());
-
-                logger.info("Initiated multipart upload for fileId={}, uploadId={}", fileId, uploadId);
-            }
+            // get or creat upload id
+            String uploadId = uploadIds.computeIfAbsent(fileId, id -> {
+                        CreateMultipartUploadRequest request = CreateMultipartUploadRequest.builder()
+                                .bucket(bucketName)
+                                .key(id)
+                                .build();
+                        CreateMultipartUploadResponse response = s3Client.createMultipartUpload(request);
+                        String newId = response.uploadId();
+                        logger.info("Initiated multipart upload for fileId={}, uploadId={}", id, newId);
+                        uploadedParts.put(id, ConcurrentHashMap.newKeySet());
+                        partETags.put(id, new ConcurrentHashMap<>());
+                        return newId;
+            });
 
             UploadPartRequest uploadPartRequest = UploadPartRequest.builder()
                     .bucket(bucketName)
