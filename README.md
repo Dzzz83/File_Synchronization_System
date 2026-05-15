@@ -19,6 +19,10 @@ All code follows SOLID principles. The server is stateless, making it suitable f
 - AWS S3 SDK (for Cloudflare R2 integration)
 - Cloudflare R2 (optional object storage backend)
 - JJWT for JSON Web Tokens
+- RabbitMQ (CloudAMQP) for asynchronous task processing
+- Flyway for database migrations
+- JavaMelody for embedded monitoring
+- Bucket4j for rate limiting
 
 ## Project Structure
 
@@ -39,6 +43,7 @@ File_Synchronization_System/
 ├── server/
 │   └── src/main/java/com/filesync/server/
 │       ├── config/               (SecurityConfig, R2Config, RabbitMQConfig)
+│       ├── filter/               (RateLimitFilter)
 │       ├── controller/           (FileController, SyncController, AuthController, ChunkUploadController)
 │       ├── domain/               (FileMetadataEntity, User, SyncTask)
 │       ├── repository/           (JPA repositories)
@@ -72,13 +77,14 @@ File_Synchronization_System/
 - **PostgreSQL** is now used for metadata storage (instead of H2). Multiple server instances can share the same database.
 - **JWT authentication** – the server is stateless. Endpoint `POST /api/auth/login` returns a token. All protected endpoints (files, sync, chunks) require a valid `Authorization: Bearer <token>` header.
 - **RabbitMQ (message queue)** – sync requests are sent to a queue and processed by a separate consumer. This decouples HTTP handling from background work and makes the system more resilient under load.
-
+- **Rate limiting** – a Bucket4j filter limits each IP to 100 requests per minute, protecting the server from abusive clients.
+- **Embedded monitoring** – JavaMelody provides a web dashboard at `/monitoring` showing CPU, memory, HTTP requests, SQL queries, and more (no extra setup).
 ### Client – Admin GUI (JavaFX)
 
 - Startup dialog with tabs for login (username + password) and registration, plus separate windows for forgot password and reset password.
 - Login validates credentials with the server and stores the JWT. Logout clears the token.
 - Main file list: table showing path, size, last modified, and buttons for upload, download, edit, delete, refresh.
-- Upload uses chunked upload for files larger than 5 MB; otherwise simple upload. The token is added to every chunk request.
+- Upload uses chunked upload for files larger than 5 MB, with **parallel chunk upload** (up to 5 chunks concurrently) for faster large file transfers. Every chunk request includes the JWT.
 - Download works via the streaming endpoint with the token.
 - Edit: downloads a text file, allows editing. When saving, the server compares the original hash; if a conflict occurs, the side‑by‑side diff viewer (reused from the sync client) opens, and the user can merge the changes.
 - Delete: removes metadata and the actual file from storage.
@@ -101,6 +107,17 @@ File_Synchronization_System/
 - **Strategy Pattern**: conflict resolution strategies are prepared.
 - **Factory Pattern**: used for creating the appropriate storage backend based on configuration.
 
+## Scalability & Production Features
+
+- **Stateless JWT** – no sessions; any server instance can handle any request.
+- **Shared PostgreSQL** – multiple server instances share the same metadata.
+- **RabbitMQ** – async sync tasks are decoupled from HTTP requests.
+- **Parallel chunk upload** – client uploads up to 5 chunks simultaneously, improving throughput.
+- **Rate limiting** – per‑IP token bucket (100 requests/minute) prevents abuse.
+- **Database migrations** – Flyway manages schema versions safely.
+- **Embedded monitoring** – JavaMelody dashboard at `/monitoring` for real‑time metrics.
+- **Horizontal scaling** – demonstrated by running two server instances behind Nginx with load balancing.
+
 ## What’s Already Deployed and Running
 
 The server is live on **Render** (free tier) at:  
@@ -114,14 +131,11 @@ It uses:
 
 The JavaFX client works with this public URL – just enter the URL in the login screen.
 
-## What Could Be Added Next (Optional)
+## Future Enhancements (Optional)
 
-The system is already fully functional and horizontally scalable. If you want to go further, here are a few optional enhancements:
-
-- **Parallel chunk upload on the client** – upload several chunks at once to speed up large files.
-- **Flyway for schema migrations** – replace `ddl-auto=update` with versioned SQL scripts for safer production updates.
-- **Monitoring (Prometheus + Grafana)** – see request rates, database pool usage, queue depth, etc.
-- **Horizontal scaling demo** – run two server instances behind Nginx to prove they share PostgreSQL and RabbitMQ.
+- **Distributed tracing** (Jaeger) for request flows across services.
+- **Redis caching** for frequently accessed file metadata.
+- **Kubernetes deployment** with Horizontal Pod Autoscaling.
 
 ## How to Run
 
@@ -160,4 +174,4 @@ The system is already fully functional and horizontally scalable. If you want to
 
 ## Conclusion
 
-The project successfully implements a Dropbox‑like system with a modern architecture. It demonstrates asynchronous background processing, stateless authentication, cloud object storage, and a message queue – all essential for scalability. The code is live on Render, and the JavaFX client works against the cloud server. With the remaining optional tasks (parallel upload, Flyway, monitoring), the system would be ready for real production use.
+The project successfully implements a Dropbox‑like system with a modern architecture. It demonstrates asynchronous background processing, stateless authentication, cloud object storage, a message queue, parallel uploads, rate limiting, database migrations, and embedded monitoring – all essential for a production‑ready, horizontally scalable application. The code is live on Render, and the JavaFX client works against the cloud server.
