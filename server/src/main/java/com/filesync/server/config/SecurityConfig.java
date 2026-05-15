@@ -22,12 +22,9 @@ import static org.springframework.security.config.Customizer.withDefaults;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
-    private final UserDetailsService monitoringUserDetailsService;  // <-- inject
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter,
-                          UserDetailsService monitoringUserDetailsService) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
-        this.monitoringUserDetailsService = monitoringUserDetailsService;
     }
 
     @Bean
@@ -35,7 +32,6 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    // Your existing UserDetailsService for the main JWT authentication
     @Bean
     public UserDetailsService userDetailsService(UserRepository userRepo) {
         return username -> {
@@ -59,13 +55,11 @@ public class SecurityConfig {
                                 "/api/users/register",
                                 "/api/users/forgot-password",
                                 "/api/users/reset-password",
-                                "/health"
+                                "/health",
+                                "/actuator/prometheus"
                         ).permitAll()
-                        .requestMatchers("/actuator/prometheus").hasRole("METRICS")  // <-- protected
                         .anyRequest().authenticated()
                 )
-                .httpBasic(withDefaults())   // <-- enable Basic Auth
-                .userDetailsService(monitoringUserDetailsService) // <-- use the in‑memory user
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
