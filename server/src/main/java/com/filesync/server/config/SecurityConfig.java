@@ -58,6 +58,8 @@ public class SecurityConfig {
                                 "/api/users/register",
                                 "/api/users/forgot-password",
                                 "/api/users/reset-password",
+                                "/actuator/health",
+                                "/actuator/prometheus",
                                 "/health"
                         ).permitAll()
                         // other API endpoints require authentication
