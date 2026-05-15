@@ -1,5 +1,6 @@
 package com.filesync.server.config;
 
+import com.filesync.server.filter.RateLimitFilter;
 import com.filesync.server.repository.UserRepository;
 import com.filesync.server.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
@@ -20,9 +21,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
-
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter) {
+    private final RateLimitFilter rateLimitFilter;
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter, RateLimitFilter rateLimitFilter)
+    {
         this.jwtAuthFilter = jwtAuthFilter;
+        this.rateLimitFilter = rateLimitFilter;
     }
 
     @Bean
@@ -60,6 +63,9 @@ public class SecurityConfig {
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
+                // Add rate limit filter before the standard UsernamePasswordAuthenticationFilter
+                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+                // Add JWT filter also before the same standard filter (they will execute in order of addition)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
