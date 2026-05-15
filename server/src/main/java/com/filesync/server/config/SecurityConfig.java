@@ -15,14 +15,19 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import static org.springframework.security.config.Customizer.withDefaults;
+
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
+    private final UserDetailsService monitoringUserDetailsService;  // <-- inject
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter,
+                          UserDetailsService monitoringUserDetailsService) {
         this.jwtAuthFilter = jwtAuthFilter;
+        this.monitoringUserDetailsService = monitoringUserDetailsService;
     }
 
     @Bean
@@ -30,6 +35,7 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    // Your existing UserDetailsService for the main JWT authentication
     @Bean
     public UserDetailsService userDetailsService(UserRepository userRepo) {
         return username -> {
@@ -53,11 +59,13 @@ public class SecurityConfig {
                                 "/api/users/register",
                                 "/api/users/forgot-password",
                                 "/api/users/reset-password",
-                                "/health",
-                                "/actuator/prometheus"
+                                "/health"
                         ).permitAll()
+                        .requestMatchers("/actuator/prometheus").hasRole("METRICS")  // <-- protected
                         .anyRequest().authenticated()
                 )
+                .httpBasic(withDefaults())   // <-- enable Basic Auth
+                .userDetailsService(monitoringUserDetailsService) // <-- use the in‑memory user
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
