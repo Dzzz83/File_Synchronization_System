@@ -1,33 +1,30 @@
 package com.filesync.client.http;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.filesync.common.dto.FileMetadataDto;
 import com.filesync.common.dto.SyncRequestDto;
-import com.filesync.common.dto.SyncResponseDto;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 public class SyncHttpClient {
     private final WebClient webClient;
     private String authToken;
+    private final ChunkedUploader chunkedUploader;
 
     public SyncHttpClient(String baseUrl) {
         this.webClient = WebClient.builder()
                 .baseUrl(baseUrl)
                 .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(100 * 1024 * 1024)) // 100 MB
                 .build();
+        this.chunkedUploader = new ChunkedUploader(webClient);
     }
 
     public String login(String username, String password)
@@ -133,9 +130,8 @@ public class SyncHttpClient {
     }
 
     public void uploadLargeFile(String fileId, Path filePath) throws IOException {
-        ChunkedUploader uploader = new ChunkedUploader(webClient);
-        uploader.setAuthToken(authToken);
-        uploader.uploadFile(fileId, filePath);
+        chunkedUploader.setAuthToken(authToken);
+        chunkedUploader.uploadFile(fileId, filePath);
     }
 
     public boolean registerUser(String userName, String password, String email)
@@ -223,6 +219,11 @@ public class SyncHttpClient {
             System.err.println("Reset password failed: " + e.getMessage());
             return false;
         }
+    }
+
+    public void close()
+    {
+        chunkedUploader.close();
     }
 
     public void logout() {

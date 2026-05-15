@@ -10,7 +10,6 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -24,7 +23,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 public class ServerFileListController {
@@ -46,6 +44,15 @@ public class ServerFileListController {
         lastModifiedColumn.setCellValueFactory(new PropertyValueFactory<>("lastModified"));
         fileTable.setItems(fileItems);
         refreshWindow();
+
+        // add a window close handler
+        // Wait for the scene to be ready before accessing the stage
+        Platform.runLater(() -> {
+            Stage stage = (Stage) fileTable.getScene().getWindow();
+            stage.setOnCloseRequest(event -> {
+                httpClient.close();
+            });
+        });
     }
 
     // display an alert dialog
@@ -330,6 +337,7 @@ public class ServerFileListController {
 
     @FXML
     private void handleLogout() {
+        httpClient.close();
         httpClient.logout();
         Stage stage = (Stage) fileTable.getScene().getWindow();
         stage.close();
