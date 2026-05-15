@@ -7,13 +7,17 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.core.userdetails.User;
+
+import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
 @EnableWebSecurity
@@ -44,29 +48,35 @@ public class SecurityConfig {
     }
 
     @Bean
+    public UserDetailsService metricsUserDetailsService() {
+        // In a real application, you'd fetch this from a database.
+        // For this demonstration, we'll define an in-memory user.
+        UserDetails metricsUser = User.builder()
+                .username("metrics")
+                .password(passwordEncoder().encode("your-secure-password")) // Choose a strong password
+                .authorities("ROLE_METRICS") // A custom authority for metrics access
+                .build();
+        return new InMemoryUserDetailsManager(metricsUser);
+    }
+
+    @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-
-                // make the application stateless
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
                 .authorizeHttpRequests(auth -> auth
-                        // Public endpoints (no token required)
                         .requestMatchers(
                                 "/api/auth/login",
                                 "/api/users/register",
                                 "/api/users/forgot-password",
                                 "/api/users/reset-password",
-                                "/actuator/health",
-                                "/actuator/prometheus",
                                 "/health"
                         ).permitAll()
-                        // other API endpoints require authentication
+                        // Secure the metrics endpoint with Basic Auth
+                        .requestMatchers("/actuator/health", "/actuator/prometheus").hasRole("METRICS")
                         .anyRequest().authenticated()
                 )
-
-                // add filter before the default username/password filter
+                .httpBasic(withDefaults()) // Enable HTTP Basic Authentication
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
