@@ -14,15 +14,35 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter
 {
     private final JwtService jwtService;
 
+    // list of public paths that should skip JWT authentication
+    private final List<String> publicPaths = List.of(
+            "/api/auth/login",
+            "/api/users/register",
+            "/api/users/forgot-password",
+            "/api/users/reset-password",
+            "/health",
+            "/actuator/prometheus",
+            "/monitoring",
+            "/monitoring/",
+            "/debug/"
+    );
+
     public JwtAuthenticationFilter(JwtService jwtService)
     {
         this.jwtService = jwtService;
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return publicPaths.stream().anyMatch(path::startsWith);
     }
 
     @Override
@@ -60,7 +80,5 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
         SecurityContextHolder.getContext().setAuthentication(authenticationToken);
 
         filterChain.doFilter(request, response);
-
-
     }
 }

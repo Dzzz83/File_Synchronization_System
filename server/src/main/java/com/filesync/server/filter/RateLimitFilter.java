@@ -19,10 +19,10 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
 
-    // Store a bucket for each IP address
+    // store a bucket for each IP address
     private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
 
-    // Allow 100 requests per minute (refill 100 tokens every minute)
+    // allow 100 requests per minute
     private Bucket createBucket() {
         Bandwidth limit = Bandwidth.classic(100, Refill.greedy(100, Duration.ofMinutes(1)));
         return Bucket.builder().addLimit(limit).build();
@@ -38,11 +38,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
         ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
         if (probe.isConsumed()) {
-            // Request allowed – continue
+            // request allowed
             response.addHeader("X-Rate-Limit-Remaining", String.valueOf(probe.getRemainingTokens()));
             filterChain.doFilter(request, response);
         } else {
-            // Rate limit exceeded – return 429 Too Many Requests
+            // return 429 Too Many Requests
             response.setStatus(429);
             response.setHeader("Retry-After", "60");
             response.getWriter().write("{\"error\":\"Too many requests. Please try again later.\"}");

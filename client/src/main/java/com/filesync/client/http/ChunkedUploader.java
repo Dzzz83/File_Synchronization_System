@@ -42,6 +42,9 @@ public class ChunkedUploader {
     }
 
     private void assembleFile(String fileId, String finalFileId, int totalChunks) {
+        if (authToken == null || authToken.isEmpty()) {
+            throw new IllegalStateException("JWT token not set in ChunkedUploader. Call setAuthToken() before uploading.");
+        }
         addAuth(webClient.post()
                 .uri(uriBuilder -> uriBuilder.path("/api/chunk/assemble")
                         .queryParam("fileId", fileId)
