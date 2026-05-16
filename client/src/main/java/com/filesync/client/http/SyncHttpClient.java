@@ -130,6 +130,9 @@ public class SyncHttpClient {
     }
 
     public void uploadLargeFile(String fileId, Path filePath) throws IOException {
+        if (authToken == null || authToken.isEmpty()) {
+            throw new IllegalStateException("Cannot upload large file: not logged in. Call login() first.");
+        }
         chunkedUploader.setAuthToken(authToken);
         chunkedUploader.uploadFile(fileId, filePath);
     }

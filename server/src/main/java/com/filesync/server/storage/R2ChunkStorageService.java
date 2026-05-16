@@ -1,4 +1,5 @@
 package com.filesync.server.storage;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,7 +11,6 @@ import software.amazon.awssdk.services.s3.model.*;
 
 import java.io.InputStream;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @ConditionalOnProperty(name = "storage.type", havingValue = "r2")
@@ -19,40 +19,54 @@ public class R2ChunkStorageService implements ChunkStorageService
     private static final Logger logger = LoggerFactory.getLogger(R2ChunkStorageService.class);
     private final S3Client s3Client;
     private final String bucketName;
+    private final RedisUploadStateService redisUploadStateService;
 
-    // store multipart upload ids per fileId
-    private final Map<String, String> uploadIds = new ConcurrentHashMap<>();
-    // track the parts that has been uploaded
-    private final Map<String, Set<Integer>> uploadedParts = new ConcurrentHashMap<>();
-    // store ETags for each part
-    private final Map<String, Map<Integer, String>> partETags = new ConcurrentHashMap<>();
-
-    public R2ChunkStorageService(S3Client s3Client, @Value("${r2.bucket-name}") String bucketName)
+    public R2ChunkStorageService(S3Client s3Client, @Value("${r2.bucket-name}") String bucketName,
+                                 RedisUploadStateService redisUploadStateService)
     {
         this.s3Client = s3Client;
         this.bucketName = bucketName;
-        logger.info("R2ChunkStorageService initialized - using S3 multipart upload");
+        this.redisUploadStateService = redisUploadStateService;
+        logger.info("R2ChunkStorageService initialized with Redis shared state");
     }
 
     @Override
-    public void saveChunk(String fileId, int chunkIndex, InputStream data, long length)
-    {
-        try
-        {
-            // get or creat upload id
-            String uploadId = uploadIds.computeIfAbsent(fileId, id -> {
-                        CreateMultipartUploadRequest request = CreateMultipartUploadRequest.builder()
-                                .bucket(bucketName)
-                                .key(id)
-                                .build();
-                        CreateMultipartUploadResponse response = s3Client.createMultipartUpload(request);
-                        String newId = response.uploadId();
-                        logger.info("Initiated multipart upload for fileId={}, uploadId={}", id, newId);
-                        uploadedParts.put(id, ConcurrentHashMap.newKeySet());
-                        partETags.put(id, new ConcurrentHashMap<>());
-                        return newId;
-            });
+    public void saveChunk(String fileId, int chunkIndex, InputStream data, long length) {
+        try {
+            String uploadId = redisUploadStateService.getUploadId(fileId);
 
+            // Initiate multipart upload only once across instances using distributed lock
+            if (uploadId == null) {
+                if (redisUploadStateService.tryLock(fileId, 30)) {
+                    try {
+                        uploadId = redisUploadStateService.getUploadId(fileId);
+                        if (uploadId == null) {
+                            CreateMultipartUploadRequest request = CreateMultipartUploadRequest.builder()
+                                    .bucket(bucketName)
+                                    .key(fileId)
+                                    .build();
+                            CreateMultipartUploadResponse response = s3Client.createMultipartUpload(request);
+                            uploadId = response.uploadId();
+                            redisUploadStateService.setUploadId(fileId, uploadId);
+                            logger.info("Initiated multipart upload for fileId={}, uploadId={}", fileId, uploadId);
+                        }
+                    } finally {
+                        redisUploadStateService.unlock(fileId);
+                    }
+                } else {
+                    // Wait for another instance to create the upload
+                    int retries = 10;
+                    while (retries-- > 0 && uploadId == null) {
+                        Thread.sleep(100);
+                        uploadId = redisUploadStateService.getUploadId(fileId);
+                    }
+                    if (uploadId == null) {
+                        throw new RuntimeException("Failed to get uploadId for fileId " + fileId);
+                    }
+                }
+            }
+
+            // Upload chunk
             UploadPartRequest uploadPartRequest = UploadPartRequest.builder()
                     .bucket(bucketName)
                     .key(fileId)
@@ -63,15 +77,15 @@ public class R2ChunkStorageService implements ChunkStorageService
             UploadPartResponse uploadPartResponse = s3Client.uploadPart(uploadPartRequest,
                     RequestBody.fromInputStream(data, length));
 
-            // get the ETags
-            partETags.get(fileId).put(chunkIndex, uploadPartResponse.eTag());
-            // add the uploaded part
-            uploadedParts.get(fileId).add(chunkIndex);
-
+            redisUploadStateService.setPartETag(fileId, chunkIndex, uploadPartResponse.eTag());
+            redisUploadStateService.addUploadedChunk(fileId, chunkIndex);
             logger.debug("Uploaded chunk {} for fileId {} ({} bytes)", chunkIndex, fileId, length);
 
         } catch (S3Exception e) {
             throw new RuntimeException("Failed to upload chunk " + chunkIndex + " for " + fileId, e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Interrupted while waiting for uploadId for " + fileId, e);
         }
     }
 
@@ -82,81 +96,56 @@ public class R2ChunkStorageService implements ChunkStorageService
 
     @Override
     public Set<Integer> getUploadedChunks(String fileId) {
-        Set<Integer> uploaded = uploadedParts.get(fileId);
-        if (uploaded == null)
-        {
-            return new HashSet<>();
-        }
-        // return a copy
-        return new HashSet<>(uploaded);
+        return redisUploadStateService.getUploadedChunks(fileId);
     }
 
     @Override
-    public void deleteChunks(String fileId)
-    {
-        // remove the file
-        String uploadId = uploadIds.remove(fileId);
-        if (uploadId != null)
-        {
-            // remove all uploaded parts
-            AbortMultipartUploadRequest abortMultipartUploadRequest = AbortMultipartUploadRequest.builder()
+    public void deleteChunks(String fileId) {
+        String uploadId = redisUploadStateService.getUploadId(fileId);
+        if (uploadId != null) {
+            AbortMultipartUploadRequest abortRequest = AbortMultipartUploadRequest.builder()
                     .bucket(bucketName)
                     .key(fileId)
                     .uploadId(uploadId)
                     .build();
-            s3Client.abortMultipartUpload(abortMultipartUploadRequest);
+            s3Client.abortMultipartUpload(abortRequest);
             logger.info("Aborted multipart upload for fileId={}", fileId);
         }
-        uploadedParts.remove(fileId);
-        partETags.remove(fileId);
+        redisUploadStateService.cleanup(fileId);
     }
 
     @Override
-    public void assembleFile(String fileId, String destinationFileId, int totalChunks)
-    {
-        // retrieve upload id
-        String uploadId = uploadIds.get(fileId);
-        if (uploadId == null)
-        {
+    public void assembleFile(String fileId, String destinationFileId, int totalChunks) {
+        String uploadId = redisUploadStateService.getUploadId(fileId);
+        if (uploadId == null) {
             throw new IllegalStateException("No multipart upload in progress for " + fileId);
         }
 
-        // check if all chunks have been uploaded
         Set<Integer> uploaded = getUploadedChunks(fileId);
-        for (int i = 0; i < totalChunks; i++)
-        {
-            if (!uploaded.contains(i))
-            {
+        for (int i = 0; i < totalChunks; i++) {
+            if (!uploaded.contains(i)) {
                 throw new IllegalStateException("Missing chunk " + i + " for " + fileId);
             }
         }
-        // list of completed parts
+
+        Map<Integer, String> etags = redisUploadStateService.getPartETags(fileId);
         List<CompletedPart> completedParts = new ArrayList<>();
-        // get the etags
-        Map<Integer, String> etags = partETags.get(fileId);
-        // create the completed part
-        for (int i = 0; i < totalChunks; i++)
-        {
-            CompletedPart part = CompletedPart.builder()
+        for (int i = 0; i < totalChunks; i++) {
+            completedParts.add(CompletedPart.builder()
                     .partNumber(i + 1)
                     .eTag(etags.get(i))
-                    .build();
-            completedParts.add(part);
+                    .build());
         }
-        // send the asemble file request
-        CompleteMultipartUploadRequest completeMultipartUploadRequest = CompleteMultipartUploadRequest.builder()
+
+        CompleteMultipartUploadRequest completeRequest = CompleteMultipartUploadRequest.builder()
                 .bucket(bucketName)
                 .key(fileId)
                 .uploadId(uploadId)
                 .multipartUpload(CompletedMultipartUpload.builder().parts(completedParts).build())
                 .build();
 
-        s3Client.completeMultipartUpload(completeMultipartUploadRequest);
-        logger.info("Multipart upload completed for fileId={}, object size={} chunks", fileId, totalChunks);
-
-        // delete maps of this fileId
-        uploadIds.remove(fileId);
-        uploadedParts.remove(fileId);
-        partETags.remove(fileId);
+        s3Client.completeMultipartUpload(completeRequest);
+        logger.info("Multipart upload completed for fileId={}, totalChunks={}", fileId, totalChunks);
+        redisUploadStateService.cleanup(fileId);
     }
 }

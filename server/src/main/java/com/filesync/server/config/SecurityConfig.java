@@ -22,8 +22,8 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final RateLimitFilter rateLimitFilter;
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter, RateLimitFilter rateLimitFilter)
-    {
+
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter, RateLimitFilter rateLimitFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.rateLimitFilter = rateLimitFilter;
     }
@@ -57,15 +57,12 @@ public class SecurityConfig {
                                 "/api/users/forgot-password",
                                 "/api/users/reset-password",
                                 "/health",
-                                "/actuator/prometheus",
                                 "/monitoring",
                                 "/monitoring/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
-                // Add rate limit filter before the standard UsernamePasswordAuthenticationFilter
                 .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-                // Add JWT filter also before the same standard filter (they will execute in order of addition)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
