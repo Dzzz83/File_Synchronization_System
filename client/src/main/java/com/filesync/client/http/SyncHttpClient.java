@@ -190,22 +190,18 @@ public class SyncHttpClient {
                 .block();
     }
 
-    public String forgotPassword(String email) {
+    public void forgotPassword(String email) {
         try {
             Map<String, String> body = Map.of("email", email);
-            Map<?, ?> response = webClient.post()
+            webClient.post()
                     .uri("/api/users/forgot-password")
                     .bodyValue(body)
                     .retrieve()
-                    .bodyToMono(Map.class)
+                    .bodyToMono(Void.class)
                     .block();
-            if (response != null && response.containsKey("token")) {
-                return (String) response.get("token");
-            }
         } catch (Exception e) {
-            System.err.println("Forgot password failed: " + e.getMessage());
+            throw new RuntimeException("Forgot password request failed: " + e.getMessage());
         }
-        return null;
     }
 
     public boolean resetPassword(String token, String newPassword) {
