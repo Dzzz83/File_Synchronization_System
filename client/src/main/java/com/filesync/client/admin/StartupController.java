@@ -112,11 +112,11 @@ public class StartupController {
 
         result.ifPresent(email -> {
             SyncHttpClient tempClient = new SyncHttpClient(serverUrl);
-            String token = tempClient.forgotPassword(email);
-            if (token != null) {
-                showAlert("Success", "Reset token generated: " + token + "\nUse this token in Reset Password.");
-            } else {
-                showAlert("Error", "Email not found or server error.");
+            try {
+                tempClient.forgotPassword(email);
+                showAlert("Success", "A reset token has been sent to your inbox.");
+            } catch (Exception e) {
+                showAlert("Error", e.getMessage());
             }
         });
     }
