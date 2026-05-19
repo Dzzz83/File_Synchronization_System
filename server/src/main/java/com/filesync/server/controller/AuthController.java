@@ -1,8 +1,8 @@
 package com.filesync.server.controller;
 
 import com.filesync.server.domain.User;
-import com.filesync.server.repository.UserRepository;
 import com.filesync.server.security.JwtService;
+import com.filesync.server.service.UserFindService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -13,15 +13,16 @@ import java.util.Map;
 @RequestMapping("/api/auth")
 public class AuthController
 {
-    private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final UserFindService userFindService;
 
-    public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService)
-    {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
+    public AuthController(JwtService jwtService,
+                          UserFindService userFindService,
+                          PasswordEncoder passwordEncoder) {
         this.jwtService = jwtService;
+        this.userFindService = userFindService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @PostMapping("/login")
@@ -39,7 +40,7 @@ public class AuthController
         }
 
         // get the user from userRepo
-        User user = userRepository.findByUsername(username).orElse(null);
+        User user = userFindService.findByLogin(username);
         // if no user found or wrong password
         if (user == null || !passwordEncoder.matches(password, user.getPassword()))
         {
@@ -47,7 +48,7 @@ public class AuthController
                     .body(Map.of("error", "Invalid credentials"));
         }
         // generate token for that login session
-        String token = jwtService.generateToken(username);
-        return ResponseEntity.ok(Map.of("token", token, "username", username));
+        String token = jwtService.generateToken(user.getUsername());
+        return ResponseEntity.ok(Map.of("token", token, "username", user.getUsername()));
     }
 }

@@ -23,7 +23,7 @@ public class ManualRabbitConfig {
         CachingConnectionFactory factory = new CachingConnectionFactory();
         try {
             factory.setUri(cloudAmqpUrl);
-            System.out.println("Manual RabbitMQ connection factory created with URI: " + cloudAmqpUrl);
+            System.out.println("Manual RabbitMQ connection factory created");
         } catch (Exception e) {
             throw new RuntimeException("Invalid CloudAMQP URI: " + cloudAmqpUrl, e);
         }

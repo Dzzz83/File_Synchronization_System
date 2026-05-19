@@ -34,9 +34,40 @@ public class ForgotPasswordController
 
         if (email.isEmpty() || token.isEmpty() || newPassword.isEmpty())
         {
-
+            showAlert("Error", "All fields are required");
+            return;
+        }
+        try {
+            // request a token
+            syncHttpClient.forgotPassword(email);
+            // reset password
+            boolean success = syncHttpClient.resetPassword(token, newPassword);
+            if (success)
+            {
+                showAlert("Success", "Password reset successfully. You can now login");
+                resetSuccess = true;
+                dialogStage.close();
+            }
+            else
+            {
+                showAlert("Error", "Invalid or expired token");
+            }
+        } catch (Exception e) {
+            showAlert("Error", e.getMessage());
         }
     }
+
+    @FXML
+    private void handleCancel()
+    {
+        dialogStage.close();
+    }
+
+    public boolean isResetSuccessful()
+    {
+        return resetSuccess;
+    }
+
     private void showAlert(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);

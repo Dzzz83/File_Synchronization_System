@@ -27,27 +27,22 @@ public class SyncHttpClient {
         this.chunkedUploader = new ChunkedUploader(webClient);
     }
 
-    public String login(String username, String password)
-    {
-        try
-        {
-            Map<String, String> body = Map.of("username", username, "password", password);
+    public String login(String loginInput, String password) {
+        try {
+            Map<String, String> body = Map.of("username", loginInput, "password", password);
             Map<?, ?> response = webClient.post()
                     .uri("/api/auth/login")
                     .bodyValue(body)
                     .retrieve()
                     .bodyToMono(Map.class)
                     .block();
-            if (response != null && response.containsKey("token"))
-            {
+            if (response != null && response.containsKey("token")) {
                 this.authToken = (String) response.get("token");
-                return this.authToken;
+                return (String) response.get("username");   // actual username
             }
             throw new RuntimeException("Login failed: no token in response");
-        } catch (WebClientResponseException e)
-        {
-            if (e.getStatusCode().value() == 401)
-            {
+        } catch (WebClientResponseException e) {
+            if (e.getStatusCode().value() == 401) {
                 throw new RuntimeException("Invalid username or password");
             }
             throw new RuntimeException("Login error: " + e.getMessage());
@@ -89,7 +84,6 @@ public class SyncHttpClient {
     public void uploadFile(String fileId, Path localFile) throws IOException
     {
         MultipartBodyBuilder builder = new MultipartBodyBuilder();
-        // create a body part name "file" with the file content wrapped in a FileSystemResource
         builder.part("file", new FileSystemResource(localFile.toFile()));
 
         addAuth(webClient.post()
@@ -122,8 +116,6 @@ public class SyncHttpClient {
         }
         System.out.println("Data length: " + data.length);
         System.out.println("Destination parent: " + destination.getParent());
-        // create the parent directory
-        // ex: destination = "./sync_folder/subdir/file.txt" ==> create ./sync_folder/subdir
         Files.createDirectories(destination.getParent());
         Files.write(destination, data);
         System.out.println("File written successfully");

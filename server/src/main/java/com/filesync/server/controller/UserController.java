@@ -95,16 +95,21 @@ public class UserController
         }
         Optional<User> opt = userRepository.findByResetToken(request.getToken());
         if (opt.isEmpty()) {
+            log.warn("Invalid token: {}", request.getToken());
             return ResponseEntity.badRequest().body(Map.of("error", "Invalid token"));
         }
         User user = opt.get();
         if (user.getTokenExpiry().isBefore(LocalDateTime.now())) {
+            log.warn("Token expired for user: {}", user.getUsername());
             return ResponseEntity.badRequest().body(Map.of("error", "Token expired"));
         }
-        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        String encodedPassword = passwordEncoder.encode(request.getNewPassword());
+        log.info("Resetting password for user: {}, new hash: {}", user.getUsername(), encodedPassword);
+        user.setPassword(encodedPassword);
         user.setResetToken(null);
         user.setTokenExpiry(null);
         userRepository.save(user);
+        log.info("Password reset successfully for user: {}", user.getUsername());
         return ResponseEntity.ok(Map.of("message", "Password reset successfully"));
     }
 }

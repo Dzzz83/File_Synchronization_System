@@ -36,6 +36,5 @@
 
     <HBox spacing="10" alignment="CENTER">
         <Button text="Forgot Password?" onAction="#handleForgotPassword"/>
-        <Button text="Reset Password" onAction="#handleResetPassword"/>
     </HBox>
 </VBox>
