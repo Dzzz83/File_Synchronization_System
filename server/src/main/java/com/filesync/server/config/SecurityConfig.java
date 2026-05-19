@@ -1,14 +1,15 @@
 package com.filesync.server.config;
 
 import com.filesync.server.filter.RateLimitFilter;
-import com.filesync.server.repository.UserRepository;
 import com.filesync.server.security.JwtAuthenticationFilter;
+import com.filesync.server.service.UserFindService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -34,12 +35,17 @@ public class SecurityConfig {
     }
 
     @Bean
-    public UserDetailsService userDetailsService(UserRepository userRepo) {
-        return username -> {
-            com.filesync.server.domain.User user = userRepo.findByUsername(username)
-                    .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
-            return User.withUsername(user.getUsername())
-                    .password(user.getPassword())
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
+
+    @Bean
+    public UserDetailsService userDetailsService(UserFindService userFindService) {
+        return login -> {
+            com.filesync.server.domain.User appUser = userFindService.findByLogin(login);
+            return org.springframework.security.core.userdetails.User
+                    .withUsername(appUser.getUsername())
+                    .password(appUser.getPassword())
                     .authorities("USER")
                     .build();
         };

@@ -2,14 +2,13 @@ package com.filesync.client.admin;
 
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
-import org.w3c.dom.Text;
-import javafx.scene.control.TextInputDialog;
-import java.util.Optional;
 import com.filesync.client.http.SyncHttpClient;
 
 public class StartupController {
@@ -56,23 +55,23 @@ public class StartupController {
     @FXML
     private void handleLogin() {
         String serverUrl = serverUrlField.getText().trim();
-        String username = ownerIdField.getText().trim();
+        String loginInput = ownerIdField.getText().trim();
         String password = loginPasswordField.getText().trim();
 
-        if (serverUrl.isEmpty() || username.isEmpty() || password.isEmpty()) {
-            showAlert("Error", "Please enter server URL, username and password");
+        if (serverUrl.isEmpty() || loginInput.isEmpty() || password.isEmpty()) {
+            showAlert("Error", "Please enter server URL, email/username and password");
             return;
         }
 
         try {
-            // Create a new HTTP client and authenticate
             SyncHttpClient client = new SyncHttpClient(serverUrl);
-            client.login(username, password);   // throws exception if credentials are wrong
-            openMainWindow(client, username);
+            String actualUsername = client.login(loginInput, password);
+            openMainWindow(client, actualUsername);
         } catch (Exception e) {
             showAlert("Login failed", e.getMessage());
         }
     }
+
     @FXML
     private void handleRegister() {
         String serverUrl = serverUrlField.getText().trim();
@@ -90,7 +89,7 @@ public class StartupController {
 
         if (success) {
             showAlert("Success", "Registration successful. You can now login.");
-            // Pre-fill login username field
+            // pre-fill login username field
             ownerIdField.setText(username);
         } else {
             showAlert("Registration failed", "Username or email may already exist.");
@@ -104,53 +103,21 @@ public class StartupController {
             return;
         }
 
-        TextInputDialog dialog = new TextInputDialog();
-        dialog.setTitle("Forgot Password");
-        dialog.setHeaderText("Enter your email address");
-        dialog.setContentText("Email:");
-        Optional<String> result = dialog.showAndWait();
-
-        result.ifPresent(email -> {
-            SyncHttpClient tempClient = new SyncHttpClient(serverUrl);
-            try {
-                tempClient.forgotPassword(email);
-                showAlert("Success", "A reset token has been sent to your inbox.");
-            } catch (Exception e) {
-                showAlert("Error", e.getMessage());
-            }
-        });
-    }
-
-    @FXML
-    private void handleResetPassword() {
-        String serverUrl = serverUrlField.getText().trim();
-        if (serverUrl.isEmpty()) {
-            showAlert("Error", "Please enter server URL first.");
-            return;
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/filesync/client/admin/send-reset-code.fxml"));
+            Parent root = loader.load();
+            SendResetCodeController controller = loader.getController();
+            Stage dialogStage = new Stage();
+            dialogStage.setTitle("Reset Password");
+            dialogStage.initModality(Modality.WINDOW_MODAL);
+            dialogStage.initOwner(primaryStage);
+            dialogStage.setScene(new Scene(root));
+            dialogStage.setResizable(false);
+            controller.setData(serverUrl, dialogStage);
+            dialogStage.showAndWait();
+        } catch (Exception e) {
+            e.printStackTrace();
+            showAlert("Error", "Could not open reset dialog: " + e.getMessage());
         }
-
-        TextInputDialog tokenDialog = new TextInputDialog();
-        tokenDialog.setTitle("Reset Password");
-        tokenDialog.setHeaderText("Enter the reset token");
-        tokenDialog.setContentText("Token:");
-        Optional<String> tokenResult = tokenDialog.showAndWait();
-
-        tokenResult.ifPresent(token -> {
-            TextInputDialog passDialog = new TextInputDialog();
-            passDialog.setTitle("Reset Password");
-            passDialog.setHeaderText("Enter your new password");
-            passDialog.setContentText("New Password:");
-            Optional<String> passResult = passDialog.showAndWait();
-
-            passResult.ifPresent(newPassword -> {
-                SyncHttpClient tempClient = new SyncHttpClient(serverUrl);
-                boolean success = tempClient.resetPassword(token, newPassword);
-                if (success) {
-                    showAlert("Success", "Password reset successfully. You can now login.");
-                } else {
-                    showAlert("Error", "Invalid or expired token.");
-                }
-            });
-        });
     }
 }
