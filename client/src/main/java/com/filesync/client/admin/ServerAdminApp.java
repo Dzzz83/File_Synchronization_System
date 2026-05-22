@@ -9,7 +9,7 @@ public class ServerAdminApp extends Application {
     @Override
     public void start(Stage primaryStage) throws Exception {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/filesync/client/admin/startup-dialog.fxml"));
-        Scene scene = new Scene(loader.load(), 450, 400);
+        Scene scene = new Scene(loader.load(), 1100, 700);
         StartupController controller = loader.getController();
         controller.setPrimaryStage(primaryStage);
         primaryStage.setTitle("File Server Admin");

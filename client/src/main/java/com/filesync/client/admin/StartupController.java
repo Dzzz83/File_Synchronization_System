@@ -38,7 +38,7 @@ public class StartupController {
     private void openMainWindow(SyncHttpClient authenticatedClient, String username) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/filesync/client/admin/server-file-list.fxml"));
-            Scene scene = new Scene(loader.load(), 800, 600);
+            Scene scene = new Scene(loader.load(), 1100, 600);
             ServerFileListController controller = loader.getController();
             controller.initialize(authenticatedClient, username);  // new method
             Stage stage = new Stage();

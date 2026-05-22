@@ -6,7 +6,9 @@
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox spacing="10" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.admin.EditDialogController">
+<VBox spacing="10" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.filesync.client.admin.EditDialogController"
+      styleClass="root-pane" stylesheets="@General-design.css">
     <padding>
         <Insets top="10" right="10" bottom="10" left="10"/>
     </padding>

@@ -1,26 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
 
 <?import javafx.geometry.Insets?>
-<VBox spacing="10" alignment="CENTER" xmlns:fx="http://javafx.com/fxml" fx:controller="com.filesync.client.admin.ServerFileListController">
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox alignment="CENTER" spacing="10" styleClass="root-pane" stylesheets="@General-design.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.admin.ServerFileListController">
     <padding>
-        <Insets top="10" right="10" bottom="10" left="10"/>
+        <Insets bottom="10" left="10" right="10" top="10" />
     </padding>
 
-    <TableView fx:id="fileTable" VBox.vgrow="ALWAYS">
+    <TableView fx:id="fileTable" prefHeight="400.0" prefWidth="841.0" VBox.vgrow="ALWAYS">
         <columns>
-            <TableColumn fx:id="pathColumn" text="File Path" prefWidth="300"/>
-            <TableColumn fx:id="sizeColumn" text="Size (bytes)" prefWidth="100"/>
-            <TableColumn fx:id="lastModifiedColumn" text="Last Modified" prefWidth="150"/>
+            <TableColumn fx:id="pathColumn" prefWidth="300" text="File Path" />
+            <TableColumn fx:id="lastModifiedColumn" prefWidth="183.20001220703125" text="Last Modified" />
+            <TableColumn fx:id="sizeColumn" prefWidth="132.79995727539062" text="Size (bytes)" />
+         <TableColumn fx:id="sizeColumn1" prefWidth="224.00002441406252" text="Description" />
         </columns>
     </TableView>
-    <HBox spacing="10" alignment="CENTER">
-        <Button text="Upload" onAction="#handleUpload"/>
-        <Button text="Download" onAction="#handleDownload"/>
-        <Button text="Edit" onAction="#handleEdit"/>
-        <Button text="Delete" onAction="#handleDelete"/>
-        <Button text="Refresh" onAction="#handleRefresh"/>
-        <Button text="Logout" onAction="#handleLogout"/>
+    <HBox alignment="CENTER" spacing="10">
+        <Button onAction="#handleUpload" text="Upload" />
+        <Button onAction="#handleDownload" text="Download" />
+        <Button onAction="#handleEdit" text="Edit" />
+        <Button onAction="#handleDelete" text="Delete" />
+        <Button onAction="#handleRefresh" text="Refresh" />
+        <Button onAction="#handleLogout" text="Logout" />
     </HBox>
 </VBox>
