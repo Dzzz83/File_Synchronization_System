@@ -53,9 +53,15 @@ public class ConflictResolver {
                             file.setSha256Hash(newHash);
                             file.setSize(Files.size(localPath));
                             file.setLastModified(Files.getLastModifiedTime(localPath).toInstant());
+                            // folderId is already in the DTO
                             httpClient.createMetadata(file);
-                            httpClient.uploadFile(file.getFileId(), localPath);
-                            // Only save to local DB if repository is provided
+                            long fileSize = Files.size(localPath);
+                            if (fileSize > 5 * 1024 * 1024) {
+                                httpClient.uploadLargeFile(file.getFileId(), localPath, file.getFolderId());
+                            } else {
+                                httpClient.uploadFile(file.getFileId(), localPath, file.getFolderId());
+                            }
+                            // only save to local DB if repository is provided
                             if (localRepo != null) {
                                 localRepo.saveFile(file.getRelativePath(), file.getFileId(), newHash);
                             }

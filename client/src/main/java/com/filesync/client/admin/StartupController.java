@@ -24,6 +24,7 @@ public class StartupController {
     public void setPrimaryStage(Stage stage)
     {
         this.primaryStage = stage;
+        ServerAdminApp.setMainStage(stage);
     }
 
     private void showAlert(String title, String message)
@@ -35,22 +36,6 @@ public class StartupController {
         alert.showAndWait();
     }
 
-    private void openMainWindow(SyncHttpClient authenticatedClient, String username) {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/filesync/client/admin/server-file-list.fxml"));
-            Scene scene = new Scene(loader.load(), 1100, 600);
-            ServerFileListController controller = loader.getController();
-            controller.initialize(authenticatedClient, username);  // new method
-            Stage stage = new Stage();
-            stage.setTitle("File Server Admin - " + username);
-            stage.setScene(scene);
-            stage.show();
-            primaryStage.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-            showAlert("Error", "Failed to open main window: " + e.getMessage());
-        }
-    }
 
     @FXML
     private void handleLogin() {
@@ -66,7 +51,9 @@ public class StartupController {
         try {
             SyncHttpClient client = new SyncHttpClient(serverUrl);
             String actualUsername = client.login(loginInput, password);
-            openMainWindow(client, actualUsername);
+            String token = client.getAuthToken(); // we added this getter
+            // Close login window and open main window with tabs
+            ServerAdminApp.showMainWindow(serverUrl, token, actualUsername);
         } catch (Exception e) {
             showAlert("Login failed", e.getMessage());
         }

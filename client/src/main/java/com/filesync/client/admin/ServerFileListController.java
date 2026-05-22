@@ -33,11 +33,13 @@ public class ServerFileListController {
 
     private SyncHttpClient httpClient;
     private String ownerId;
+    private UUID folderId;
     private ObservableList<ServerFileItem> fileItems = FXCollections.observableArrayList();
 
-    public void initialize(SyncHttpClient httpClient, String ownerId) {
+    public void initialize(SyncHttpClient httpClient, String ownerId, UUID folderId) {
         this.httpClient = httpClient;
         this.ownerId = ownerId;
+        this.folderId = folderId;
 
         pathColumn.setCellValueFactory(new PropertyValueFactory<>("relativePath"));
         sizeColumn.setCellValueFactory(new PropertyValueFactory<>("size"));
@@ -46,7 +48,6 @@ public class ServerFileListController {
         refreshWindow();
 
         // add a window close handler
-        // Wait for the scene to be ready before accessing the stage
         Platform.runLater(() -> {
             Stage stage = (Stage) fileTable.getScene().getWindow();
             stage.setOnCloseRequest(event -> {
@@ -70,18 +71,18 @@ public class ServerFileListController {
         try
         {
             // get files belongs to the current user
-            List<FileMetadataDto> files = httpClient.getFilesByOwner(ownerId);
+            List<FileMetadataDto> files = httpClient.getFiles(ownerId, folderId);
             // create the old list of files
             fileItems.clear();
             for (FileMetadataDto dto : files)
             {
                 // add the files again
                 fileItems.add(new ServerFileItem(
-                   dto.getFileId(),
-                   dto.getRelativePath(),
-                   dto.getSize(),
-                   dto.getLastModified(),
-                   dto.getSha256Hash()
+                        dto.getFileId(),
+                        dto.getRelativePath(),
+                        dto.getSize(),
+                        dto.getLastModified(),
+                        dto.getSha256Hash()
                 ));
             }
         } catch (Exception e) {
@@ -120,7 +121,7 @@ public class ServerFileListController {
                 try
                 {
                     // delete the file
-                    httpClient.deleteFile(serverFileItem.getFileId());
+                    httpClient.deleteFile(serverFileItem.getFileId(), folderId);
                     refreshWindow();
                     showAlert("Success", "File deleted " + serverFileItem.getRelativePath());
                 } catch (Exception e) {
@@ -195,15 +196,16 @@ public class ServerFileListController {
             dto.setLastModified(Files.getLastModifiedTime(filePath).toInstant());
             dto.setOwnerId(ownerId);
             dto.setStatus(SyncStatus.SYNCED);
+            dto.setFolderId(folderId);
 
             // send the dto to the server
             httpClient.createMetadata(dto);
 
             // upload the file
             if (fileSize > THRESHOLD) {
-                httpClient.uploadLargeFile(fileId, filePath); // chunked upload
+                httpClient.uploadLargeFile(fileId, filePath, folderId); // chunked upload
             } else {
-                httpClient.uploadFile(fileId, filePath); // normal upload
+                httpClient.uploadFile(fileId, filePath, folderId); // normal upload
             }
 
             refreshWindow();
@@ -213,6 +215,7 @@ public class ServerFileListController {
             showAlert("Upload failed", e.getMessage());
         }
     }
+
     @FXML
     private void handleEdit() {
         // get the file the user is currently selecting
@@ -276,6 +279,7 @@ public class ServerFileListController {
                     dto.setFileId(selected.getFileId());
                     dto.setRelativePath(selected.getRelativePath());
                     dto.setSha256Hash(currentMeta.getSha256Hash());
+                    dto.setFolderId(folderId);
 
                     try {
                         // solve the conflict
@@ -308,6 +312,7 @@ public class ServerFileListController {
                     updatedDto.setLastModified(Instant.now());
                     updatedDto.setOwnerId(ownerId);
                     updatedDto.setStatus(SyncStatus.SYNCED);
+                    updatedDto.setFolderId(folderId);
 
                     // send the metadata to the server
                     httpClient.createMetadata(updatedDto);
@@ -316,9 +321,9 @@ public class ServerFileListController {
                     long fileSize = Files.size(userTemp);
                     // upload the file
                     if (fileSize > 5 * 1024 * 1024) {
-                        httpClient.uploadLargeFile(selected.getFileId(), userTemp); // chunked upload
+                        httpClient.uploadLargeFile(selected.getFileId(), userTemp, folderId); // chunked upload
                     } else {
-                        httpClient.uploadFile(selected.getFileId(), userTemp); // normal upload
+                        httpClient.uploadFile(selected.getFileId(), userTemp, folderId); // normal upload
                     }
 
                     Files.deleteIfExists(userTemp);
@@ -349,4 +354,3 @@ public class ServerFileListController {
         }
     }
 }
-

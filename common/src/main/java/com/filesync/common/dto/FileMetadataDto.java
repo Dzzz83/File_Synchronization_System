@@ -3,6 +3,7 @@ package com.filesync.common.dto;
 import com.filesync.common.enums.SyncStatus;
 import java.time.Instant;
 import java.util.Set;
+import java.util.UUID;
 
 public class FileMetadataDto {
     private String fileId;
@@ -14,6 +15,7 @@ public class FileMetadataDto {
     private String ownerId;
     private Set<String> sharedWith;
     private SyncStatus status;
+    private UUID folderId;
 
     public FileMetadataDto() {}
 
@@ -50,4 +52,6 @@ public class FileMetadataDto {
     public void setSharedWith(Set<String> sharedWith) { this.sharedWith = sharedWith; }
     public SyncStatus getStatus() { return status; }
     public void setStatus(SyncStatus status) { this.status = status; }
+    public UUID getFolderId() { return folderId; }
+    public void setFolderId(UUID folderId) { this.folderId = folderId; }
 }

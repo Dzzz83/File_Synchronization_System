@@ -13,8 +13,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/users")
@@ -113,5 +115,21 @@ public class UserController {
 
         log.info("Password reset successfully for user: {}", user.getUsername());
         return ResponseEntity.ok(Map.of("message", "Password reset successfully"));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<?> searchUsers(@RequestParam("q") String query) {
+        if (query == null || query.trim().isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
+        List<User> users = userRepository.findByUsernameContainingIgnoreCaseOrEmailContainingIgnoreCase(query, query);
+        // Return only necessary fields (don't expose passwords)
+        List<Map<String, String>> result = users.stream()
+                .map(user -> Map.of(
+                        "username", user.getUsername(),
+                        "email", user.getEmail()
+                ))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(result);
     }
 }

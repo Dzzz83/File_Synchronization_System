@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class FileMetaDataService {
@@ -39,4 +40,14 @@ public class FileMetaDataService {
         }
         return fileMetadataRepository.save(entity);
     }
+
+    public List<FileMetadataEntity> getFilesByFolder(UUID folderId) {
+        return fileMetadataRepository.findByFolderId(folderId);
+    }
+
+    public List<FileMetadataEntity> getPersonalFilesByOwner(String ownerId) {
+        return fileMetadataRepository.findByOwnerIdAndFolderIdIsNull(ownerId);
+    }
+
+
 }

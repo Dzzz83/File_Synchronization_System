@@ -1,7 +1,7 @@
 package com.filesync.client.http;
 
-import com.filesync.common.dto.FileMetadataDto;
-import com.filesync.common.dto.SyncRequestDto;
+import com.filesync.common.dto.*;
+import com.filesync.common.enums.Permission;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public class SyncHttpClient {
     private final WebClient webClient;
@@ -121,12 +122,63 @@ public class SyncHttpClient {
         System.out.println("File written successfully");
     }
 
-    public void uploadLargeFile(String fileId, Path filePath) throws IOException {
+    // Get files for personal or shared folder
+    public List<FileMetadataDto> getFiles(String ownerId, UUID folderId) {
+        try {
+            String uri = "/api/files/user/" + ownerId;
+            if (folderId != null) {
+                uri += "?folderId=" + folderId;
+            }
+            FileMetadataDto[] files = addAuth(webClient.get().uri(uri))
+                    .retrieve()
+                    .bodyToMono(FileMetadataDto[].class)
+                    .block();
+            return files == null ? List.of() : List.of(files);
+        } catch (Exception e) {
+            System.err.println("Failed to get files: " + e.getMessage());
+            return List.of();
+        }
+    }
+
+    // Upload file with optional folderId
+    public void uploadFile(String fileId, Path localFile, UUID folderId) throws IOException {
+        MultipartBodyBuilder builder = new MultipartBodyBuilder();
+        builder.part("file", new FileSystemResource(localFile.toFile()));
+        String uri = "/api/files/upload/" + fileId;
+        if (folderId != null) {
+            uri += "?folderId=" + folderId;
+        }
+        addAuth(webClient.post().uri(uri)
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .bodyValue(builder.build()))
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
+    }
+
+    public void uploadLargeFile(String fileId, Path filePath, UUID folderId) throws IOException {
         if (authToken == null || authToken.isEmpty()) {
-            throw new IllegalStateException("Cannot upload large file: not logged in. Call login() first.");
+            throw new IllegalStateException("Cannot upload large file: not logged in.");
         }
         chunkedUploader.setAuthToken(authToken);
-        chunkedUploader.uploadFile(fileId, filePath);
+        chunkedUploader.uploadFile(fileId, filePath);   // folderId ignored
+    }
+
+    // Delete file
+    public void deleteFile(String fileId, UUID folderId) {
+        String uri = "/api/files/" + fileId;
+        if (folderId != null) {
+            uri += "?folderId=" + folderId;
+        }
+        addAuth(webClient.delete().uri(uri))
+                .retrieve()
+                .bodyToMono(Void.class)
+                .block();
+    }
+
+    public void setAuthToken(String token) {
+        this.authToken = token;
+        this.chunkedUploader.setAuthToken(token);
     }
 
     public boolean registerUser(String userName, String password, String email)
@@ -210,6 +262,50 @@ public class SyncHttpClient {
             System.err.println("Reset password failed: " + e.getMessage());
             return false;
         }
+    }
+
+    public List<SharedFolderDto> getUserSharedFolders(String userId) {
+        SharedFolderDto[] folders = addAuth(webClient.get()
+                .uri("/api/shared-folders/user/{userId}", userId))
+                .retrieve()
+                .bodyToMono(SharedFolderDto[].class)
+                .block();
+        return folders == null ? List.of() : List.of(folders);
+    }
+
+    public void createSharedFolder(String name, List<MemberDto> members) {
+        CreateFolderDto dto = new CreateFolderDto();
+        dto.setName(name);
+        dto.setMembers(members);
+        addAuth(webClient.post().uri("/api/shared-folders").bodyValue(dto))
+                .retrieve()
+                .bodyToMono(Void.class)
+                .block();
+    }
+
+    public List<UserSearchResult> searchUsers(String query) {
+        UserSearchResult[] results = addAuth(webClient.get()
+                .uri("/api/users/search?q={query}", query))
+                .retrieve()
+                .bodyToMono(UserSearchResult[].class)
+                .block();
+        return results == null ? List.of() : List.of(results);
+    }
+
+    public void addMemberToFolder(UUID folderId, String userId, Permission permission) {
+        MemberDto member = new MemberDto();
+        member.setUserId(userId);
+        member.setPermission(permission);
+        addAuth(webClient.post()
+                .uri("/api/shared-folders/{folderId}/members", folderId)
+                .bodyValue(member))
+                .retrieve()
+                .bodyToMono(Void.class)
+                .block();
+    }
+
+    public String getAuthToken() {
+        return authToken;
     }
 
     public void close()

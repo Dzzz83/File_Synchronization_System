@@ -43,6 +43,7 @@ public class SyncConsumer
         String taskId = syncMessage.getTaskId();
         SyncRequestDto syncRequestDto = syncMessage.getSyncRequestDto();
         log.info("Consumer received sync task {}", taskId);
+        UUID folderId = syncRequestDto.getFolderId();
 
         try
         {
@@ -55,16 +56,21 @@ public class SyncConsumer
 
             // get the list of files
             List<FileMetadataEntity> serverFiles = fileMetadataRepository.findByOwnerId(syncRequestDto.getOwnerId());
-            System.out.println("[DEBUG] Retrieved " + serverFiles.size() + " server files for owner " + syncRequestDto.getOwnerId()); // debug
+
+            if (folderId != null) {
+                // shared folder files
+                serverFiles = fileMetadataRepository.findByFolderId(folderId);
+            } else {
+                // personal files
+                serverFiles = fileMetadataRepository.findByOwnerIdAndFolderIdIsNull(syncRequestDto.getOwnerId());
+            }
 
             // create a map to store the server files
             Map<String, FileMetadataDto> serverFileMap = new HashMap<>();
             for (FileMetadataEntity entity : serverFiles)
             {
-                System.out.println("[DEBUG] Converting entity: " + entity.getRelativePath()); // debug
                 serverFileMap.put(entity.getRelativePath(), convertToDto(entity));
             }
-            System.out.println("[DEBUG] Converted " + serverFileMap.size() + " server files to DTOs"); // debug
 
             List<SyncActionDto> actionDtos = new ArrayList<>();
             for (FileMetadataDto clientFile : syncRequestDto.getClientFiles())
@@ -95,44 +101,24 @@ public class SyncConsumer
             }
 
             log.info("Sync comparison complete for taskId={}, actions count: {}", taskId, actionDtos.size());
-            System.out.println("[DEBUG] Action DTOs created: " + actionDtos.size()); // debug
 
             // store results as json
-            System.out.println("[DEBUG] About to serialize actionDtos to JSON..."); // debug
-            String actionJson = null;
-            try {
-                // Print one action to see if any field is problematic
-                if (!actionDtos.isEmpty()) {
-                    System.out.println("[DEBUG] First action: " + actionDtos.get(0).getAction() +
-                            ", file path: " + actionDtos.get(0).getFileMetadata().getRelativePath());
-                }
-                actionJson = objectMapper.writeValueAsString(actionDtos);
-            } catch (Exception serializationException) {
-                System.err.println("Serialization exception: " + serializationException.getMessage());
-                serializationException.printStackTrace();
-                throw serializationException;
-            }
-            System.out.println("[DEBUG] Serialization successful. JSON length: " + actionJson.length()); // debug
+            String actionJson = objectMapper.writeValueAsString(actionDtos);
             syncTask.setActionsJson(actionJson);
-            // marked as completed
             syncTask.setStatus("COMPLETED");
             syncTask.setUpdatedAt(LocalDateTime.now());
             syncTaskRepository.save(syncTask);
             syncTaskRepository.flush();
             log.info("=== ASYNC SYNC COMPLETED for taskId={}", taskId);
-            System.out.println("[DEBUG] Task marked as COMPLETED"); // debug
-        } catch (Throwable e) {   // <-- CHANGE: catch Throwable instead of Exception
+
+        } catch (Throwable e) {
             log.error("Async sync FAILED for taskId=" + taskId, e);
-            System.err.println("Throwable caught: " + e.getMessage());
-            e.printStackTrace();
-            System.out.println("[DEBUG] Exception type: " + e.getClass().getName());
             syncTaskStatusService.markFailed(taskId, e.getMessage());
         }
     }
 
     private FileMetadataDto convertToDto(FileMetadataEntity entity) {
         System.out.println("[DEBUG] convertToDto for path: " + entity.getRelativePath()); // debug
-        // Force load any lazy fields (if any) before creating DTO
         Set<String> sharedCopy = new HashSet<>(entity.getSharedWith());
         System.out.println("[DEBUG] sharedWith size: " + sharedCopy.size()); // debug
         return new FileMetadataDto(

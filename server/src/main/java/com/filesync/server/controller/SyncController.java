@@ -6,6 +6,7 @@ import com.filesync.common.dto.SyncActionDto;
 import com.filesync.common.dto.SyncRequestDto;
 import com.filesync.server.domain.SyncTask;
 import com.filesync.server.repository.SyncTaskRepository;
+import com.filesync.server.service.PermissionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
@@ -27,31 +28,29 @@ public class SyncController {
     private final SyncTaskRepository taskRepository;
     private final ObjectMapper objectMapper;
     private final RabbitTemplate rabbitTemplate;
+    private final PermissionService permissionService;
     private static final Logger log = LoggerFactory.getLogger(SyncController.class);
 
-    public SyncController(SyncTaskRepository taskRepository,
-                          ObjectMapper objectMapper,
-                          RabbitTemplate rabbitTemplate)
+    public SyncController(SyncTaskRepository taskRepository, ObjectMapper objectMapper,
+                          PermissionService permissionService, RabbitTemplate rabbitTemplate)
     {
         this.taskRepository = taskRepository;
         this.objectMapper = objectMapper;
         this.rabbitTemplate = rabbitTemplate;
+        this.permissionService = permissionService;
     }
 
     // async
     @PostMapping("/start")
-    public Map<String, String> startSync(@RequestBody SyncRequestDto requestDto)
+    public Map<String, String> startSync(@RequestBody SyncRequestDto requestDto, Authentication authentication)
     {
-        // get authenticated username from JWT
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !auth.isAuthenticated()) {
-            throw new RuntimeException("User not authenticated");
-        }
+        String authenticatedUsername = authentication.getName();
+        requestDto.setOwnerId(authenticatedUsername);
 
-        String authenticatedUsername = auth.getName();
-        if (!authenticatedUsername.equals(requestDto.getOwnerId())) {
-            log.warn("Client tried to use ownerId={}, overriding with authenticated username={}",
-                    requestDto.getOwnerId(), authenticatedUsername);
+        if (requestDto.getFolderId() != null) {
+            if (!permissionService.canReadFolder(authenticatedUsername, requestDto.getFolderId())) {
+                throw new RuntimeException("No access to shared folder");
+            }
         }
 
         // override the ownerId

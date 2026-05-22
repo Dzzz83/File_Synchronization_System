@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 
 import com.filesync.common.enums.SyncStatus;
 
@@ -30,6 +31,13 @@ public class FileMetadataEntity {
 
     @Enumerated(EnumType.STRING)
     private SyncStatus status;
+
+    @Column(name = "folder_id", nullable = true)
+    private UUID folderId;   // null = personal file
+
+    // getter/setter
+    public UUID getFolderId() { return folderId; }
+    public void setFolderId(UUID folderId) { this.folderId = folderId; }
 
     // constructor
     public FileMetadataEntity(){}

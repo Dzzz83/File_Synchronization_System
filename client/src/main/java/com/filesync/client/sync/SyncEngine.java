@@ -16,6 +16,7 @@ import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public class SyncEngine {
     private String ownerId;
@@ -23,10 +24,12 @@ public class SyncEngine {
     private FolderScanner scanner;
     private SyncHttpClient httpClient;
     private LocalMetadataRepository localMetadataRepository;
+    private UUID folderId;
 
-    public SyncEngine(String ownerId, String syncFolderPath, String serverBaseUrl) throws SQLException {
+    public SyncEngine(String ownerId, String syncFolderPath, String serverBaseUrl, UUID folderId) throws SQLException {
         this.ownerId = ownerId;
         this.syncFolder = Paths.get(syncFolderPath);
+        this.folderId = folderId;
         this.localMetadataRepository = new LocalMetadataRepository();
         this.scanner = new FolderScanner(this.syncFolder, this.localMetadataRepository);
         this.httpClient = new SyncHttpClient(serverBaseUrl);
@@ -37,7 +40,7 @@ public class SyncEngine {
         List<FileMetadataDto> localFiles = scanner.scan();
 
         // start async
-        SyncRequestDto syncRequestDto = new SyncRequestDto(ownerId, localFiles);
+        SyncRequestDto syncRequestDto = new SyncRequestDto(ownerId, localFiles, folderId);
         String taskId = httpClient.startSync(syncRequestDto);
         System.out.println("Sync task started: " + taskId);
 
@@ -78,6 +81,7 @@ public class SyncEngine {
             {
                 case UPLOAD:
                     file.setOwnerId(ownerId);
+                    file.setFolderId(folderId);
                     httpClient.createMetadata(file);
 
                     long fileSize = Files.size(localPath);
@@ -87,12 +91,12 @@ public class SyncEngine {
                     {
                         // upload the large file
                         System.out.println("Large file detected, using chunked upload for: " + file.getRelativePath());
-                        httpClient.uploadLargeFile(file.getFileId(), localPath);
+                        httpClient.uploadLargeFile(file.getFileId(), localPath, folderId);
                     }
                     else
                     {
                         // upload small file
-                        httpClient.uploadFile(file.getFileId(), localPath);
+                        httpClient.uploadFile(file.getFileId(), localPath, folderId);
                     }
                     // save the file
                     localMetadataRepository.saveFile(file.getRelativePath(), file.getFileId(), file.getSha256Hash());
