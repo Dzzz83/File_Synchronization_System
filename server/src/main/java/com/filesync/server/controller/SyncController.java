@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import com.filesync.server.dto.SyncMessage;
 import com.filesync.server.config.RabbitMQConfig;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -40,6 +42,20 @@ public class SyncController {
     @PostMapping("/start")
     public Map<String, String> startSync(@RequestBody SyncRequestDto requestDto)
     {
+        // get authenticated username from JWT
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new RuntimeException("User not authenticated");
+        }
+
+        String authenticatedUsername = auth.getName();
+        if (!authenticatedUsername.equals(requestDto.getOwnerId())) {
+            log.warn("Client tried to use ownerId={}, overriding with authenticated username={}",
+                    requestDto.getOwnerId(), authenticatedUsername);
+        }
+
+        // override the ownerId
+        requestDto.setOwnerId(authenticatedUsername);
         // create random task id
         String taskId = UUID.randomUUID().toString();
         log.info("Received sync start request for owner={}, creating taskId={}", requestDto.getOwnerId(), taskId);

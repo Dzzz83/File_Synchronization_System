@@ -10,22 +10,33 @@ import java.util.List;
 @Service
 public class FileMetaDataService {
     @Autowired
-    private FileMetadataRepository repository;
+    private FileMetadataRepository fileMetadataRepository;
     public FileMetadataEntity saveFileMetaData(FileMetadataEntity entity)
     {
-        return repository.save(entity);
+        return fileMetadataRepository.save(entity);
     }
     public List<FileMetadataEntity> getFilesByOwner(String ownerId)
     {
-        return repository.findByOwnerId(ownerId);
+        return fileMetadataRepository.findByOwnerId(ownerId);
     }
 
     public FileMetadataEntity getFileById(String fileId) {
-        return repository.findById(fileId)
+        return fileMetadataRepository.findById(fileId)
                 .orElseThrow(() -> new RuntimeException("File not found: " + fileId));
     }
 
     public void deleteFile(String fileId) {
-        repository.deleteById(fileId);
+        fileMetadataRepository.deleteById(fileId);
+    }
+
+    public boolean existsById(String fileId) {
+        return fileMetadataRepository.existsById(fileId);
+    }
+
+    public FileMetadataEntity updateFileMetaData(FileMetadataEntity entity) {
+        if (!fileMetadataRepository.existsById(entity.getId())) {
+            throw new RuntimeException("File metadata not found for update: " + entity.getId());
+        }
+        return fileMetadataRepository.save(entity);
     }
 }

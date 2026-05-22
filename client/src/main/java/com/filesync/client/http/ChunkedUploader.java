@@ -57,19 +57,17 @@ public class ChunkedUploader {
     }
 
     private Set<Integer> getUploadedChunks(String fileId) {
-        try {
-            UploadStatusDto status = addAuth(webClient.get()
-                    .uri(uriBuilder -> uriBuilder.path("/api/chunk/status")
-                            .queryParam("fileId", fileId)
-                            .build()))
-                    .retrieve()
-                    .bodyToMono(UploadStatusDto.class)
-                    .block();
-            return status == null ? Set.of() : status.getUploadedChunks();
-        } catch (Exception e) {
-            System.err.println("Failed to get upload status for " + fileId);
-            return Set.of();
+        UploadStatusDto status = addAuth(webClient.get()
+                .uri(uriBuilder -> uriBuilder.path("/api/chunk/status")
+                        .queryParam("fileId", fileId)
+                        .build()))
+                .retrieve()
+                .bodyToMono(UploadStatusDto.class)
+                .block();
+        if (status == null) {
+            throw new RuntimeException("Failed to get upload status for " + fileId + " – null response");
         }
+        return status.getUploadedChunks();
     }
 
     private byte[] readChunk(Path filePath, int chunkIndex, int totalChunks) throws IOException

@@ -36,7 +36,14 @@ public class FileController {
         entity.setOwnerId(dto.getOwnerId());
         entity.setSharedWith(dto.getSharedWith());
         entity.setStatus(dto.getStatus());
-        return fileMetaDataService.saveFileMetaData(entity);
+
+        if (fileMetaDataService.existsById(dto.getFileId())) {
+            // update existing
+            return fileMetaDataService.updateFileMetaData(entity);
+        } else {
+            // create new
+            return fileMetaDataService.saveFileMetaData(entity);
+        }
     }
     private FileMetadataDto convertToDto(FileMetadataEntity entity) {
         FileMetadataDto dto = new FileMetadataDto();
