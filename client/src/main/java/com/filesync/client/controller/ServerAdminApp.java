@@ -1,7 +1,6 @@
-package com.filesync.client.admin;
+package com.filesync.client.controller;
 
 import com.filesync.client.http.SyncHttpClient;
-import com.filesync.common.dto.SharedFolderDto;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -10,8 +9,6 @@ import javafx.scene.control.TabPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
-import java.util.List;
-
 public class ServerAdminApp extends Application {
 
     private static Stage mainStage;
@@ -19,7 +16,7 @@ public class ServerAdminApp extends Application {
     @Override
     public void start(Stage primaryStage) throws Exception {
         // Load login dialog
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/filesync/client/admin/startup-dialog.fxml"));
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/filesync/client/controller/startup-dialog.fxml"));
         Scene scene = new Scene(loader.load(), 1100, 700);
         StartupController controller = loader.getController();
         controller.setPrimaryStage(primaryStage);
@@ -40,7 +37,7 @@ public class ServerAdminApp extends Application {
             TabPane tabPane = new TabPane();
 
             // Personal files tab
-            FXMLLoader personalLoader = new FXMLLoader(ServerAdminApp.class.getResource("/com/filesync/client/admin/server-file-list.fxml"));
+            FXMLLoader personalLoader = new FXMLLoader(ServerAdminApp.class.getResource("/com/filesync/client/controller/server-file-list.fxml"));
             VBox personalRoot = personalLoader.load();
             ServerFileListController personalController = personalLoader.getController();
             personalController.initialize(httpClient, username, null); // null folderId = personal
@@ -48,7 +45,7 @@ public class ServerAdminApp extends Application {
             personalTab.setClosable(false);
 
             // Shared folders tab
-            FXMLLoader sharedLoader = new FXMLLoader(ServerAdminApp.class.getResource("/com/filesync/client/admin/shared-folders-view.fxml"));
+            FXMLLoader sharedLoader = new FXMLLoader(ServerAdminApp.class.getResource("/com/filesync/client/controller/shared-folders-view.fxml"));
             VBox sharedRoot = sharedLoader.load();
             SharedFoldersController sharedController = sharedLoader.getController();
             sharedController.initialize(httpClient, username);

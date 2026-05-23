@@ -1,39 +1,32 @@
-package com.filesync.client.admin;
+package com.filesync.client.controller;
 
 import com.filesync.client.http.SyncHttpClient;
 import com.filesync.common.dto.UserSearchResult;
 import com.filesync.common.enums.Permission;
 import javafx.application.Platform;
-import javafx.geometry.Insets;
-import javafx.scene.Scene;
+import javafx.fxml.FXML;
 import javafx.scene.control.*;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.VBox;
-import javafx.stage.Modality;
 import javafx.stage.Stage;
+
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Consumer;
 
-public class AddMemberDialog {
-    public static void show(UUID folderId, SyncHttpClient httpClient, Runnable onSuccess) {
-        Stage dialog = new Stage();
-        dialog.initModality(Modality.APPLICATION_MODAL);
-        dialog.setTitle("Add Member to Folder");
+public class AddMemberDialogController {
+    @FXML private TextField searchField;
+    @FXML private ListView<String> resultsList;
+    @FXML private ComboBox<Permission> permissionBox;
+    @FXML private Button addButton;
+    @FXML private Button closeButton;
 
-        VBox vbox = new VBox(10);
-        vbox.setPadding(new Insets(10));
+    private SyncHttpClient httpClient;
+    private UUID folderId;
+    private Runnable onSuccess;
+    private Stage dialogStage;
 
-        TextField searchField = new TextField();
-        searchField.setPromptText("Search by username or email");
-        ListView<String> resultsList = new ListView<>();
-        ComboBox<Permission> permissionBox = new ComboBox<>();
+    public void initialize() {
         permissionBox.getItems().setAll(Permission.READ, Permission.WRITE);
         permissionBox.setValue(Permission.READ);
-        Button addButton = new Button("Add");
-        Button closeButton = new Button("Close");
 
-        // debounced search
         final long[] lastSearchTime = {0};
         searchField.textProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal == null || newVal.trim().length() < 2) return;
@@ -61,19 +54,20 @@ public class AddMemberDialog {
             try {
                 httpClient.addMemberToFolder(folderId, username, perm);
                 if (onSuccess != null) onSuccess.run();
-                dialog.close();
+                dialogStage.close();
             } catch (Exception ex) {
                 Alert alert = new Alert(Alert.AlertType.ERROR, "Failed to add member: " + ex.getMessage());
                 alert.showAndWait();
             }
         });
 
-        closeButton.setOnAction(e -> dialog.close());
+        closeButton.setOnAction(e -> dialogStage.close());
+    }
 
-        vbox.getChildren().addAll(new Label("Search user:"), searchField, resultsList,
-                new Label("Permission:"), permissionBox, addButton, closeButton);
-        Scene scene = new Scene(vbox, 300, 400);
-        dialog.setScene(scene);
-        dialog.showAndWait();
+    public void setData(UUID folderId, SyncHttpClient httpClient, Runnable onSuccess, Stage dialogStage) {
+        this.folderId = folderId;
+        this.httpClient = httpClient;
+        this.onSuccess = onSuccess;
+        this.dialogStage = dialogStage;
     }
 }

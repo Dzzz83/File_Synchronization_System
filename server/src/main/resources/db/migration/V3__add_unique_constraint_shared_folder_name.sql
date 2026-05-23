@@ -1,0 +1,1 @@
+ALTER TABLE shared_folders ADD CONSTRAINT unique_owner_folder_name UNIQUE (owner_id, name);

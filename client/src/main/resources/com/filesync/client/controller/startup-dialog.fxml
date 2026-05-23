@@ -18,7 +18,7 @@
 <?import javafx.scene.shape.Circle?>
 <?import javafx.scene.text.Font?>
 
-<GridPane prefHeight="593.0" prefWidth="811.0" styleClass="root-pane" stylesheets="@General-design.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.admin.StartupController">
+<GridPane prefHeight="593.0" prefWidth="811.0" styleClass="root-pane" stylesheets="@General-design.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.StartupController">
    <columnConstraints>
       <ColumnConstraints hgrow="SOMETIMES" maxWidth="470.40001220703124" minWidth="10.0" prefWidth="180.2000030517578" />
       <ColumnConstraints hgrow="SOMETIMES" maxWidth="488.7999755859375" minWidth="10.0" prefWidth="227.39999694824218" />

@@ -1,4 +1,4 @@
-package com.filesync.client.admin;
+package com.filesync.client.controller;
 
 import com.filesync.client.http.SyncHttpClient;
 import javafx.fxml.FXML;

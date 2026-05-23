@@ -1,4 +1,4 @@
-package com.filesync.client.admin;
+package com.filesync.client.controller;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.TextArea;

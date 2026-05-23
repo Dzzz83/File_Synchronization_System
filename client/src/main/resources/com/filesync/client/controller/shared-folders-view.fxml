@@ -3,7 +3,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<VBox spacing="10" alignment="CENTER" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.admin.SharedFoldersController">
+<VBox spacing="10" alignment="CENTER" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.SharedFoldersController">
     <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
     <TableView fx:id="foldersTable" VBox.vgrow="ALWAYS">
         <columns>
@@ -17,5 +17,7 @@
         <Button text="Request Access" onAction="#handleRequestAccess"/>
         <Button text="Open Selected Folder" onAction="#handleOpenFolder"/>
         <Button text="Manage Members" onAction="#handleManageMembers"/>
+        <Button fx:id="manageRequestsButton" text="Manage Requests" onAction="#handleManageRequests" disable="true"/>
+        <Button fx:id="deleteFolderButton" text="Delete Folder" onAction="#handleDeleteFolder" disable="true"/>
     </HBox>
 </VBox>

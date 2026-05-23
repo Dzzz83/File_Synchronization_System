@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface SharedFolderRequestRepository extends JpaRepository<SharedFolderRequestEntity, UUID> {
     List<SharedFolderRequestEntity> findByFolderIdAndStatus(UUID folderId, String status);
     Optional<SharedFolderRequestEntity> findByFolderIdAndRequesterId(UUID folderId, String requesterId);
+    int countByFolderIdAndStatus(UUID folderId, String status);
+    void deleteByFolderId(UUID folderId);
 }

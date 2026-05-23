@@ -14,7 +14,7 @@
 <?import javafx.scene.paint.Stop?>
 <?import javafx.scene.text.Font?>
 
-<VBox xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.admin.SendResetCodeController">
+<VBox xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.SendResetCodeController">
    <children>
       <GridPane alignment="CENTER" hgap="10" prefHeight="218.0" prefWidth="411.0" styleClass="root-pane" stylesheets="@General-design.css" vgap="10">
           <padding>

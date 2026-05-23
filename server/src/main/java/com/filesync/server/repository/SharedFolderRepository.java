@@ -8,4 +8,6 @@ import java.util.UUID;
 public interface SharedFolderRepository extends JpaRepository<SharedFolderEntity, UUID> {
     List<SharedFolderEntity> findByOwnerId(String ownerId);
     List<SharedFolderEntity> findByIdIn(List<UUID> ids);
+    List<SharedFolderEntity> findByNameContainingIgnoreCase(String name);
+    boolean existsByOwnerIdAndName(String ownerId, String name);
 }

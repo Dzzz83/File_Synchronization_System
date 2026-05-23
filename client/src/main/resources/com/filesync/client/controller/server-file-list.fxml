@@ -7,7 +7,7 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox alignment="CENTER" spacing="10" styleClass="root-pane" stylesheets="@General-design.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.admin.ServerFileListController">
+<VBox alignment="CENTER" spacing="10" styleClass="root-pane" stylesheets="@General-design.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.ServerFileListController">
     <padding>
         <Insets bottom="10" left="10" right="10" top="10" />
     </padding>

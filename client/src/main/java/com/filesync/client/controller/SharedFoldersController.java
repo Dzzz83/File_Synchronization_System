@@ -1,18 +1,28 @@
-package com.filesync.client.admin;
+package com.filesync.client.controller;
 
+import com.filesync.client.dialog.CreateFolderDialog;
+import com.filesync.client.dialog.PendingRequestsDialog;
+import com.filesync.client.dialog.RequestAccessDialog;
 import com.filesync.client.http.SyncHttpClient;
 import com.filesync.common.dto.CreateFolderDto;
 import com.filesync.common.dto.SharedFolderDto;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
+import com.filesync.client.dialog.AddMemberDialog;
+
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public class SharedFoldersController {
@@ -20,6 +30,8 @@ public class SharedFoldersController {
     @FXML private TableColumn<SharedFolderItem, String> nameColumn;
     @FXML private TableColumn<SharedFolderItem, String> ownerColumn;
     @FXML private TableColumn<SharedFolderItem, String> permissionColumn;
+    @FXML private Button manageRequestsButton;
+    @FXML private Button deleteFolderButton;
 
     private SyncHttpClient httpClient;
     private String ownerId;
@@ -32,7 +44,42 @@ public class SharedFoldersController {
         ownerColumn.setCellValueFactory(new PropertyValueFactory<>("ownerId"));
         permissionColumn.setCellValueFactory(new PropertyValueFactory<>("permission"));
         foldersTable.setItems(folderItems);
+        foldersTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null && newVal.getOwnerId().equals(ownerId)) {
+                manageRequestsButton.setDisable(false);
+                deleteFolderButton.setDisable(false);
+                updateRequestsButton(newVal.getId());
+            } else {
+                manageRequestsButton.setDisable(true);
+                deleteFolderButton.setDisable(true);
+                manageRequestsButton.setText("Manage Requests");
+                manageRequestsButton.setStyle("");
+            }
+        });
         refreshFolders();
+    }
+
+    // Helper to update the button's text and style based on pending request count
+    private void updateRequestsButton(UUID folderId) {
+        try {
+            int count = httpClient.getPendingRequestsCount(folderId);
+            Platform.runLater(() -> {
+                if (count > 0) {
+                    manageRequestsButton.setText("Manage Requests (" + count + ")");
+                    // Red dot effect: red background, white text, bold, rounded corners
+                    manageRequestsButton.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 15;");
+                } else {
+                    manageRequestsButton.setText("Manage Requests");
+                    manageRequestsButton.setStyle(""); // revert to default
+                }
+            });
+        } catch (Exception e) {
+            // If fetch fails, keep default appearance
+            Platform.runLater(() -> {
+                manageRequestsButton.setText("Manage Requests");
+                manageRequestsButton.setStyle("");
+            });
+        }
     }
 
     private void refreshFolders() {
@@ -69,13 +116,7 @@ public class SharedFoldersController {
 
     @FXML
     private void handleRequestAccess() {
-        TextInputDialog dialog = new TextInputDialog();
-        dialog.setTitle("Request Access");
-        dialog.setHeaderText("Enter folder ID to request access:");
-        dialog.setContentText("Folder ID:");
-        dialog.showAndWait().ifPresent(folderIdStr -> {
-            showAlert("Info", "Request access feature not yet fully implemented.\nContact folder owner.");
-        });
+        RequestAccessDialog.show(httpClient);
     }
 
     @FXML
@@ -86,7 +127,7 @@ public class SharedFoldersController {
             return;
         }
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/filesync/client/admin/server-file-list.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/filesync/client/controller/server-file-list.fxml"));
             VBox root = loader.load();
             ServerFileListController fileController = loader.getController();
             fileController.initialize(httpClient, ownerId, selected.getId());
@@ -107,8 +148,49 @@ public class SharedFoldersController {
             showAlert("No selection", "Please select a folder");
             return;
         }
-        AddMemberDialog.show(selected.getId(), httpClient, this::refreshFolders);
+        AddMemberDialog.show(selected.getId(), httpClient, () -> {
+            refreshFolders();
+            if (foldersTable.getSelectionModel().getSelectedItem() != null &&
+                    foldersTable.getSelectionModel().getSelectedItem().getOwnerId().equals(ownerId)) {
+                updateRequestsButton(selected.getId());
+            }
+        });
     }
+
+    @FXML
+    private void handleManageRequests() {
+        SharedFolderItem selected = foldersTable.getSelectionModel().getSelectedItem();
+        if (selected == null) return;
+        PendingRequestsDialog.show(selected.getId(), httpClient, () -> {
+            refreshFolders();
+            if (foldersTable.getSelectionModel().getSelectedItem() != null &&
+                    foldersTable.getSelectionModel().getSelectedItem().getOwnerId().equals(ownerId)) {
+                updateRequestsButton(selected.getId());
+            }
+        });
+    }
+
+    @FXML
+    private void handleDeleteFolder() {
+        SharedFolderItem selected = foldersTable.getSelectionModel().getSelectedItem();
+        if (selected == null) return;
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                "Delete shared folder '" + selected.getName() + "' and all its files?\nThis action cannot be undone.",
+                ButtonType.YES, ButtonType.NO);
+        confirm.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.YES) {
+                try {
+                    httpClient.deleteSharedFolder(selected.getId());
+                    showAlert("Success", "Folder deleted.");
+                    refreshFolders();
+                } catch (Exception e) {
+                    showAlert("Error", "Failed to delete folder: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+
 
     private void showAlert(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);

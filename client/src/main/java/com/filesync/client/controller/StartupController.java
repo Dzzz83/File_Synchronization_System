@@ -1,4 +1,4 @@
-package com.filesync.client.admin;
+package com.filesync.client.controller;
 
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -91,7 +91,7 @@ public class StartupController {
         }
 
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/filesync/client/admin/send-reset-code.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/filesync/client/controller/send-reset-code.fxml"));
             Parent root = loader.load();
             SendResetCodeController controller = loader.getController();
             Stage dialogStage = new Stage();

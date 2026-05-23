@@ -13,4 +13,5 @@ public interface SharedFolderMemberRepository extends JpaRepository<SharedFolder
     List<SharedFolderMemberEntity> findByFolderId(UUID folderId);
     boolean existsByFolderIdAndUserIdAndPermissionIn(UUID folderId, String userId, Collection<Permission> permissions);
     Optional<SharedFolderMemberEntity> findByFolderIdAndUserId(UUID folderId, String userId);
+    void deleteByFolderId(UUID folderId);
 }

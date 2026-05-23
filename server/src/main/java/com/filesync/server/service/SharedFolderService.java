@@ -1,6 +1,7 @@
 package com.filesync.server.service;
 
 import com.filesync.common.enums.Permission;
+import com.filesync.server.domain.FileMetadataEntity;
 import com.filesync.server.domain.SharedFolderEntity;
 import com.filesync.server.domain.SharedFolderMemberEntity;
 import com.filesync.server.domain.SharedFolderRequestEntity;
@@ -9,8 +10,11 @@ import com.filesync.server.repository.SharedFolderRepository;
 import com.filesync.server.repository.SharedFolderRequestRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.filesync.server.repository.FileMetadataRepository;
+import com.filesync.server.storage.FileStorage;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -19,30 +23,47 @@ public class SharedFolderService {
     private final SharedFolderRepository folderRepository;
     private final SharedFolderMemberRepository memberRepository;
     private final SharedFolderRequestRepository requestRepository;
+    private final FileMetadataRepository fileMetadataRepository;
+    private final FileStorage fileStorage;
 
     public SharedFolderService(SharedFolderRepository folderRepository,
                                SharedFolderMemberRepository memberRepository,
-                               SharedFolderRequestRepository requestRepository) {
+                               SharedFolderRequestRepository requestRepository,
+                               FileMetadataRepository fileMetadataRepository,
+                               FileStorage fileStorage) {
         this.folderRepository = folderRepository;
         this.memberRepository = memberRepository;
         this.requestRepository = requestRepository;
+        this.fileMetadataRepository = fileMetadataRepository;
+        this.fileStorage = fileStorage;
     }
 
-    @Transactional
     public SharedFolderEntity createFolder(String name, String ownerId) {
+        // Check if folder with same name already exists for this owner
+        if (folderRepository.existsByOwnerIdAndName(ownerId, name)) {
+            throw new RuntimeException("You already have a shared folder with this name.");
+        }
         SharedFolderEntity folder = new SharedFolderEntity();
         folder.setName(name);
         folder.setOwnerId(ownerId);
         return folderRepository.save(folder);
     }
 
-    @Transactional
     public void addMember(UUID folderId, String userId, Permission permission) {
-        SharedFolderMemberEntity member = new SharedFolderMemberEntity();
-        member.setFolderId(folderId);
-        member.setUserId(userId);
-        member.setPermission(permission);
-        memberRepository.save(member);
+        Optional<SharedFolderMemberEntity> existing = memberRepository.findByFolderIdAndUserId(folderId, userId);
+        if (existing.isPresent()) {
+            // Update permission of existing member
+            SharedFolderMemberEntity member = existing.get();
+            member.setPermission(permission);
+            memberRepository.save(member);
+        } else {
+            // Add new member
+            SharedFolderMemberEntity member = new SharedFolderMemberEntity();
+            member.setFolderId(folderId);
+            member.setUserId(userId);
+            member.setPermission(permission);
+            memberRepository.save(member);
+        }
     }
 
     public boolean isOwner(UUID folderId, String userId) {
@@ -84,5 +105,25 @@ public class SharedFolderService {
         addMember(folder.getId(), request.getRequesterId(), Permission.READ);
         request.setStatus("APPROVED");
         requestRepository.save(request);
+    }
+
+    @Transactional
+    public void deleteFolder(UUID folderId) {
+        // Delete all files in this folder (metadata and actual storage)
+        List<FileMetadataEntity> files = fileMetadataRepository.findByFolderId(folderId);
+        for (FileMetadataEntity file : files) {
+            fileStorage.delete(file.getId()); // delete from R2/local disk
+            fileMetadataRepository.delete(file);
+        }
+        // Delete members
+        memberRepository.deleteByFolderId(folderId);
+        // Delete pending requests
+        requestRepository.deleteByFolderId(folderId);
+        // Delete folder itself
+        folderRepository.deleteById(folderId);
+    }
+
+    public List<SharedFolderEntity> findByNameContainingIgnoreCase(String name) {
+        return folderRepository.findByNameContainingIgnoreCase(name);
     }
 }

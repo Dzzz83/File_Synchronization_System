@@ -21,18 +21,14 @@ public class ConflictResolver {
     public static void resolve(FileMetadataDto file, Path localPath, SyncHttpClient httpClient,
                                LocalMetadataRepository localRepo) throws IOException {
         String filePath = file.getRelativePath();
-
         if (resolvingFiles.putIfAbsent(filePath, true) != null) {
-            System.out.println("Conflict already being resolved for " + filePath + ", skipping...");
             return;
         }
-
         try {
             Path tempServerFile = Files.createTempFile("server_", ".tmp");
             httpClient.downloadFile(file.getFileId(), tempServerFile);
             String serverContent = Files.readString(tempServerFile);
             String localContent = Files.readString(localPath);
-
             Platform.runLater(() -> {
                 try {
                     FXMLLoader loader = new FXMLLoader(
@@ -45,7 +41,6 @@ public class ConflictResolver {
                     stage.setScene(scene);
                     stage.setResizable(true);
                     stage.setOnCloseRequest(e -> resolvingFiles.remove(filePath));
-
                     controller.setData(file.getRelativePath(), serverContent, localContent, mergedContent -> {
                         try {
                             Files.writeString(localPath, mergedContent);
@@ -53,7 +48,6 @@ public class ConflictResolver {
                             file.setSha256Hash(newHash);
                             file.setSize(Files.size(localPath));
                             file.setLastModified(Files.getLastModifiedTime(localPath).toInstant());
-                            // folderId is already in the DTO
                             httpClient.createMetadata(file);
                             long fileSize = Files.size(localPath);
                             if (fileSize > 5 * 1024 * 1024) {
@@ -61,13 +55,11 @@ public class ConflictResolver {
                             } else {
                                 httpClient.uploadFile(file.getFileId(), localPath, file.getFolderId());
                             }
-                            // only save to local DB if repository is provided
                             if (localRepo != null) {
                                 localRepo.saveFile(file.getRelativePath(), file.getFileId(), newHash);
                             }
-                            System.out.println("Conflict resolved for " + file.getRelativePath());
-                        } catch (Exception e) {
-                            e.printStackTrace();
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
                         } finally {
                             try { Files.deleteIfExists(tempServerFile); } catch (IOException ignored) {}
                             resolvingFiles.remove(filePath);
@@ -75,8 +67,8 @@ public class ConflictResolver {
                         }
                     });
                     stage.showAndWait();
-                } catch (IOException e) {
-                    e.printStackTrace();
+                } catch (IOException ex) {
+                    ex.printStackTrace();
                     resolvingFiles.remove(filePath);
                 }
             });

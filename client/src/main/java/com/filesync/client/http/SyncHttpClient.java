@@ -23,7 +23,7 @@ public class SyncHttpClient {
     public SyncHttpClient(String baseUrl) {
         this.webClient = WebClient.builder()
                 .baseUrl(baseUrl)
-                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(100 * 1024 * 1024)) // 100 MB
+                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(100 * 1024 * 1024))
                 .build();
         this.chunkedUploader = new ChunkedUploader(webClient);
     }
@@ -39,7 +39,7 @@ public class SyncHttpClient {
                     .block();
             if (response != null && response.containsKey("token")) {
                 this.authToken = (String) response.get("token");
-                return (String) response.get("username");   // actual username
+                return (String) response.get("username");
             }
             throw new RuntimeException("Login failed: no token in response");
         } catch (WebClientResponseException e) {
@@ -50,10 +50,8 @@ public class SyncHttpClient {
         }
     }
 
-    private WebClient.RequestHeadersSpec<?> addAuth(WebClient.RequestHeadersSpec<?> spec)
-    {
-        if (authToken != null && !authToken.isEmpty())
-        {
+    private WebClient.RequestHeadersSpec<?> addAuth(WebClient.RequestHeadersSpec<?> spec) {
+        if (authToken != null && !authToken.isEmpty()) {
             return spec.header("Authorization", "Bearer " + authToken);
         }
         return spec;
@@ -82,11 +80,9 @@ public class SyncHttpClient {
                 .block();
     }
 
-    public void uploadFile(String fileId, Path localFile) throws IOException
-    {
+    public void uploadFile(String fileId, Path localFile) throws IOException {
         MultipartBodyBuilder builder = new MultipartBodyBuilder();
         builder.part("file", new FileSystemResource(localFile.toFile()));
-
         addAuth(webClient.post()
                 .uri("/api/files/upload/{fileId}", fileId)
                 .contentType(MediaType.MULTIPART_FORM_DATA)
@@ -96,33 +92,24 @@ public class SyncHttpClient {
                 .block();
     }
 
-    public void downloadFile(String fileId, Path destination) throws IOException
-    {
-        System.out.println("downloadFile called with fileId='" + fileId + "', destination=" + destination);
+    public void downloadFile(String fileId, Path destination) throws IOException {
         if (fileId == null || fileId.trim().isEmpty()) {
             throw new IllegalArgumentException("File ID cannot be null or empty");
         }
         if (destination == null) {
             throw new IllegalArgumentException("Destination path cannot be null");
         }
-
-        // download a file from the server
         byte[] data = addAuth(webClient.get().uri("/api/files/download/{fileId}", fileId))
                 .retrieve()
                 .bodyToMono(byte[].class)
                 .block();
-
         if (data == null) {
             throw new IOException("Downloaded data is null for fileId: " + fileId);
         }
-        System.out.println("Data length: " + data.length);
-        System.out.println("Destination parent: " + destination.getParent());
         Files.createDirectories(destination.getParent());
         Files.write(destination, data);
-        System.out.println("File written successfully");
     }
 
-    // Get files for personal or shared folder
     public List<FileMetadataDto> getFiles(String ownerId, UUID folderId) {
         try {
             String uri = "/api/files/user/" + ownerId;
@@ -135,12 +122,10 @@ public class SyncHttpClient {
                     .block();
             return files == null ? List.of() : List.of(files);
         } catch (Exception e) {
-            System.err.println("Failed to get files: " + e.getMessage());
             return List.of();
         }
     }
 
-    // Upload file with optional folderId
     public void uploadFile(String fileId, Path localFile, UUID folderId) throws IOException {
         MultipartBodyBuilder builder = new MultipartBodyBuilder();
         builder.part("file", new FileSystemResource(localFile.toFile()));
@@ -161,10 +146,9 @@ public class SyncHttpClient {
             throw new IllegalStateException("Cannot upload large file: not logged in.");
         }
         chunkedUploader.setAuthToken(authToken);
-        chunkedUploader.uploadFile(fileId, filePath);   // folderId ignored
+        chunkedUploader.uploadFile(fileId, filePath);
     }
 
-    // Delete file
     public void deleteFile(String fileId, UUID folderId) {
         String uri = "/api/files/" + fileId;
         if (folderId != null) {
@@ -181,28 +165,17 @@ public class SyncHttpClient {
         this.chunkedUploader.setAuthToken(token);
     }
 
-    public boolean registerUser(String userName, String password, String email)
-    {
-        try
-        {
-            Map<String, String> body = Map.of(
-                    "username", userName,
-                    "password", password,
-                    "email", email
-            );
+    public boolean registerUser(String userName, String password, String email) {
+        try {
+            Map<String, String> body = Map.of("username", userName, "password", password, "email", email);
             Map<?, ?> response = webClient.post()
                     .uri("/api/users/register")
                     .bodyValue(body)
                     .retrieve()
                     .bodyToMono(Map.class)
                     .block();
-            if (response == null)
-            {
-                return false;
-            }
-            return !response.containsKey("error");
+            return response != null && !response.containsKey("error");
         } catch (Exception e) {
-            System.err.println("Registration failed: " + e.getMessage());
             return false;
         }
     }
@@ -215,7 +188,6 @@ public class SyncHttpClient {
                     .block();
             return files == null ? List.of() : List.of(files);
         } catch (Exception e) {
-            System.err.println("Failed to get files: " + e.getMessage());
             return List.of();
         }
     }
@@ -259,7 +231,6 @@ public class SyncHttpClient {
                     .block();
             return response != null && !response.containsKey("error");
         } catch (Exception e) {
-            System.err.println("Reset password failed: " + e.getMessage());
             return false;
         }
     }
@@ -304,12 +275,64 @@ public class SyncHttpClient {
                 .block();
     }
 
+    public void requestAccessToFolder(UUID folderId) {
+        addAuth(webClient.post()
+                .uri("/api/shared-folders/{folderId}/request-access", folderId))
+                .retrieve()
+                .bodyToMono(Void.class)
+                .block();
+    }
+
+    public List<Map<String, Object>> getPendingRequests(UUID folderId) {
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> requests = addAuth(webClient.get()
+                .uri("/api/shared-folders/{folderId}/requests/pending", folderId))
+                .retrieve()
+                .bodyToMono(List.class)
+                .block();
+        return requests == null ? List.of() : requests;
+    }
+
+    public void approveRequest(UUID requestId) {
+        addAuth(webClient.post()
+                .uri("/api/shared-folders/requests/{requestId}/approve", requestId))
+                .retrieve()
+                .bodyToMono(Void.class)
+                .block();
+    }
+
+    public List<Map<String, String>> searchSharedFoldersByName(String name) {
+        @SuppressWarnings("unchecked")
+        List<Map<String, String>> result = addAuth(webClient.get()
+                .uri(uriBuilder -> uriBuilder.path("/api/shared-folders/search")
+                        .queryParam("name", name).build()))
+                .retrieve()
+                .bodyToMono(List.class)
+                .block();
+        return result == null ? List.of() : result;
+    }
+
+    public int getPendingRequestsCount(UUID folderId) {
+        Integer count = addAuth(webClient.get()
+                .uri("/api/shared-folders/{folderId}/requests/pending/count", folderId))
+                .retrieve()
+                .bodyToMono(Integer.class)
+                .block();
+        return count != null ? count : 0;
+    }
+
+    public void deleteSharedFolder(UUID folderId) {
+        addAuth(webClient.delete().uri("/api/shared-folders/{folderId}", folderId))
+                .retrieve()
+                .bodyToMono(Void.class)
+                .block();
+    }
+
     public String getAuthToken() {
         return authToken;
     }
 
-    public void close()
-    {
+    public void close() {
         chunkedUploader.close();
     }
 
