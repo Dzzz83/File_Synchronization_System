@@ -53,11 +53,15 @@ File_Synchronization_System/
 │       └── consumer/             (RabbitMQ consumer for sync tasks)
 └── client/
     └── src/main/java/com/filesync/client/
-        ├── admin/                (ServerAdminApp, StartupController, ServerFileListController,
-        │                          EditDialogController, ConflictResolver)
-        ├── sync/                 (SyncEngine, FolderScanner)
-        ├── http/                 (SyncHttpClient, ChunkedUploader)
-        └── db/                   (LocalMetadataRepository)
+    ├── controller/           (JavaFX controllers: ServerFileListController, SharedFoldersController, etc.)
+    ├── dialog/               (Dialog loaders: CreateFolderDialog, AddMemberDialog, RequestAccessDialog, PendingRequestsDialog)
+    ├── service/              (Business services: FileOperationService, PasswordResetService)
+    ├── http/                 (SyncHttpClient, ChunkedUploader)
+    ├── sync/                 (SyncEngine, FolderScanner)
+    ├── db/                   (LocalMetadataRepository)
+    ├── conflict/             (ConflictResolver, ConflictController)
+    └── file/     
+            
 ```
 
 ## What Is Already Implemented
@@ -79,6 +83,8 @@ File_Synchronization_System/
 - **RabbitMQ (message queue)** – sync requests are sent to a queue and processed by a separate consumer. This decouples HTTP handling from background work and makes the system more resilient under load.
 - **Rate limiting** – a Bucket4j filter limits each IP to 100 requests per minute, protecting the server from abusive clients.
 - **Embedded monitoring** – JavaMelody provides a web dashboard at `/monitoring` showing CPU, memory, HTTP requests, SQL queries, and more (no extra setup).
+- **Shared folders** – users can create shared folders, add members with READ/WRITE permissions, request access by folder name (search), and approve requests. Folder owners can delete a shared folder (removes all files and members). All file operations respect folder‑level permissions.
+
 ### Client – Admin GUI (JavaFX)
 
 - Startup dialog with tabs for login (username + password) and registration, plus separate windows for forgot password and reset password.
@@ -89,6 +95,8 @@ File_Synchronization_System/
 - Edit: downloads a text file, allows editing. When saving, the server compares the original hash; if a conflict occurs, the side‑by‑side diff viewer (reused from the sync client) opens, and the user can merge the changes.
 - Delete: removes metadata and the actual file from storage.
 - All file operations are performed via HTTP calls that include the JWT.
+- **Shared folders management** – a separate tab lists all shared folders accessible to the user. Owners see a red badge on the “Manage Requests” button when pending requests exist. Owners can add/update members (READ/WRITE), approve access requests, and delete the folder.
+- **Modular UI** – dialogs (create folder, add member, request access, pending requests) are separated into their own FXML files and controller classes, following a clear separation of UI and logic.
 
 ### Client – Sync Client (Automatic)
 
@@ -96,6 +104,15 @@ File_Synchronization_System/
 - Computes SHA‑256 hashes and calls the server’s asynchronous sync endpoint (start + poll).
 - Based on the server response (actions), it uploads, downloads, deletes, or resolves conflicts (using the same diff viewer as the admin GUI).
 - Stores local metadata in an H2 database to avoid recomputing hashes unnecessarily.
+
+### Shared Folder Features
+
+- **Create** – name, optional initial members (searched by username/email), owner automatically gets WRITE permission.
+- **Request access** – search by folder name, select from results, the owner receives a pending request.
+- **Manage requests** – owners see a red badge with the count of pending requests; they can approve, adding the requester as READ‑only.
+- **Manage members** – owners can add or update members (READ/WRITE) and revoke access (by removing the member).
+- **Delete folder** – owners can delete the entire folder, which removes all files (both metadata and actual storage) and members.
+- **Permission enforcement** – READ allows download/list, WRITE allows upload/edit/delete. Permissions are checked on every file operation.
 
 ### OOP & SOLID Highlights
 
