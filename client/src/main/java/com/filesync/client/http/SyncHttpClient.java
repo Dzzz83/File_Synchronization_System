@@ -3,14 +3,18 @@ package com.filesync.client.http;
 import com.filesync.common.dto.*;
 import com.filesync.common.enums.Permission;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import reactor.core.publisher.Flux;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.*;
 
 public class SyncHttpClient {
@@ -105,15 +109,15 @@ public class SyncHttpClient {
         if (destination == null) {
             throw new IllegalArgumentException("Destination path cannot be null");
         }
-        byte[] data = addAuth(webClient.get().uri("/api/files/download/{fileId}", fileId))
-                .retrieve()
-                .bodyToMono(byte[].class)
-                .block();
-        if (data == null) {
-            throw new IOException("Downloaded data is null for fileId: " + fileId);
-        }
         Files.createDirectories(destination.getParent());
-        Files.write(destination, data);
+
+        Flux<DataBuffer> flux = addAuth(webClient.get().uri("/api/files/download/{fileId}", fileId))
+                .retrieve()
+                .bodyToFlux(DataBuffer.class)
+                .timeout(Duration.ofMinutes(5));
+
+        DataBufferUtils.write(flux, destination)
+                .block();
     }
 
     public List<FileMetadataDto> getFiles(String ownerId, UUID sharedFolderId, UUID parentId) {
@@ -336,28 +340,19 @@ public class SyncHttpClient {
     }
 
     public UUID createFolder(String name, UUID parentId, UUID sharedFolderId) {
-        // Build request parameters
         Map<String, Object> params = new HashMap<>();
         params.put("name", name);
-        if (parentId != null) {
-            params.put("parentId", parentId);
-        }
-        if (sharedFolderId != null) {
-            params.put("folderId", sharedFolderId);
-        }
+        if (parentId != null) params.put("parentId", parentId);
+        if (sharedFolderId != null) params.put("folderId", sharedFolderId);
 
-        // Send request and get response
         FileMetadataDto response = addAuth(webClient.post().uri("/api/files/folder").bodyValue(params))
                 .retrieve()
                 .bodyToMono(FileMetadataDto.class)
                 .block();
 
-        // Validate response
         if (response == null || response.getFileId() == null) {
             throw new RuntimeException("Failed to create folder: server returned null response");
         }
-
-        // Parse and return UUID
         try {
             return UUID.fromString(response.getFileId());
         } catch (IllegalArgumentException e) {
