@@ -13,7 +13,7 @@ import javafx.stage.Stage;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CreateFolderDialogController {
+public class CreateSharedFolderController {
     @FXML private TextField nameField;
     @FXML private ListView<MemberItem> membersList;
     @FXML private TextField searchField;

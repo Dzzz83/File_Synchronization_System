@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-public class PendingRequestsDialogController {
+public class ApproveRequestsController {
     @FXML private ListView<String> requestsList;
     @FXML private Button approveButton;
     @FXML private Button closeButton;

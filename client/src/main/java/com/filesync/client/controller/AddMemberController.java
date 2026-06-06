@@ -11,7 +11,7 @@ import javafx.stage.Stage;
 import java.util.List;
 import java.util.UUID;
 
-public class AddMemberDialogController {
+public class AddMemberController {
     @FXML private TextField searchField;
     @FXML private ListView<String> resultsList;
     @FXML private ComboBox<Permission> permissionBox;

@@ -7,7 +7,7 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox spacing="10" alignment="CENTER" xmlns:fx="http://javafx.com/fxml" fx:controller="com.filesync.client.controller.RequestAccessDialogController">
+<VBox spacing="10" alignment="CENTER" xmlns:fx="http://javafx.com/fxml" fx:controller="com.filesync.client.controller.RequestAccessController">
     <padding>
         <Insets top="10" right="10" bottom="10" left="10"/>
     </padding>

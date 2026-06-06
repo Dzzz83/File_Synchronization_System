@@ -1,6 +1,6 @@
 package com.filesync.client.dialog;
 
-import com.filesync.client.controller.AddMemberDialogController;
+import com.filesync.client.controller.AddMemberController;
 import com.filesync.client.http.SyncHttpClient;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -13,7 +13,7 @@ public class AddMemberDialog {
         try {
             FXMLLoader loader = new FXMLLoader(AddMemberDialog.class.getResource("/com/filesync/client/dialog/add-member-dialog.fxml"));
             Scene scene = new Scene(loader.load(), 300, 400);
-            AddMemberDialogController controller = loader.getController();
+            AddMemberController controller = loader.getController();
             Stage dialogStage = new Stage();
             dialogStage.initModality(Modality.APPLICATION_MODAL);
             dialogStage.setTitle("Add Member to Folder");

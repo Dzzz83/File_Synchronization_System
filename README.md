@@ -53,7 +53,7 @@ File_Synchronization_System/
 │       └── consumer/             (RabbitMQ consumer for sync tasks)
 └── client/
     └── src/main/java/com/filesync/client/
-    ├── controller/           (JavaFX controllers: ServerFileListController, SharedFoldersController, etc.)
+    ├── controller/           (JavaFX controllers: FileExplorerController, SharedFoldersController, etc.)
     ├── dialog/               (Dialog loaders: CreateFolderDialog, AddMemberDialog, RequestAccessDialog, PendingRequestsDialog)
     ├── service/              (Business services: FileOperationService, PasswordResetService)
     ├── http/                 (SyncHttpClient, ChunkedUploader)
@@ -97,7 +97,8 @@ File_Synchronization_System/
 - All file operations are performed via HTTP calls that include the JWT.
 - **Shared folders management** – a separate tab lists all shared folders accessible to the user. Owners see a red badge on the “Manage Requests” button when pending requests exist. Owners can add/update members (READ/WRITE), approve access requests, and delete the folder.
 - **Modular UI** – dialogs (create folder, add member, request access, pending requests) are separated into their own FXML files and controller classes, following a clear separation of UI and logic.
-
+- **File explorer navigation** – users can double‑click folders to navigate inside, and use the “..” entry to go up one level. The same explorer is used for personal files and for browsing inside shared folders, providing a consistent experience.
+- **Upload file or folder** – a single “Upload” button offers a choice between uploading a single file or an entire folder (with subfolders preserved). Large files use chunked upload; folder upload shows a progress dialog.
 ### Client – Sync Client (Automatic)
 
 - Watches a local folder using Java’s WatchService.
@@ -113,7 +114,7 @@ File_Synchronization_System/
 - **Manage members** – owners can add or update members (READ/WRITE) and revoke access (by removing the member).
 - **Delete folder** – owners can delete the entire folder, which removes all files (both metadata and actual storage) and members.
 - **Permission enforcement** – READ allows download/list, WRITE allows upload/edit/delete. Permissions are checked on every file operation.
-
+- **Integrated file explorer** – double‑click a shared folder to open its contents inside the same tab (instead of a new window). The explorer has the same buttons and “..” navigation as the personal files tab. A “Back to folders” button appears when inside a shared folder (or the “..” entry at the root exits back to the shared folder list).
 ### OOP & SOLID Highlights
 
 - **Single Responsibility**: each class has one purpose (FolderScanner, ChunkedUploader, ConflictResolver, JwtService, etc.).
@@ -134,7 +135,7 @@ File_Synchronization_System/
 - **Database migrations** – Flyway manages schema versions safely.
 - **Embedded monitoring** – JavaMelody dashboard at `/monitoring` for real‑time metrics.
 - **Horizontal scaling** – demonstrated by running two server instances behind Nginx with load balancing.
-
+- **Parallel folder upload** – files inside a folder are uploaded concurrently (up to 5 at a time) while preserving the directory structure.
 ## What’s Already Deployed and Running
 
 The server is live on **Render** (free tier) at:  

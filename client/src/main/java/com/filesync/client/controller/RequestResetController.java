@@ -11,7 +11,7 @@ import javafx.scene.control.TextField;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
-public class SendResetCodeController {
+public class RequestResetController {
     @FXML private TextField emailField;
     private Stage dialogStage;
     private PasswordResetService resetService;

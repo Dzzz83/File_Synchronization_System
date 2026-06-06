@@ -1,6 +1,6 @@
 package com.filesync.client.dialog;
 
-import com.filesync.client.controller.PendingRequestsDialogController;
+import com.filesync.client.controller.ApproveRequestsController;
 import com.filesync.client.http.SyncHttpClient;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -13,7 +13,7 @@ public class PendingRequestsDialog {
         try {
             FXMLLoader loader = new FXMLLoader(PendingRequestsDialog.class.getResource("/com/filesync/client/dialog/pending-requests-dialog.fxml"));
             Scene scene = new Scene(loader.load(), 350, 250);
-            PendingRequestsDialogController controller = loader.getController();
+            ApproveRequestsController controller = loader.getController();
             Stage dialogStage = new Stage();
             dialogStage.initModality(Modality.APPLICATION_MODAL);
             dialogStage.setTitle("Pending Access Requests");

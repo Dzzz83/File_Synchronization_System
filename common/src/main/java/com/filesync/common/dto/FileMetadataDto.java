@@ -16,6 +16,8 @@ public class FileMetadataDto {
     private Set<String> sharedWith;
     private SyncStatus status;
     private UUID folderId;
+    private boolean isDirectory;
+    private UUID parentId;
 
     public FileMetadataDto() {}
 
@@ -54,4 +56,8 @@ public class FileMetadataDto {
     public void setStatus(SyncStatus status) { this.status = status; }
     public UUID getFolderId() { return folderId; }
     public void setFolderId(UUID folderId) { this.folderId = folderId; }
+    public boolean isDirectory() { return isDirectory; }
+    public void setDirectory(boolean directory) { isDirectory = directory; }
+    public UUID getParentId() { return parentId; }
+    public void setParentId(UUID parentId) { this.parentId = parentId; }
 }

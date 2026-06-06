@@ -1,28 +1,24 @@
 package com.filesync.client.controller;
 
+import com.filesync.client.dialog.AddMemberDialog;
 import com.filesync.client.dialog.CreateFolderDialog;
-import com.filesync.client.dialog.PendingRequestsDialog;
 import com.filesync.client.dialog.RequestAccessDialog;
-import com.filesync.client.http.SyncHttpClient;
+import com.filesync.client.dialog.PendingRequestsDialog;
 import com.filesync.common.dto.CreateFolderDto;
+import com.filesync.client.http.SyncHttpClient;
 import com.filesync.common.dto.SharedFolderDto;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.geometry.Insets;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.stage.Modality;
 import javafx.stage.Stage;
-import com.filesync.client.dialog.AddMemberDialog;
-
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 public class SharedFoldersController {
@@ -32,10 +28,14 @@ public class SharedFoldersController {
     @FXML private TableColumn<SharedFolderItem, String> permissionColumn;
     @FXML private Button manageRequestsButton;
     @FXML private Button deleteFolderButton;
+    @FXML private VBox container;
+    @FXML private HBox actionButtons;
 
     private SyncHttpClient httpClient;
     private String ownerId;
     private ObservableList<SharedFolderItem> folderItems = FXCollections.observableArrayList();
+    private FileExplorerController currentExplorer;
+    private boolean showingFoldersList = true;
 
     public void initialize(SyncHttpClient httpClient, String ownerId) {
         this.httpClient = httpClient;
@@ -44,6 +44,17 @@ public class SharedFoldersController {
         ownerColumn.setCellValueFactory(new PropertyValueFactory<>("ownerId"));
         permissionColumn.setCellValueFactory(new PropertyValueFactory<>("permission"));
         foldersTable.setItems(folderItems);
+
+        foldersTable.setRowFactory(tv -> {
+            TableRow<SharedFolderItem> row = new TableRow<>();
+            row.setOnMouseClicked(event -> {
+                if (event.getClickCount() == 2 && !row.isEmpty()) {
+                    onFolderDoubleClick(row.getItem());
+                }
+            });
+            return row;
+        });
+
         foldersTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null && newVal.getOwnerId().equals(ownerId)) {
                 manageRequestsButton.setDisable(false);
@@ -56,25 +67,59 @@ public class SharedFoldersController {
                 manageRequestsButton.setStyle("");
             }
         });
+
+        showSharedFoldersList();
         refreshFolders();
     }
 
-    // Helper to update the button's text and style based on pending request count
+    private void showSharedFoldersList() {
+        showingFoldersList = true;
+        actionButtons.setVisible(true);
+        actionButtons.setManaged(true);   // re-insert into layout
+        container.getChildren().clear();
+        container.getChildren().add(foldersTable);
+    }
+
+    private void showFolderExplorer(UUID folderId) {
+        showingFoldersList = false;
+        actionButtons.setVisible(false);
+        actionButtons.setManaged(false);  // remove from layout
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/filesync/client/controller/server-file-list.fxml"));
+            VBox explorerRoot = loader.load();
+            currentExplorer = loader.getController();
+            currentExplorer.initialize(httpClient, ownerId, folderId, null);
+            currentExplorer.setOnExitSharedFolder(this::showSharedFoldersList);
+            container.getChildren().clear();
+            container.getChildren().add(explorerRoot);
+            VBox.setVgrow(explorerRoot, Priority.ALWAYS);
+            explorerRoot.setMaxHeight(Double.MAX_VALUE);
+        } catch (Exception e) {
+            e.printStackTrace();
+            showAlert("Error", "Could not open folder: " + e.getMessage());
+            actionButtons.setVisible(true);
+            actionButtons.setManaged(true);
+            showingFoldersList = true;
+        }
+    }
+
+    private void onFolderDoubleClick(SharedFolderItem item) {
+        showFolderExplorer(item.getId());
+    }
+
     private void updateRequestsButton(UUID folderId) {
         try {
             int count = httpClient.getPendingRequestsCount(folderId);
             Platform.runLater(() -> {
                 if (count > 0) {
                     manageRequestsButton.setText("Manage Requests (" + count + ")");
-                    // Red dot effect: red background, white text, bold, rounded corners
                     manageRequestsButton.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 15;");
                 } else {
                     manageRequestsButton.setText("Manage Requests");
-                    manageRequestsButton.setStyle(""); // revert to default
+                    manageRequestsButton.setStyle("");
                 }
             });
         } catch (Exception e) {
-            // If fetch fails, keep default appearance
             Platform.runLater(() -> {
                 manageRequestsButton.setText("Manage Requests");
                 manageRequestsButton.setStyle("");
@@ -117,28 +162,6 @@ public class SharedFoldersController {
     @FXML
     private void handleRequestAccess() {
         RequestAccessDialog.show(httpClient);
-    }
-
-    @FXML
-    private void handleOpenFolder() {
-        SharedFolderItem selected = foldersTable.getSelectionModel().getSelectedItem();
-        if (selected == null) {
-            showAlert("No selection", "Please select a folder");
-            return;
-        }
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/filesync/client/controller/server-file-list.fxml"));
-            VBox root = loader.load();
-            ServerFileListController fileController = loader.getController();
-            fileController.initialize(httpClient, ownerId, selected.getId());
-            Stage stage = new Stage();
-            stage.setTitle("Shared Folder: " + selected.getName());
-            stage.setScene(new Scene(root, 900, 500));
-            stage.show();
-        } catch (Exception e) {
-            e.printStackTrace();
-            showAlert("Error", "Cannot open folder: " + e.getMessage());
-        }
     }
 
     @FXML
@@ -190,8 +213,6 @@ public class SharedFoldersController {
         });
     }
 
-
-
     private void showAlert(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);
@@ -200,7 +221,6 @@ public class SharedFoldersController {
         alert.showAndWait();
     }
 
-    // Inner class for table items
     public static class SharedFolderItem {
         private final UUID id;
         private final String name;

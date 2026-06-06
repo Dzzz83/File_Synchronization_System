@@ -25,7 +25,7 @@ public class FileOperationService {
     }
 
     public List<FileMetadataDto> listFiles() {
-        return httpClient.getFiles(ownerId, folderId);
+        return httpClient.getFiles(ownerId, folderId, null);
     }
 
     public void deleteFile(String fileId) {
@@ -36,7 +36,7 @@ public class FileOperationService {
         httpClient.downloadFile(fileId, destination);
     }
 
-    public void uploadFile(Path localFilePath) throws IOException {
+    public void uploadFile(Path localFilePath, UUID parentId) throws IOException {
         String fileName = localFilePath.getFileName().toString();
         String fileId = UUID.randomUUID().toString();
         long fileSize = Files.size(localFilePath);
@@ -51,6 +51,7 @@ public class FileOperationService {
         dto.setOwnerId(ownerId);
         dto.setStatus(SyncStatus.SYNCED);
         dto.setFolderId(folderId);
+        dto.setParentId(parentId);
 
         httpClient.createMetadata(dto);
 
@@ -75,6 +76,7 @@ public class FileOperationService {
             updatedDto.setOwnerId(ownerId);
             updatedDto.setStatus(SyncStatus.SYNCED);
             updatedDto.setFolderId(folderId);
+            updatedDto.setParentId(fileDto.getParentId());
 
             httpClient.createMetadata(updatedDto);
 

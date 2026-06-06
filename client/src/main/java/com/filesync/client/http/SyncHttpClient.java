@@ -11,9 +11,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public class SyncHttpClient {
     private final WebClient webClient;
@@ -110,12 +108,13 @@ public class SyncHttpClient {
         Files.write(destination, data);
     }
 
-    public List<FileMetadataDto> getFiles(String ownerId, UUID folderId) {
+    public List<FileMetadataDto> getFiles(String ownerId, UUID sharedFolderId, UUID parentId) {
         try {
+            List<String> queryParams = new ArrayList<>();
+            if (sharedFolderId != null) queryParams.add("folderId=" + sharedFolderId);
+            if (parentId != null) queryParams.add("parentId=" + parentId);
             String uri = "/api/files/user/" + ownerId;
-            if (folderId != null) {
-                uri += "?folderId=" + folderId;
-            }
+            if (!queryParams.isEmpty()) uri += "?" + String.join("&", queryParams);
             FileMetadataDto[] files = addAuth(webClient.get().uri(uri))
                     .retrieve()
                     .bodyToMono(FileMetadataDto[].class)
@@ -326,6 +325,36 @@ public class SyncHttpClient {
                 .retrieve()
                 .bodyToMono(Void.class)
                 .block();
+    }
+
+    public UUID createFolder(String name, UUID parentId, UUID sharedFolderId) {
+        // Build request parameters
+        Map<String, Object> params = new HashMap<>();
+        params.put("name", name);
+        if (parentId != null) {
+            params.put("parentId", parentId);
+        }
+        if (sharedFolderId != null) {
+            params.put("folderId", sharedFolderId);
+        }
+
+        // Send request and get response
+        FileMetadataDto response = addAuth(webClient.post().uri("/api/files/folder").bodyValue(params))
+                .retrieve()
+                .bodyToMono(FileMetadataDto.class)
+                .block();
+
+        // Validate response
+        if (response == null || response.getFileId() == null) {
+            throw new RuntimeException("Failed to create folder: server returned null response");
+        }
+
+        // Parse and return UUID
+        try {
+            return UUID.fromString(response.getFileId());
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid UUID returned from server: " + response.getFileId(), e);
+        }
     }
 
     public String getAuthToken() {

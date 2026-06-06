@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-public class RequestAccessDialogController {
+public class RequestAccessController {
     @FXML private TextField searchField;
     @FXML private Button searchButton;
     @FXML private ListView<String> resultsList;

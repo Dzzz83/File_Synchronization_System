@@ -93,7 +93,7 @@ public class StartupController {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/filesync/client/controller/send-reset-code.fxml"));
             Parent root = loader.load();
-            SendResetCodeController controller = loader.getController();
+            RequestResetController controller = loader.getController();
             Stage dialogStage = new Stage();
             dialogStage.setTitle("Reset Password");
             dialogStage.initModality(Modality.WINDOW_MODAL);

@@ -1,6 +1,7 @@
 package com.filesync.server.controller;
 
 import com.filesync.common.dto.FileMetadataDto;
+import com.filesync.common.dto.CreateFolderRequest;
 import com.filesync.server.domain.FileMetadataEntity;
 import com.filesync.server.service.FileMetaDataService;
 import com.filesync.server.service.PermissionService;
@@ -46,7 +47,7 @@ public class FileController {
         }
         else
         {
-            // New file: check folder or personal ownership
+            // new file: check folder or personal ownership
             if (fileMetadataDto.getFolderId() != null)
             {
                 if (!permissionService.canWriteToFolder(userId, fileMetadataDto.getFolderId()))
@@ -69,7 +70,8 @@ public class FileController {
 
     @GetMapping("/user/{ownerId}")
     public ResponseEntity<?> getFilesByOwner(@PathVariable("ownerId") String ownerId,
-                                             @RequestParam(value = "folderId", required = false) UUID folderId,
+                                             @RequestParam(name = "parentId", required = false) UUID parentId,
+                                             @RequestParam(name = "folderId", required = false) UUID folderId,
                                              Authentication authentication) {
         String userId = authentication.getName();
         if (!ownerId.equals(userId)) {
@@ -78,20 +80,26 @@ public class FileController {
 
         List<FileMetadataEntity> entities;
         if (folderId != null) {
-            // Shared folder – user must have at least READ permission
+            // Shared folder
             if (!permissionService.canReadFolder(userId, folderId)) {
-                return ResponseEntity.status(403).body("No access to this folder");
+                return ResponseEntity.status(403).body("No access to shared folder");
             }
-            entities = fileMetaDataService.getFilesByFolder(folderId);
+            if (parentId != null) {
+                // Specific subfolder inside shared folder
+                entities = fileMetaDataService.getFilesByParent(parentId);
+            } else {
+                // Root of shared folder
+                entities = fileMetaDataService.getSharedFolderRootFiles(folderId);
+            }
         } else {
             // Personal files
-            entities = fileMetaDataService.getPersonalFilesByOwner(ownerId);
+            if (parentId != null) {
+                entities = fileMetaDataService.getFilesByParent(parentId);
+            } else {
+                entities = fileMetaDataService.getPersonalRootFiles(ownerId);
+            }
         }
-
-        List<FileMetadataDto> dtos = entities.stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(dtos);
+        return ResponseEntity.ok(entities.stream().map(this::convertToDto).collect(Collectors.toList()));
     }
 
     @GetMapping("/{fileId}")
@@ -117,6 +125,31 @@ public class FileController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/folder")
+    public ResponseEntity<?> createFolder(@RequestBody CreateFolderRequest request,
+                                          Authentication authentication) {
+        String userId = authentication.getName();
+        String name = request.getName();
+        UUID parentId = request.getParentId();
+        UUID folderId = request.getFolderId();
+
+        // Check write permission on the target location
+        if (folderId != null) {
+            if (!permissionService.canWriteToFolder(userId, folderId)) {
+                return ResponseEntity.status(403).body("No write permission on shared folder");
+            }
+        } else {
+            if (parentId != null) {
+                if (!permissionService.canWrite(userId, parentId.toString())) {
+                    return ResponseEntity.status(403).body("No write permission on parent folder");
+                }
+            }
+        }
+
+        FileMetadataEntity folder = fileMetaDataService.createFolder(name, userId, parentId, folderId);
+        return ResponseEntity.ok(convertToDto(folder));
+    }
+
     private FileMetadataEntity convertToEntity(FileMetadataDto dto) {
         FileMetadataEntity entity = new FileMetadataEntity();
         entity.setId(dto.getFileId());
@@ -129,6 +162,8 @@ public class FileController {
         entity.setSharedWith(dto.getSharedWith());
         entity.setStatus(dto.getStatus());
         entity.setFolderId(dto.getFolderId());
+        entity.setDirectory(dto.isDirectory());
+        entity.setParentId(dto.getParentId());
         return entity;
     }
 
@@ -144,6 +179,8 @@ public class FileController {
         dto.setSharedWith(entity.getSharedWith());
         dto.setStatus(entity.getStatus());
         dto.setFolderId(entity.getFolderId());
+        dto.setDirectory(entity.isDirectory());
+        dto.setParentId(entity.getParentId());
         return dto;
     }
 }

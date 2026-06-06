@@ -39,8 +39,8 @@ public class ServerAdminApp extends Application {
             // Personal files tab
             FXMLLoader personalLoader = new FXMLLoader(ServerAdminApp.class.getResource("/com/filesync/client/controller/server-file-list.fxml"));
             VBox personalRoot = personalLoader.load();
-            ServerFileListController personalController = personalLoader.getController();
-            personalController.initialize(httpClient, username, null); // null folderId = personal
+            FileExplorerController personalController = personalLoader.getController();
+            personalController.initialize(httpClient, username, null, null); // null folderId, null parentId
             Tab personalTab = new Tab("My Files", personalRoot);
             personalTab.setClosable(false);
 

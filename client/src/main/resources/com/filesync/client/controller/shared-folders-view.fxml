@@ -1,23 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
 
 <VBox spacing="10" alignment="CENTER" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.SharedFoldersController">
-    <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
-    <TableView fx:id="foldersTable" VBox.vgrow="ALWAYS">
-        <columns>
-            <TableColumn fx:id="nameColumn" text="Folder Name" prefWidth="200"/>
-            <TableColumn fx:id="ownerColumn" text="Owner" prefWidth="150"/>
-            <TableColumn fx:id="permissionColumn" text="Your Permission" prefWidth="100"/>
-        </columns>
-    </TableView>
-    <HBox spacing="10" alignment="CENTER">
+    <VBox fx:id="container" VBox.vgrow="ALWAYS">
+        <TableView fx:id="foldersTable" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="nameColumn" text="Folder Name" prefWidth="200"/>
+                <TableColumn fx:id="ownerColumn" text="Owner" prefWidth="150"/>
+                <TableColumn fx:id="permissionColumn" text="Your Permission" prefWidth="100"/>
+            </columns>
+        </TableView>
+    </VBox>
+    <HBox fx:id="actionButtons" spacing="10" alignment="CENTER">
         <Button text="Create New Folder" onAction="#handleCreateFolder"/>
         <Button text="Request Access" onAction="#handleRequestAccess"/>
-        <Button text="Open Selected Folder" onAction="#handleOpenFolder"/>
         <Button text="Manage Members" onAction="#handleManageMembers"/>
-        <Button fx:id="manageRequestsButton" text="Manage Requests" onAction="#handleManageRequests" disable="true"/>
-        <Button fx:id="deleteFolderButton" text="Delete Folder" onAction="#handleDeleteFolder" disable="true"/>
+        <Button fx:id="manageRequestsButton" text="Manage Requests" disable="true"/>
+        <Button fx:id="deleteFolderButton" text="Delete Folder" disable="true"/>
     </HBox>
 </VBox>

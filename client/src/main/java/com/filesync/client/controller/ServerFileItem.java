@@ -10,15 +10,19 @@ public class ServerFileItem {
     private final Instant lastModified;
     private final String sha256Hash;
     private final UUID folderId;
+    private final boolean isDirectory;
+    private final UUID parentId;
 
     public ServerFileItem(String fileId, String relativePath, long size, Instant lastModified, String sha256Hash,
-                          UUID folderId) {
+                          UUID folderId, boolean isDirectory, UUID parentId) {
         this.fileId = fileId;
         this.relativePath = relativePath;
         this.size = size;
         this.lastModified = lastModified;
         this.sha256Hash = sha256Hash;
         this.folderId = folderId;
+        this.isDirectory = isDirectory;
+        this.parentId = parentId;
     }
 
     public UUID getFolderId() {
@@ -30,4 +34,5 @@ public class ServerFileItem {
     public long getSize() { return size; }
     public Instant getLastModified() { return lastModified; }
     public String getSha256Hash() { return sha256Hash; }
+    public boolean isDirectory() { return isDirectory; }
 }

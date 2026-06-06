@@ -35,6 +35,12 @@ public class FileMetadataEntity {
     @Column(name = "folder_id", nullable = true)
     private UUID folderId;   // null = personal file
 
+    @Column(name = "is_directory")
+    private boolean isDirectory;
+
+    @Column(name = "parent_id")
+    private UUID parentId;
+
     // getter/setter
     public UUID getFolderId() { return folderId; }
     public void setFolderId(UUID folderId) { this.folderId = folderId; }
@@ -113,6 +119,11 @@ public class FileMetadataEntity {
     public void setStatus(SyncStatus status) {
         this.status = status;
     }
+
+    public boolean isDirectory() { return isDirectory; }
+    public void setDirectory(boolean directory) { isDirectory = directory; }
+    public UUID getParentId() { return parentId; }
+    public void setParentId(UUID parentId) { this.parentId = parentId; }
 
     @Override
     public boolean equals(Object o) {
