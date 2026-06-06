@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<HBox xmlns="http://javafx.com/javafx/8"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.filesync.client.controller.GlobalProgressController"
+      alignment="CENTER_RIGHT" spacing="10">
+    <Label fx:id="progressLabel" text=""/>
+    <ProgressBar fx:id="progressBar" prefWidth="150" progress="0.0"/>
+</HBox>

@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.Authentication;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -148,6 +149,47 @@ public class FileController {
 
         FileMetadataEntity folder = fileMetaDataService.createFolder(name, userId, parentId, folderId);
         return ResponseEntity.ok(convertToDto(folder));
+    }
+
+    @PutMapping("/{fileId}/parent")
+    public ResponseEntity<?> updateParent(@PathVariable("fileId") String fileId,
+                                          @RequestBody Map<String, String> request,
+                                          Authentication authentication) {
+        String userId = authentication.getName();
+        String newParentIdStr = request.get("parentId");
+        if (newParentIdStr == null) {
+            return ResponseEntity.badRequest().body("Missing parentId");
+        }
+        UUID newParentId = UUID.fromString(newParentIdStr);
+
+        FileMetadataEntity entity = fileMetaDataService.getFileById(fileId);
+        if (entity == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        if (!permissionService.canWrite(userId, fileId)) {
+            return ResponseEntity.status(403).body("No write permission on source item");
+        }
+
+        FileMetadataEntity newParent = fileMetaDataService.getFileById(newParentIdStr);
+        if (newParent == null || !newParent.isDirectory()) {
+            return ResponseEntity.badRequest().body("Target must be a directory");
+        }
+
+        UUID newParentFolderId = newParent.getFolderId();
+        if (newParentFolderId == null) {
+            if (!newParent.getOwnerId().equals(userId)) {
+                return ResponseEntity.status(403).body("Not owner of target folder");
+            }
+        } else {
+            if (!permissionService.canWriteToFolder(userId, newParentFolderId)) {
+                return ResponseEntity.status(403).body("No write permission on target shared folder");
+            }
+        }
+
+        entity.setParentId(newParentId);
+        fileMetaDataService.saveFileMetaData(entity);
+        return ResponseEntity.ok().build();
     }
 
     private FileMetadataEntity convertToEntity(FileMetadataDto dto) {

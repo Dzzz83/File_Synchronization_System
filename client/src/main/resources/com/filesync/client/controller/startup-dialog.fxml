@@ -87,7 +87,7 @@
                      </children>
                   </FlowPane>
                   <Pane prefHeight="9.0" prefWidth="400.0" />
-                      <Button onAction="#handleLogin" prefHeight="34.0" prefWidth="68.0" text="Login" />
+                      <Button fx:id="loginButton" onAction="#handleLogin" prefHeight="34.0" prefWidth="68.0" text="Login" />
                   </VBox>
               </Tab>
               <Tab text="Register">
@@ -120,7 +120,7 @@
                      </children>
                   </FlowPane>
                   <Pane prefHeight="5.0" prefWidth="200.0" />
-                      <Button alignment="CENTER" contentDisplay="CENTER" onAction="#handleRegister" prefHeight="40.0" prefWidth="146.0" text="Register" />
+                      <Button fx:id="registerButton" alignment="CENTER" contentDisplay="CENTER" onAction="#handleRegister" prefHeight="40.0" prefWidth="146.0" text="Register" />
                   </VBox>
               </Tab>
           </TabPane>

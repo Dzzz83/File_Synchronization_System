@@ -22,12 +22,12 @@
     </TableView>
 
     <HBox alignment="CENTER" spacing="10">
-        <Button onAction="#handleUpload" text="Upload" />
-        <Button onAction="#handleDownload" text="Download" />
-        <Button onAction="#handleEdit" text="Edit" />
-        <Button onAction="#handleDelete" text="Delete" />
-        <Button onAction="#handleRefresh" text="Refresh" />
+        <Button fx:id="uploadButton" onAction="#handleUpload" text="Upload" />
+        <Button fx:id="downloadButton" onAction="#handleDownload" text="Download" />
+        <Button fx:id="editButton" onAction="#handleEdit" text="Edit" />
+        <Button fx:id="deleteButton" onAction="#handleDelete" text="Delete" />
+        <Button fx:id="refreshButton" onAction="#handleRefresh" text="Refresh" />
         <Button onAction="#handleLogout" text="Logout" />
-        <Button text="New Folder" onAction="#handleNewFolder"/>
+        <Button fx:id="newFolderButton" text="New Folder" onAction="#handleNewFolder"/>
     </HBox>
 </VBox>

@@ -48,6 +48,14 @@ public class SyncHttpClient {
         }
     }
 
+    public void moveFile(String fileId, String newParentId) {
+        Map<String, Object> body = Map.of("parentId", newParentId);
+        addAuth(webClient.put().uri("/api/files/{fileId}/parent", fileId).bodyValue(body))
+                .retrieve()
+                .bodyToMono(Void.class)
+                .block();
+    }
+
     private WebClient.RequestHeadersSpec<?> addAuth(WebClient.RequestHeadersSpec<?> spec) {
         if (authToken != null && !authToken.isEmpty()) {
             return spec.header("Authorization", "Bearer " + authToken);

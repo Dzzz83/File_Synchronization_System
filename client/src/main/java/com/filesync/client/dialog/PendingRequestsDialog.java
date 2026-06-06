@@ -6,10 +6,12 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 
 public class PendingRequestsDialog {
-    public static void show(UUID folderId, SyncHttpClient httpClient, Runnable onApproved) {
+    public static void show(UUID folderId, SyncHttpClient httpClient, Runnable onApproved, ExecutorService executorService) {
         try {
             FXMLLoader loader = new FXMLLoader(PendingRequestsDialog.class.getResource("/com/filesync/client/dialog/pending-requests-dialog.fxml"));
             Scene scene = new Scene(loader.load(), 350, 250);
@@ -18,7 +20,7 @@ public class PendingRequestsDialog {
             dialogStage.initModality(Modality.APPLICATION_MODAL);
             dialogStage.setTitle("Pending Access Requests");
             dialogStage.setScene(scene);
-            controller.setData(folderId, httpClient, dialogStage, onApproved);
+            controller.setData(folderId, httpClient, dialogStage, onApproved, executorService);
             dialogStage.showAndWait();
         } catch (Exception e) {
             e.printStackTrace();

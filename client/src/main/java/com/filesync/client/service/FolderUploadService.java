@@ -4,12 +4,15 @@ import com.filesync.client.file.FileHasher;
 import com.filesync.client.http.SyncHttpClient;
 import com.filesync.common.dto.FileMetadataDto;
 import com.filesync.common.enums.SyncStatus;
+import javafx.application.Platform;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
@@ -17,19 +20,25 @@ public class FolderUploadService {
     private final SyncHttpClient httpClient;
     private final String ownerId;
     private final UUID sharedFolderId;
-    private final UUID parentId;          // root parent ID (current directory where upload starts)
-    private final Path localFolder;       // local folder to upload
+    private final UUID parentId;
+    private final Path localFolder;
     private final Consumer<String> statusCallback;
     private final Map<Path, UUID> folderIdCache = new HashMap<>();
+    private final ProgressService progressService;
+    private final int totalFiles;
+    private final AtomicInteger uploadedFiles = new AtomicInteger(0);
 
     public FolderUploadService(SyncHttpClient httpClient, String ownerId, UUID sharedFolderId,
-                               UUID parentId, Path localFolder, Consumer<String> statusCallback) {
+                               UUID parentId, Path localFolder, Consumer<String> statusCallback,
+                               ProgressService progressService, int totalFiles) {
         this.httpClient = httpClient;
         this.ownerId = ownerId;
         this.sharedFolderId = sharedFolderId;
         this.parentId = parentId;
         this.localFolder = localFolder;
         this.statusCallback = statusCallback;
+        this.progressService = progressService;
+        this.totalFiles = totalFiles;
     }
 
     private void createServerDirectory(Path dir) throws IOException {
@@ -38,13 +47,12 @@ public class FolderUploadService {
         Path parentDir = dir.getParent();
         UUID parentServerId = folderIdCache.get(parentDir);
         if (parentServerId == null) {
-            // Should not happen with top‑down walk, but safe fallback
             if (parentDir != null && !parentDir.equals(localFolder)) {
                 createServerDirectory(parentDir);
                 parentServerId = folderIdCache.get(parentDir);
             }
             if (parentServerId == null) {
-                parentServerId = this.parentId; // root parent
+                parentServerId = this.parentId;
             }
         }
 
@@ -64,7 +72,7 @@ public class FolderUploadService {
         // Step 2: Create all subdirectories (top‑down)
         try (Stream<Path> walk = Files.walk(localFolder)) {
             walk.filter(Files::isDirectory)
-                    .filter(dir -> !dir.equals(localFolder)) // skip root, already created
+                    .filter(dir -> !dir.equals(localFolder))
                     .forEach(dir -> {
                         try {
                             createServerDirectory(dir);
@@ -74,7 +82,7 @@ public class FolderUploadService {
                     });
         }
 
-        // Step 3: Upload all files (use the cached folder IDs)
+        // Step 3: Upload all files
         try (Stream<Path> walk = Files.walk(localFolder)) {
             walk.filter(Files::isRegularFile)
                     .forEach(this::uploadSingleFile);
@@ -86,7 +94,6 @@ public class FolderUploadService {
             Path parentDir = file.getParent();
             UUID parentServerId = folderIdCache.get(parentDir);
             if (parentServerId == null) {
-                // Fallback: use the upload root parent ID
                 parentServerId = parentId;
                 statusCallback.accept("Warning: parent folder not cached for " + file);
             }
@@ -112,8 +119,12 @@ public class FolderUploadService {
                 httpClient.uploadFile(fileId, file, sharedFolderId);
             }
             statusCallback.accept("Uploaded: " + fileName);
+
+            // Update progress
+            int completed = uploadedFiles.incrementAndGet();
+            Platform.runLater(() -> progressService.updateProgress(completed, totalFiles));
         } catch (Exception e) {
-            statusCallback.accept("Failed: " + file.getFileName());
+            statusCallback.accept("Failed: " + file.getFileName() + " - " + e.getMessage());
         }
     }
 }

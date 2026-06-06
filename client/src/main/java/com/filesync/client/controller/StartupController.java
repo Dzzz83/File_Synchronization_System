@@ -1,15 +1,17 @@
 package com.filesync.client.controller;
 
+import com.filesync.client.http.SyncHttpClient;
+import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
-import javafx.scene.control.PasswordField;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
-import com.filesync.client.http.SyncHttpClient;
+
+import java.util.concurrent.ExecutorService;
 
 public class StartupController {
     @FXML private TextField serverUrlField;
@@ -18,24 +20,23 @@ public class StartupController {
     @FXML private TextField registerPasswordField;
     @FXML private TextField registerEmailField;
     @FXML private PasswordField loginPasswordField;
+    @FXML private Button loginButton;
+    @FXML private Button registerButton;
 
     private Stage primaryStage;
 
-    public void setPrimaryStage(Stage stage)
-    {
+    public void setPrimaryStage(Stage stage) {
         this.primaryStage = stage;
         ServerAdminApp.setMainStage(stage);
     }
 
-    private void showAlert(String title, String message)
-    {
+    private void showAlert(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
     }
-
 
     @FXML
     private void handleLogin() {
@@ -48,15 +49,34 @@ public class StartupController {
             return;
         }
 
-        try {
-            SyncHttpClient client = new SyncHttpClient(serverUrl);
-            String actualUsername = client.login(loginInput, password);
-            String token = client.getAuthToken(); // we added this getter
-            // Close login window and open main window with tabs
-            ServerAdminApp.showMainWindow(serverUrl, token, actualUsername);
-        } catch (Exception e) {
-            showAlert("Login failed", e.getMessage());
-        }
+        loginButton.setDisable(true);
+        loginButton.setText("Logging in...");
+
+        ExecutorService executor = ServerAdminApp.getInstance().getExecutor();
+        Task<String[]> loginTask = new Task<>() {
+            @Override
+            protected String[] call() throws Exception {
+                SyncHttpClient client = new SyncHttpClient(serverUrl);
+                String username = client.login(loginInput, password);
+                String token = client.getAuthToken();
+                return new String[]{username, token};
+            }
+        };
+        loginTask.setOnSucceeded(e -> {
+            String[] result = loginTask.getValue();
+            Platform.runLater(() -> {
+                ServerAdminApp.showMainWindow(serverUrl, result[1], result[0]);
+                primaryStage.close(); // close login window
+            });
+        });
+        loginTask.setOnFailed(e -> {
+            Platform.runLater(() -> {
+                loginButton.setDisable(false);
+                loginButton.setText("Login");
+                showAlert("Login failed", loginTask.getException().getMessage());
+            });
+        });
+        executor.submit(loginTask);
     }
 
     @FXML
@@ -71,17 +91,40 @@ public class StartupController {
             return;
         }
 
-        SyncHttpClient tempClient = new SyncHttpClient(serverUrl);
-        boolean success = tempClient.registerUser(username, password, email);
+        registerButton.setDisable(true);
+        registerButton.setText("Registering...");
 
-        if (success) {
-            showAlert("Success", "Registration successful. You can now login.");
-            // pre-fill login username field
-            ownerIdField.setText(username);
-        } else {
-            showAlert("Registration failed", "Username or email may already exist.");
-        }
+        ExecutorService executor = ServerAdminApp.getInstance().getExecutor();
+        Task<Boolean> registerTask = new Task<>() {
+            @Override
+            protected Boolean call() throws Exception {
+                SyncHttpClient tempClient = new SyncHttpClient(serverUrl);
+                return tempClient.registerUser(username, password, email);
+            }
+        };
+        registerTask.setOnSucceeded(e -> {
+            boolean success = registerTask.getValue();
+            Platform.runLater(() -> {
+                registerButton.setDisable(false);
+                registerButton.setText("Register");
+                if (success) {
+                    showAlert("Success", "Registration successful. You can now login.");
+                    ownerIdField.setText(username);
+                } else {
+                    showAlert("Registration failed", "Username or email may already exist.");
+                }
+            });
+        });
+        registerTask.setOnFailed(e -> {
+            Platform.runLater(() -> {
+                registerButton.setDisable(false);
+                registerButton.setText("Register");
+                showAlert("Registration failed", registerTask.getException().getMessage());
+            });
+        });
+        executor.submit(registerTask);
     }
+
     @FXML
     private void handleForgotPassword() {
         String serverUrl = serverUrlField.getText().trim();
@@ -100,7 +143,8 @@ public class StartupController {
             dialogStage.initOwner(primaryStage);
             dialogStage.setScene(new Scene(root));
             dialogStage.setResizable(false);
-            controller.setData(serverUrl, dialogStage);
+            // Pass the executor
+            controller.setData(serverUrl, dialogStage, ServerAdminApp.getInstance().getExecutor());
             dialogStage.showAndWait();
         } catch (Exception e) {
             e.printStackTrace();

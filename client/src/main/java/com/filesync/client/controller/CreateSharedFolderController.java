@@ -5,13 +5,16 @@ import com.filesync.common.dto.CreateFolderDto;
 import com.filesync.common.dto.MemberDto;
 import com.filesync.common.dto.UserSearchResult;
 import com.filesync.common.enums.Permission;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 
 public class CreateSharedFolderController {
     @FXML private TextField nameField;
@@ -28,10 +31,12 @@ public class CreateSharedFolderController {
     private Stage dialogStage;
     private CreateFolderDto result;
     private List<MemberDto> selectedMembers = new ArrayList<>();
+    private ExecutorService executorService;
 
-    public void setData(Stage dialogStage, SyncHttpClient httpClient) {
+    public void setData(Stage dialogStage, SyncHttpClient httpClient, ExecutorService executorService) {
         this.dialogStage = dialogStage;
         this.httpClient = httpClient;
+        this.executorService = executorService;
         initialize();
     }
 
@@ -54,20 +59,40 @@ public class CreateSharedFolderController {
     private void searchUsers() {
         String query = searchField.getText().trim();
         if (query.length() < 2) return;
-        try {
-            List<UserSearchResult> users = httpClient.searchUsers(query);
-            searchResults.getItems().clear();
-            for (UserSearchResult u : users) {
-                searchResults.getItems().add(u.getUsername() + " (" + u.getEmail() + ")");
+
+        searchButton.setDisable(true);
+        searchButton.setText("Searching...");
+        searchResults.getItems().clear();
+
+        Task<List<UserSearchResult>> searchTask = new Task<>() {
+            @Override
+            protected List<UserSearchResult> call() throws Exception {
+                return httpClient.searchUsers(query);
             }
-            addMemberBtn.setDisable(searchResults.getItems().isEmpty());
-            if (!searchResults.getItems().isEmpty()) {
-                searchResults.getSelectionModel().selectFirst();
-            }
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            addMemberBtn.setDisable(true);
-        }
+        };
+        searchTask.setOnSucceeded(e -> {
+            List<UserSearchResult> users = searchTask.getValue();
+            Platform.runLater(() -> {
+                searchResults.getItems().clear();
+                for (UserSearchResult u : users) {
+                    searchResults.getItems().add(u.getUsername() + " (" + u.getEmail() + ")");
+                }
+                addMemberBtn.setDisable(searchResults.getItems().isEmpty());
+                if (!searchResults.getItems().isEmpty()) {
+                    searchResults.getSelectionModel().selectFirst();
+                }
+                searchButton.setDisable(false);
+                searchButton.setText("Search");
+            });
+        });
+        searchTask.setOnFailed(e -> {
+            Platform.runLater(() -> {
+                searchButton.setDisable(false);
+                searchButton.setText("Search");
+                showAlert("Search Error", searchTask.getException().getMessage());
+            });
+        });
+        executorService.submit(searchTask);
     }
 
     private void addMember() {
@@ -106,8 +131,7 @@ public class CreateSharedFolderController {
     private void onCreate() {
         String folderName = nameField.getText().trim();
         if (folderName.isEmpty()) {
-            Alert alert = new Alert(Alert.AlertType.ERROR, "Folder name cannot be empty");
-            alert.showAndWait();
+            showAlert("Error", "Folder name cannot be empty");
             return;
         }
         CreateFolderDto dto = new CreateFolderDto();
@@ -119,6 +143,14 @@ public class CreateSharedFolderController {
 
     public CreateFolderDto getResult() {
         return result;
+    }
+
+    private void showAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 
     private static class MemberItem {

@@ -1,15 +1,13 @@
 package com.filesync.client.controller;
 
-import com.filesync.client.dialog.AddMemberDialog;
-import com.filesync.client.dialog.CreateFolderDialog;
-import com.filesync.client.dialog.RequestAccessDialog;
-import com.filesync.client.dialog.PendingRequestsDialog;
+import com.filesync.client.dialog.*;
 import com.filesync.common.dto.CreateFolderDto;
 import com.filesync.client.http.SyncHttpClient;
 import com.filesync.common.dto.SharedFolderDto;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.*;
@@ -18,8 +16,10 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 
 public class SharedFoldersController {
     @FXML private TableView<SharedFolderItem> foldersTable;
@@ -33,13 +33,16 @@ public class SharedFoldersController {
 
     private SyncHttpClient httpClient;
     private String ownerId;
+    private ExecutorService executorService;
     private ObservableList<SharedFolderItem> folderItems = FXCollections.observableArrayList();
     private FileExplorerController currentExplorer;
     private boolean showingFoldersList = true;
 
-    public void initialize(SyncHttpClient httpClient, String ownerId) {
+    public void initialize(SyncHttpClient httpClient, String ownerId, ExecutorService executorService) {
         this.httpClient = httpClient;
         this.ownerId = ownerId;
+        this.executorService = executorService;
+
         nameColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
         ownerColumn.setCellValueFactory(new PropertyValueFactory<>("ownerId"));
         permissionColumn.setCellValueFactory(new PropertyValueFactory<>("permission"));
@@ -75,7 +78,7 @@ public class SharedFoldersController {
     private void showSharedFoldersList() {
         showingFoldersList = true;
         actionButtons.setVisible(true);
-        actionButtons.setManaged(true);   // re-insert into layout
+        actionButtons.setManaged(true);
         container.getChildren().clear();
         container.getChildren().add(foldersTable);
     }
@@ -83,11 +86,12 @@ public class SharedFoldersController {
     private void showFolderExplorer(UUID folderId) {
         showingFoldersList = false;
         actionButtons.setVisible(false);
-        actionButtons.setManaged(false);  // remove from layout
+        actionButtons.setManaged(false);
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/filesync/client/controller/server-file-list.fxml"));
             VBox explorerRoot = loader.load();
             currentExplorer = loader.getController();
+            currentExplorer.setExecutorService(executorService);  // inject executor
             currentExplorer.initialize(httpClient, ownerId, folderId, null);
             currentExplorer.setOnExitSharedFolder(this::showSharedFoldersList);
             container.getChildren().clear();
@@ -108,8 +112,14 @@ public class SharedFoldersController {
     }
 
     private void updateRequestsButton(UUID folderId) {
-        try {
-            int count = httpClient.getPendingRequestsCount(folderId);
+        Task<Integer> countTask = new Task<>() {
+            @Override
+            protected Integer call() throws Exception {
+                return httpClient.getPendingRequestsCount(folderId);
+            }
+        };
+        countTask.setOnSucceeded(e -> {
+            int count = countTask.getValue();
             Platform.runLater(() -> {
                 if (count > 0) {
                     manageRequestsButton.setText("Manage Requests (" + count + ")");
@@ -119,44 +129,79 @@ public class SharedFoldersController {
                     manageRequestsButton.setStyle("");
                 }
             });
-        } catch (Exception e) {
+        });
+        countTask.setOnFailed(e -> {
             Platform.runLater(() -> {
                 manageRequestsButton.setText("Manage Requests");
                 manageRequestsButton.setStyle("");
             });
-        }
+        });
+        executorService.submit(countTask);
     }
 
     private void refreshFolders() {
-        try {
-            List<SharedFolderDto> folders = httpClient.getUserSharedFolders(ownerId);
-            folderItems.clear();
-            for (SharedFolderDto dto : folders) {
-                folderItems.add(new SharedFolderItem(
-                        dto.getId(),
-                        dto.getName(),
-                        dto.getOwnerId(),
-                        dto.getYourPermission() != null ? dto.getYourPermission().name() : "NONE"
-                ));
+        // Disable table while loading
+        foldersTable.setDisable(true);
+
+        Task<List<SharedFolderDto>> refreshTask = new Task<>() {
+            @Override
+            protected List<SharedFolderDto> call() throws Exception {
+                return httpClient.getUserSharedFolders(ownerId);
             }
-        } catch (Exception e) {
-            showAlert("Error", "Failed to load shared folders: " + e.getMessage());
-        }
+        };
+        refreshTask.setOnSucceeded(e -> {
+            List<SharedFolderDto> folders = refreshTask.getValue();
+            Platform.runLater(() -> {
+                folderItems.clear();
+                for (SharedFolderDto dto : folders) {
+                    folderItems.add(new SharedFolderItem(
+                            dto.getId(),
+                            dto.getName(),
+                            dto.getOwnerId(),
+                            dto.getYourPermission() != null ? dto.getYourPermission().name() : "NONE"
+                    ));
+                }
+                foldersTable.setDisable(false);
+            });
+        });
+        refreshTask.setOnFailed(e -> {
+            Platform.runLater(() -> {
+                foldersTable.setDisable(false);
+                showAlert("Error", "Failed to load shared folders: " + refreshTask.getException().getMessage());
+            });
+        });
+        executorService.submit(refreshTask);
     }
 
     @FXML
     private void handleCreateFolder() {
         Stage owner = (Stage) foldersTable.getScene().getWindow();
-        CreateFolderDto dto = CreateFolderDialog.show(owner, httpClient);
-        if (dto != null) {
-            try {
+        CreateFolderDto dto = CreateSharedFolderDialog.show(owner, httpClient, executorService);
+        if (dto == null) return;
+
+        // Disable buttons during creation
+        disableButtons(true);
+        Task<Void> createTask = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
                 httpClient.createSharedFolder(dto.getName(), dto.getMembers());
+                return null;
+            }
+        };
+        createTask.setOnSucceeded(e -> {
+            Platform.runLater(() -> {
                 refreshFolders();
                 showAlert("Success", "Folder created: " + dto.getName());
-            } catch (Exception e) {
-                showAlert("Error", "Failed to create folder: " + e.getMessage());
-            }
-        }
+                disableButtons(false);
+            });
+        });
+        createTask.setOnFailed(e -> {
+            Platform.runLater(() -> {
+                disableButtons(false);
+                showAlert("Error", "Failed to create folder: " + createTask.getException().getMessage());
+            });
+        });
+        executorService.submit(createTask);
     }
 
     @FXML
@@ -171,26 +216,28 @@ public class SharedFoldersController {
             showAlert("No selection", "Please select a folder");
             return;
         }
+        // Pass executor to the dialog (your AddMemberDialog must accept it)
         AddMemberDialog.show(selected.getId(), httpClient, () -> {
             refreshFolders();
             if (foldersTable.getSelectionModel().getSelectedItem() != null &&
                     foldersTable.getSelectionModel().getSelectedItem().getOwnerId().equals(ownerId)) {
                 updateRequestsButton(selected.getId());
             }
-        });
+        }, executorService);
     }
 
     @FXML
     private void handleManageRequests() {
         SharedFolderItem selected = foldersTable.getSelectionModel().getSelectedItem();
         if (selected == null) return;
+        // Pass executor to the dialog (your PendingRequestsDialog already expects it)
         PendingRequestsDialog.show(selected.getId(), httpClient, () -> {
             refreshFolders();
             if (foldersTable.getSelectionModel().getSelectedItem() != null &&
                     foldersTable.getSelectionModel().getSelectedItem().getOwnerId().equals(ownerId)) {
                 updateRequestsButton(selected.getId());
             }
-        });
+        }, executorService);
     }
 
     @FXML
@@ -202,15 +249,37 @@ public class SharedFoldersController {
                 ButtonType.YES, ButtonType.NO);
         confirm.showAndWait().ifPresent(response -> {
             if (response == ButtonType.YES) {
-                try {
-                    httpClient.deleteSharedFolder(selected.getId());
-                    showAlert("Success", "Folder deleted.");
-                    refreshFolders();
-                } catch (Exception e) {
-                    showAlert("Error", "Failed to delete folder: " + e.getMessage());
-                }
+                disableButtons(true);
+                Task<Void> deleteTask = new Task<>() {
+                    @Override
+                    protected Void call() throws Exception {
+                        httpClient.deleteSharedFolder(selected.getId());
+                        return null;
+                    }
+                };
+                deleteTask.setOnSucceeded(e -> {
+                    Platform.runLater(() -> {
+                        showAlert("Success", "Folder deleted.");
+                        refreshFolders();
+                        disableButtons(false);
+                    });
+                });
+                deleteTask.setOnFailed(e -> {
+                    Platform.runLater(() -> {
+                        disableButtons(false);
+                        showAlert("Error", "Failed to delete folder: " + deleteTask.getException().getMessage());
+                    });
+                });
+                executorService.submit(deleteTask);
             }
         });
+    }
+
+    private void disableButtons(boolean disable) {
+        manageRequestsButton.setDisable(disable);
+        deleteFolderButton.setDisable(disable);
+        // Also disable the "Create Folder" button if you have a reference
+        // You can add @FXML private Button createFolderButton; and disable it too.
     }
 
     private void showAlert(String title, String message) {

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox spacing="15" alignment="CENTER" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.ConfirmationDialogController">
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+    <Label fx:id="messageLabel" text="Are you sure?" wrapText="true" style="-fx-font-size: 13px;"/>
+    <HBox spacing="15" alignment="CENTER">
+        <Button fx:id="confirmButton" text="Confirm" prefWidth="80"/>
+        <Button fx:id="cancelButton" text="Cancel" prefWidth="80"/>
+    </HBox>
+</VBox>

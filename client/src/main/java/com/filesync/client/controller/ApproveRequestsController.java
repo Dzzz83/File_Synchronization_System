@@ -1,12 +1,16 @@
 package com.filesync.client.controller;
 
 import com.filesync.client.http.SyncHttpClient;
+import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
+
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 
 public class ApproveRequestsController {
     @FXML private ListView<String> requestsList;
@@ -18,14 +22,7 @@ public class ApproveRequestsController {
     private Stage dialogStage;
     private List<Map<String, Object>> requests;
     private Runnable onApproved;
-
-    public void setData(UUID folderId, SyncHttpClient httpClient, Stage dialogStage, Runnable onApproved) {
-        this.folderId = folderId;
-        this.httpClient = httpClient;
-        this.dialogStage = dialogStage;
-        this.onApproved = onApproved;
-        loadRequests();
-    }
+    private ExecutorService executorService;
 
     @FXML
     private void initialize() {
@@ -35,36 +32,83 @@ public class ApproveRequestsController {
         closeButton.setOnAction(e -> dialogStage.close());
     }
 
+    public void setData(UUID folderId, SyncHttpClient httpClient, Stage dialogStage,
+                        Runnable onApproved, ExecutorService executorService) {
+        this.folderId = folderId;
+        this.httpClient = httpClient;
+        this.dialogStage = dialogStage;
+        this.onApproved = onApproved;
+        this.executorService = executorService;
+        loadRequests();
+    }
+
     private void loadRequests() {
-        try {
-            requests = httpClient.getPendingRequests(folderId);
-            requestsList.getItems().clear();
-            for (Map<String, Object> req : requests) {
-                String requester = (String) req.get("requesterId");
-                requestsList.getItems().add(requester);
+        // Disable buttons while loading
+        approveButton.setDisable(true);
+        closeButton.setDisable(true);
+
+        Task<List<Map<String, Object>>> loadTask = new Task<>() {
+            @Override
+            protected List<Map<String, Object>> call() throws Exception {
+                return httpClient.getPendingRequests(folderId);
             }
-            if (requests.isEmpty()) {
-                approveButton.setDisable(true);
-            }
-        } catch (Exception e) {
-            showAlert("Error", "Could not fetch pending requests: " + e.getMessage());
-            dialogStage.close();
-        }
+        };
+        loadTask.setOnSucceeded(e -> {
+            requests = loadTask.getValue();
+            Platform.runLater(() -> {
+                requestsList.getItems().clear();
+                if (requests != null) {
+                    for (Map<String, Object> req : requests) {
+                        String requester = (String) req.get("requesterId");
+                        requestsList.getItems().add(requester);
+                    }
+                }
+                approveButton.setDisable(requests == null || requests.isEmpty());
+                closeButton.setDisable(false);
+            });
+        });
+        loadTask.setOnFailed(e -> {
+            Platform.runLater(() -> {
+                showAlert("Error", "Could not fetch pending requests: " + loadTask.getException().getMessage());
+                dialogStage.close();
+            });
+        });
+        executorService.submit(loadTask);
     }
 
     private void approveSelected() {
         int idx = requestsList.getSelectionModel().getSelectedIndex();
-        if (idx >= 0 && requests != null && idx < requests.size()) {
-            UUID requestId = UUID.fromString((String) requests.get(idx).get("requestId"));
-            try {
+        if (idx < 0 || requests == null || idx >= requests.size()) return;
+
+        UUID requestId = UUID.fromString((String) requests.get(idx).get("requestId"));
+        String selectedUser = requestsList.getSelectionModel().getSelectedItem();
+
+        // Disable buttons during approval
+        approveButton.setDisable(true);
+        closeButton.setDisable(true);
+
+        Task<Void> approveTask = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
                 httpClient.approveRequest(requestId);
-                showAlert("Approved", "User " + requestsList.getSelectionModel().getSelectedItem() + " has been added as READ-only member.");
+                return null;
+            }
+        };
+        approveTask.setOnSucceeded(e -> {
+            Platform.runLater(() -> {
+                showAlert("Approved", "User " + selectedUser + " has been added as READ-only member.");
                 if (onApproved != null) onApproved.run();
                 dialogStage.close();
-            } catch (Exception e) {
-                showAlert("Error", "Failed to approve: " + e.getMessage());
-            }
-        }
+            });
+        });
+        approveTask.setOnFailed(e -> {
+            Platform.runLater(() -> {
+                approveButton.setDisable(false);
+                closeButton.setDisable(false);
+                showAlert("Error", "Failed to approve: " + approveTask.getException().getMessage());
+            });
+        });
+        executorService.submit(approveTask);
     }
 
     private void showAlert(String title, String message) {

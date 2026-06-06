@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox spacing="15" alignment="CENTER" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.UploadChoiceController">
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+    <Label text="What do you want to upload?" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+    <HBox spacing="15" alignment="CENTER">
+        <Button fx:id="fileButton" text="File" prefWidth="80"/>
+        <Button fx:id="folderButton" text="Folder" prefWidth="80"/>
+        <Button fx:id="cancelButton" text="Cancel" prefWidth="80"/>
+    </HBox>
+</VBox>
