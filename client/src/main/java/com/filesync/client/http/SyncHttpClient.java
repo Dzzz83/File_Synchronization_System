@@ -16,6 +16,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class SyncHttpClient {
     private final WebClient webClient;
@@ -103,6 +106,10 @@ public class SyncHttpClient {
     }
 
     public void downloadFile(String fileId, Path destination) throws IOException {
+        downloadFile(fileId, destination, null);
+    }
+
+    public void downloadFile(String fileId, Path destination, ChunkedUploader.ProgressCallback progressCallback) throws IOException {
         if (fileId == null || fileId.trim().isEmpty()) {
             throw new IllegalArgumentException("File ID cannot be null or empty");
         }
@@ -111,13 +118,46 @@ public class SyncHttpClient {
         }
         Files.createDirectories(destination.getParent());
 
+        // Get total size for progress reporting
+        long totalBytes = -1;
+        try {
+            FileMetadataDto meta = getFileMetadata(fileId);
+            totalBytes = meta.getSize();
+        } catch (Exception e) {
+        }
+
         Flux<DataBuffer> flux = addAuth(webClient.get().uri("/api/files/download/{fileId}", fileId))
                 .retrieve()
                 .bodyToFlux(DataBuffer.class)
                 .timeout(Duration.ofMinutes(5));
 
-        DataBufferUtils.write(flux, destination)
-                .block();
+        // Write manually with progress tracking
+        try (java.io.OutputStream os = Files.newOutputStream(destination)) {
+            final long finalTotal = totalBytes;
+            final AtomicLong bytesWritten = new AtomicLong(0);
+
+            // Blocking collect: iterate over each DataBuffer
+            flux.toIterable().forEach(buffer -> {
+                byte[] bytes = new byte[buffer.readableByteCount()];
+                buffer.read(bytes);
+                try {
+                    os.write(bytes);
+                    long written = bytesWritten.addAndGet(bytes.length);
+                    if (progressCallback != null && finalTotal > 0) {
+                        progressCallback.onProgress(written, finalTotal);
+                    }
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                } finally {
+                    DataBufferUtils.release(buffer);
+                }
+            });
+        } catch (RuntimeException e) {
+            if (e.getCause() instanceof IOException) {
+                throw (IOException) e.getCause();
+            }
+            throw new IOException("Download failed", e);
+        }
     }
 
     public List<FileMetadataDto> getFiles(String ownerId, UUID sharedFolderId, UUID parentId) {
