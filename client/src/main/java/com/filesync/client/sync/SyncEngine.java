@@ -91,7 +91,7 @@ public class SyncEngine {
                     {
                         // upload the large file
                         System.out.println("Large file detected, using chunked upload for: " + file.getRelativePath());
-                        httpClient.uploadLargeFile(file.getFileId(), localPath, folderId);
+                        httpClient.uploadLargeFile(file.getFileId(), localPath, folderId, null);
                     }
                     else
                     {

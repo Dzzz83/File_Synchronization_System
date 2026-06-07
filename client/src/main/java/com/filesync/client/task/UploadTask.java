@@ -1,8 +1,10 @@
 package com.filesync.client.task;
 
 import com.filesync.client.http.SyncHttpClient;
+import com.filesync.client.service.ProgressService;
 import com.filesync.common.dto.FileMetadataDto;
 import com.filesync.common.enums.SyncStatus;
+import javafx.application.Platform;
 import javafx.concurrent.Task;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -31,32 +33,55 @@ public class UploadTask extends Task<Void> {
 
     @Override
     protected Void call() throws Exception {
-        updateMessage("Uploading " + fileName + "...");
-        updateProgress(0, fileSize);
+        ProgressService ps = ProgressService.getInstance();
 
-        String fileId = UUID.randomUUID().toString();
-        FileMetadataDto dto = new FileMetadataDto();
-        dto.setFileId(fileId);
-        dto.setRelativePath(fileName);
-        dto.setSize(fileSize);
-        dto.setSha256Hash(computeHash(localFile));
-        dto.setLastModified(Files.getLastModifiedTime(localFile).toInstant());
-        dto.setOwnerId(ownerId);
-        dto.setStatus(SyncStatus.SYNCED);
-        dto.setFolderId(folderId);
-        dto.setParentId(parentId);
-        httpClient.createMetadata(dto);
+        // Start operation on FX thread
+        Platform.runLater(() -> ps.startOperation("Uploading " + fileName + "..."));
 
-        if (fileSize > 5 * 1024 * 1024) {
-            // TODO: Enhance ChunkedUploader to report progress (optional)
-            httpClient.uploadLargeFile(fileId, localFile, folderId);
-        } else {
-            httpClient.uploadFile(fileId, localFile, folderId);
+        try {
+            updateMessage("Uploading " + fileName + "...");
+            updateProgress(0, fileSize);
+
+            String fileId = UUID.randomUUID().toString();
+            FileMetadataDto dto = new FileMetadataDto();
+            dto.setFileId(fileId);
+            dto.setRelativePath(fileName);
+            dto.setSize(fileSize);
+            dto.setSha256Hash(computeHash(localFile));
+            dto.setLastModified(Files.getLastModifiedTime(localFile).toInstant());
+            dto.setOwnerId(ownerId);
+            dto.setStatus(SyncStatus.SYNCED);
+            dto.setFolderId(folderId);
+            dto.setParentId(parentId);
+            httpClient.createMetadata(dto);
+
+            if (fileSize > 5 * 1024 * 1024) {
+                httpClient.uploadLargeFile(fileId, localFile, folderId, (bytesUploaded, totalBytes) -> {
+                    // Update Task's own progress (thread‑safe)
+                    updateProgress(bytesUploaded, totalBytes);
+                    // Update global ProgressService on FX thread
+                    Platform.runLater(() -> {
+                        ps.updateProgress(bytesUploaded, totalBytes);
+                        ps.updateMessage(String.format("Uploading %s: %d / %d KB",
+                                fileName, bytesUploaded / 1024, totalBytes / 1024));
+                    });
+                });
+            } else {
+                httpClient.uploadFile(fileId, localFile, folderId);
+                updateProgress(fileSize, fileSize);
+                Platform.runLater(() -> {
+                    ps.updateProgress(fileSize, fileSize);
+                    ps.updateMessage("Upload complete");
+                });
+            }
+
+            updateProgress(fileSize, fileSize);
+            updateMessage("Upload complete");
+            return null;
+        } finally {
+            // Finish operation on FX thread
+            Platform.runLater(ps::finishOperation);
         }
-
-        updateProgress(fileSize, fileSize);
-        updateMessage("Upload complete");
-        return null;
     }
 
     private String computeHash(Path file) throws IOException {

@@ -18,6 +18,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class ChunkedUploader {
     private final WebClient webClient;
@@ -99,32 +100,59 @@ public class ChunkedUploader {
                 .block();
     }
 
-    public void uploadFile(String fileId, Path filePath) throws IOException {
+    public void uploadFile(String fileId, Path filePath, ProgressCallback progressCallback) throws IOException {
         long fileSize = Files.size(filePath);
         int totalChunks = (int) Math.ceil((double) fileSize / CHUNK_SIZE);
+
+        // Pre‑compute size of each chunk
+        long[] chunkSizes = new long[totalChunks];
+        for (int i = 0; i < totalChunks; i++) {
+            long start = (long) i * CHUNK_SIZE;
+            long end = Math.min(start + CHUNK_SIZE, fileSize);
+            chunkSizes[i] = end - start;
+        }
+
         Set<Integer> uploadedChunks = getUploadedChunks(fileId);
         List<Integer> chunksToUpload = new ArrayList<>();
+        long initiallyUploadedBytes = 0;
         for (int i = 0; i < totalChunks; i++) {
-            if (!uploadedChunks.contains(i)) {
+            if (uploadedChunks.contains(i)) {
+                initiallyUploadedBytes += chunkSizes[i];
+            } else {
                 chunksToUpload.add(i);
             }
         }
+
+        // Report initial progress (already uploaded chunks)
+        if (progressCallback != null) {
+            progressCallback.onProgress(initiallyUploadedBytes, fileSize);
+        }
+
         if (chunksToUpload.isEmpty()) {
             assembleFile(fileId, fileId, totalChunks);
             return;
         }
+
+        AtomicLong totalBytesUploaded = new AtomicLong(initiallyUploadedBytes);
         List<CompletableFuture<Void>> futures = new ArrayList<>();
+
         for (int chunkIndex : chunksToUpload) {
             CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
                 try {
                     byte[] chunkData = readChunk(filePath, chunkIndex);
                     uploadChunk(fileId, chunkIndex, totalChunks, chunkData);
+                    long added = chunkSizes[chunkIndex];
+                    long newTotal = totalBytesUploaded.addAndGet(added);
+                    if (progressCallback != null) {
+                        progressCallback.onProgress(newTotal, fileSize);
+                    }
                 } catch (IOException e) {
                     throw new RuntimeException("Failed to upload chunk " + chunkIndex, e);
                 }
             }, executor);
             futures.add(future);
         }
+
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
         assembleFile(fileId, fileId, totalChunks);
     }
@@ -143,5 +171,10 @@ public class ChunkedUploader {
 
     public void setAuthToken(String authToken) {
         this.authToken = authToken;
+    }
+
+    @FunctionalInterface
+    public interface ProgressCallback {
+        void onProgress(long bytesUploaded, long totalBytes);
     }
 }

@@ -56,7 +56,7 @@ public class FileOperationService {
         httpClient.createMetadata(dto);
 
         if (fileSize > threshold) {
-            httpClient.uploadLargeFile(fileId, localFilePath, folderId);
+            httpClient.uploadLargeFile(fileId, localFilePath, folderId, null);
         } else {
             httpClient.uploadFile(fileId, localFilePath, folderId);
         }
@@ -82,7 +82,7 @@ public class FileOperationService {
 
             long fileSize = Files.size(tempFile);
             if (fileSize > 5 * 1024 * 1024) {
-                httpClient.uploadLargeFile(fileDto.getFileId(), tempFile, folderId);
+                httpClient.uploadLargeFile(fileDto.getFileId(), tempFile, folderId, null);
             } else {
                 httpClient.uploadFile(fileDto.getFileId(), tempFile, folderId);
             }

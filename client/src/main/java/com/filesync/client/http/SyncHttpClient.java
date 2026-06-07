@@ -152,12 +152,12 @@ public class SyncHttpClient {
                 .block();
     }
 
-    public void uploadLargeFile(String fileId, Path filePath, UUID folderId) throws IOException {
+    public void uploadLargeFile(String fileId, Path filePath, UUID folderId, ChunkedUploader.ProgressCallback progressCallback) throws IOException {
         if (authToken == null || authToken.isEmpty()) {
             throw new IllegalStateException("Cannot upload large file: not logged in.");
         }
         chunkedUploader.setAuthToken(authToken);
-        chunkedUploader.uploadFile(fileId, filePath);
+        chunkedUploader.uploadFile(fileId, filePath, progressCallback);
     }
 
     public void deleteFile(String fileId, UUID folderId) {

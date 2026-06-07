@@ -100,10 +100,12 @@ public class FolderUploadService {
 
             String fileName = file.getFileName().toString();
             String fileId = UUID.randomUUID().toString();
+            long fileSize = Files.size(file);
+
             FileMetadataDto dto = new FileMetadataDto();
             dto.setFileId(fileId);
             dto.setRelativePath(fileName);
-            dto.setSize(Files.size(file));
+            dto.setSize(fileSize);
             dto.setSha256Hash(FileHasher.computeHash(file));
             dto.setLastModified(Files.getLastModifiedTime(file).toInstant());
             dto.setOwnerId(ownerId);
@@ -112,15 +114,23 @@ public class FolderUploadService {
             dto.setParentId(parentServerId);
             httpClient.createMetadata(dto);
 
-            long fileSize = Files.size(file);
             if (fileSize > 5 * 1024 * 1024) {
-                httpClient.uploadLargeFile(fileId, file, sharedFolderId);
+                // Use progress callback to update both chunk progress and final file completion
+                httpClient.uploadLargeFile(fileId, file, sharedFolderId, (bytesUploaded, totalBytes) -> {
+                    Platform.runLater(() -> {
+                        // Update progress service with chunk-level detail (optional)
+                        progressService.updateMessage(String.format("Uploading %s: %d/%d KB",
+                                fileName, bytesUploaded / 1024, totalBytes / 1024));
+                        // Note: Do NOT update overall folder progress here; that is updated after file completion
+                    });
+                });
             } else {
                 httpClient.uploadFile(fileId, file, sharedFolderId);
             }
+
             statusCallback.accept("Uploaded: " + fileName);
 
-            // Update progress
+            // Update overall folder progress (one file completed)
             int completed = uploadedFiles.incrementAndGet();
             Platform.runLater(() -> progressService.updateProgress(completed, totalFiles));
         } catch (Exception e) {

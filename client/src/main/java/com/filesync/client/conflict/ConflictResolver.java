@@ -51,7 +51,7 @@ public class ConflictResolver {
                             httpClient.createMetadata(file);
                             long fileSize = Files.size(localPath);
                             if (fileSize > 5 * 1024 * 1024) {
-                                httpClient.uploadLargeFile(file.getFileId(), localPath, file.getFolderId());
+                                httpClient.uploadLargeFile(file.getFileId(), localPath, file.getFolderId(), null);
                             } else {
                                 httpClient.uploadFile(file.getFileId(), localPath, file.getFolderId());
                             }
