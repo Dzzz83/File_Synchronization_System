@@ -10,6 +10,7 @@ import com.filesync.client.service.ProgressService;
 import com.filesync.client.task.*;
 import com.filesync.common.dto.FileMetadataDto;
 import javafx.application.Platform;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -92,7 +93,21 @@ public class FileExplorerController {
 
     private void configureTableColumns() {
         pathColumn.setCellValueFactory(new PropertyValueFactory<>("relativePath"));
+
+        // Size column: numeric value (for sorting) with custom formatting
         sizeColumn.setCellValueFactory(new PropertyValueFactory<>("size"));
+        sizeColumn.setCellFactory(column -> new TableCell<ServerFileItem, Long>() {
+            @Override
+            protected void updateItem(Long item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(formatFileSize(item));
+                }
+            }
+        });
+
         lastModifiedColumn.setCellValueFactory(new PropertyValueFactory<>("lastModified"));
         fileTable.setItems(fileItems);
     }
@@ -551,6 +566,18 @@ public class FileExplorerController {
         });
 
         executorService.submit(task);
+    }
+
+    private String formatFileSize(long size) {
+        if (size < 1024) return size + " B";
+        int unitIndex = 0;
+        String[] units = {"B", "KB", "MB", "GB", "TB"};
+        double converted = size;
+        while (converted >= 1024 && unitIndex < units.length - 1) {
+            converted /= 1024;
+            unitIndex++;
+        }
+        return String.format("%.1f %s", converted, units[unitIndex]);
     }
 
     // ==================== Utilities ====================

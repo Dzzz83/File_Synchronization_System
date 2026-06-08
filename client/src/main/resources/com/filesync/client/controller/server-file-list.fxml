@@ -16,7 +16,7 @@
         <columns>
             <TableColumn fx:id="pathColumn" prefWidth="300" text="File Path" />
             <TableColumn fx:id="lastModifiedColumn" prefWidth="183.20001220703125" text="Last Modified" />
-            <TableColumn fx:id="sizeColumn" prefWidth="132.79995727539062" text="Size (bytes)" />
+            <TableColumn fx:id="sizeColumn" prefWidth="132.79995727539062" text="Size" />
             <TableColumn fx:id="sizeColumn1" prefWidth="224.00002441406252" text="Description" />
         </columns>
     </TableView>
