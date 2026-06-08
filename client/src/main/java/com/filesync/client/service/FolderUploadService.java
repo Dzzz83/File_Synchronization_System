@@ -63,29 +63,36 @@ public class FolderUploadService {
     }
 
     public void upload() throws IOException {
-        // Step 1: Create the root folder on the server
-        String rootFolderName = localFolder.getFileName().toString();
-        UUID rootServerId = httpClient.createFolder(rootFolderName, parentId, sharedFolderId);
-        folderIdCache.put(localFolder, rootServerId);
-        statusCallback.accept("Created folder: " + rootFolderName);
+        ProgressService ps = this.progressService;
+        Platform.runLater(() -> ps.startOperation("Uploading folder: " + localFolder.getFileName()));
 
-        // Step 2: Create all subdirectories (top‑down)
-        try (Stream<Path> walk = Files.walk(localFolder)) {
-            walk.filter(Files::isDirectory)
-                    .filter(dir -> !dir.equals(localFolder))
-                    .forEach(dir -> {
-                        try {
-                            createServerDirectory(dir);
-                        } catch (Exception e) {
-                            statusCallback.accept("Failed to create directory: " + dir + " - " + e.getMessage());
-                        }
-                    });
-        }
+        try {
+            // Step 1: Create the root folder on the server
+            String rootFolderName = localFolder.getFileName().toString();
+            UUID rootServerId = httpClient.createFolder(rootFolderName, parentId, sharedFolderId);
+            folderIdCache.put(localFolder, rootServerId);
+            statusCallback.accept("Created folder: " + rootFolderName);
 
-        // Step 3: Upload all files
-        try (Stream<Path> walk = Files.walk(localFolder)) {
-            walk.filter(Files::isRegularFile)
-                    .forEach(this::uploadSingleFile);
+            // Step 2: Create all subdirectories (top‑down)
+            try (Stream<Path> walk = Files.walk(localFolder)) {
+                walk.filter(Files::isDirectory)
+                        .filter(dir -> !dir.equals(localFolder))
+                        .forEach(dir -> {
+                            try {
+                                createServerDirectory(dir);
+                            } catch (Exception e) {
+                                statusCallback.accept("Failed to create directory: " + dir + " - " + e.getMessage());
+                            }
+                        });
+            }
+
+            // Step 3: Upload all files
+            try (Stream<Path> walk = Files.walk(localFolder)) {
+                walk.filter(Files::isRegularFile)
+                        .forEach(this::uploadSingleFile);
+            }
+        } finally {
+            Platform.runLater(ps::finishOperation);
         }
     }
 
@@ -102,16 +109,12 @@ public class FolderUploadService {
             String fileId = UUID.randomUUID().toString();
             long fileSize = Files.size(file);
 
-            FileMetadataDto dto = new FileMetadataDto();
-            dto.setFileId(fileId);
-            dto.setRelativePath(fileName);
-            dto.setSize(fileSize);
-            dto.setSha256Hash(FileHasher.computeHash(file));
-            dto.setLastModified(Files.getLastModifiedTime(file).toInstant());
-            dto.setOwnerId(ownerId);
-            dto.setStatus(SyncStatus.SYNCED);
-            dto.setFolderId(sharedFolderId);
-            dto.setParentId(parentServerId);
+            FileMetadataDto dto = FileMetadataDto.forUpload(
+                    fileId, fileName, fileSize,
+                    FileHasher.computeHash(file),
+                    Files.getLastModifiedTime(file).toInstant(),
+                    ownerId, sharedFolderId, parentServerId
+            );
             httpClient.createMetadata(dto);
 
             if (fileSize > 5 * 1024 * 1024) {

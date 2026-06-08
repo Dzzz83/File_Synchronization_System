@@ -21,10 +21,8 @@ public class FileController {
     private final FileStorage fileStorage;
     private final PermissionService permissionService;
 
-    // constructor
     public FileController(FileMetaDataService fileMetaDataService, FileStorage fileStorage,
-                          PermissionService permissionService)
-    {
+                          PermissionService permissionService) {
         this.fileMetaDataService = fileMetaDataService;
         this.fileStorage = fileStorage;
         this.permissionService = permissionService;
@@ -35,36 +33,40 @@ public class FileController {
         String userId = authentication.getName();
         boolean exists = fileMetaDataService.existsById(fileMetadataDto.getFileId());
 
-        if (exists)
-        {
-            // update existing files if the user has write permission
-            if (!permissionService.canWrite(userId, fileMetadataDto.getFileId()))
-            {
+        if (exists) {
+            // Update existing file
+            if (!permissionService.canWrite(userId, fileMetadataDto.getFileId())) {
                 return ResponseEntity.status(403).body("No write permission");
             }
+            FileMetadataEntity oldEntity = fileMetaDataService.getFileById(fileMetadataDto.getFileId());
+            long oldSize = oldEntity.isDirectory() ? 0 : oldEntity.getSize();
             FileMetadataEntity entity = convertToEntity(fileMetadataDto);
             FileMetadataEntity saved = fileMetaDataService.saveFileMetaData(entity);
-            return ResponseEntity.ok(convertToDto(saved));
-        }
-        else
-        {
-            // new file: check folder or personal ownership
-            if (fileMetadataDto.getFolderId() != null)
-            {
-                if (!permissionService.canWriteToFolder(userId, fileMetadataDto.getFolderId()))
-                {
-                    return ResponseEntity.status(403).body("No write permission on folder");
+            if (!saved.isDirectory()) {
+                long newSize = saved.getSize();
+                long delta = newSize - oldSize;
+                if (delta != 0 && saved.getParentId() != null) {
+                    fileMetaDataService.addToAncestors(saved.getParentId(), delta);
                 }
             }
-            else
-            {
-                if (!fileMetadataDto.getOwnerId().equals(userId))
-                {
+            return ResponseEntity.ok(convertToDto(saved));
+        } else {
+            // New file or folder
+            if (fileMetadataDto.getFolderId() != null) {
+                if (!permissionService.canWriteToFolder(userId, fileMetadataDto.getFolderId())) {
+                    return ResponseEntity.status(403).body("No write permission on folder");
+                }
+            } else {
+                if (!fileMetadataDto.getOwnerId().equals(userId)) {
                     return ResponseEntity.status(403).body("Not owner of personal file");
                 }
             }
             FileMetadataEntity entity = convertToEntity(fileMetadataDto);
             FileMetadataEntity saved = fileMetaDataService.saveFileMetaData(entity);
+            // For a new file (not folder), add its size to ancestors
+            if (!saved.isDirectory() && saved.getSize() > 0 && saved.getParentId() != null) {
+                fileMetaDataService.addToAncestors(saved.getParentId(), saved.getSize());
+            }
             return ResponseEntity.ok(convertToDto(saved));
         }
     }
@@ -81,25 +83,22 @@ public class FileController {
 
         List<FileMetadataEntity> entities;
         if (folderId != null) {
-            // Shared folder
             if (!permissionService.canReadFolder(userId, folderId)) {
                 return ResponseEntity.status(403).body("No access to shared folder");
             }
             if (parentId != null) {
-                // Specific subfolder inside shared folder
                 entities = fileMetaDataService.getFilesByParent(parentId);
             } else {
-                // Root of shared folder
                 entities = fileMetaDataService.getSharedFolderRootFiles(folderId);
             }
         } else {
-            // Personal files
             if (parentId != null) {
                 entities = fileMetaDataService.getFilesByParent(parentId);
             } else {
                 entities = fileMetaDataService.getPersonalRootFiles(ownerId);
             }
         }
+        // No enrichment needed – folder sizes are already correct in DB
         return ResponseEntity.ok(entities.stream().map(this::convertToDto).collect(Collectors.toList()));
     }
 
@@ -118,11 +117,16 @@ public class FileController {
     public ResponseEntity<Void> deleteFile(@PathVariable("fileId") String fileId,
                                            Authentication authentication) {
         String userId = authentication.getName();
+        FileMetadataEntity entity = fileMetaDataService.getFileById(fileId);
+        if (entity == null) return ResponseEntity.notFound().build();
         if (!permissionService.canWrite(userId, fileId)) {
             return ResponseEntity.status(403).build();
         }
-        fileMetaDataService.deleteFile(fileId);
-        fileStorage.delete(fileId);
+        if (entity.isDirectory()) {
+            fileMetaDataService.deleteFolderRecursively(fileId);
+        } else {
+            fileMetaDataService.deleteFileAndUpdateAncestors(fileId);
+        }
         return ResponseEntity.ok().build();
     }
 
@@ -134,7 +138,6 @@ public class FileController {
         UUID parentId = request.getParentId();
         UUID folderId = request.getFolderId();
 
-        // Check write permission on the target location
         if (folderId != null) {
             if (!permissionService.canWriteToFolder(userId, folderId)) {
                 return ResponseEntity.status(403).body("No write permission on shared folder");
@@ -157,40 +160,53 @@ public class FileController {
                                           Authentication authentication) {
         String userId = authentication.getName();
         String newParentIdStr = request.get("parentId");
-        if (newParentIdStr == null) {
-            return ResponseEntity.badRequest().body("Missing parentId");
-        }
-        UUID newParentId = UUID.fromString(newParentIdStr);
+        UUID newParentId = (newParentIdStr == null || newParentIdStr.trim().isEmpty()) ? null : UUID.fromString(newParentIdStr);
 
         FileMetadataEntity entity = fileMetaDataService.getFileById(fileId);
-        if (entity == null) {
-            return ResponseEntity.notFound().build();
-        }
+        if (entity == null) return ResponseEntity.notFound().build();
 
         if (!permissionService.canWrite(userId, fileId)) {
             return ResponseEntity.status(403).body("No write permission on source item");
         }
 
-        FileMetadataEntity newParent = fileMetaDataService.getFileById(newParentIdStr);
-        if (newParent == null || !newParent.isDirectory()) {
-            return ResponseEntity.badRequest().body("Target must be a directory");
-        }
-
-        UUID newParentFolderId = newParent.getFolderId();
-        if (newParentFolderId == null) {
-            if (!newParent.getOwnerId().equals(userId)) {
-                return ResponseEntity.status(403).body("Not owner of target folder");
+        UUID newFolderId = null;
+        if (newParentId != null) {
+            FileMetadataEntity newParent = fileMetaDataService.getFileById(newParentIdStr);
+            if (newParent == null || !newParent.isDirectory()) {
+                return ResponseEntity.badRequest().body("Target must be a directory");
+            }
+            newFolderId = newParent.getFolderId();
+            if (newFolderId == null) {
+                if (!newParent.getOwnerId().equals(userId)) {
+                    return ResponseEntity.status(403).body("Not owner of target folder");
+                }
+            } else {
+                if (!permissionService.canWriteToFolder(userId, newFolderId)) {
+                    return ResponseEntity.status(403).body("No write permission on target shared folder");
+                }
             }
         } else {
-            if (!permissionService.canWriteToFolder(userId, newParentFolderId)) {
-                return ResponseEntity.status(403).body("No write permission on target shared folder");
-            }
+            newFolderId = null; // move to personal root
         }
 
-        entity.setParentId(newParentId);
-        fileMetaDataService.saveFileMetaData(entity);
+        if (entity.isDirectory()) {
+            fileMetaDataService.moveFolder(fileId, newParentId, newFolderId);
+        } else {
+            long fileSize = entity.getSize();
+            if (entity.getParentId() != null) {
+                fileMetaDataService.removeFromAncestors(entity.getParentId(), fileSize);
+            }
+            entity.setParentId(newParentId);
+            entity.setFolderId(newFolderId);
+            fileMetaDataService.saveFileMetaData(entity);
+            if (newParentId != null && fileSize > 0) {
+                fileMetaDataService.addToAncestors(newParentId, fileSize);
+            }
+        }
         return ResponseEntity.ok().build();
     }
+
+    // ==================== Conversion Helpers ====================
 
     private FileMetadataEntity convertToEntity(FileMetadataDto dto) {
         FileMetadataEntity entity = new FileMetadataEntity();

@@ -56,7 +56,8 @@ public class SyncHttpClient {
     }
 
     public void moveFile(String fileId, String newParentId) {
-        Map<String, Object> body = Map.of("parentId", newParentId);
+        Map<String, Object> body = new HashMap<>();
+        body.put("parentId", (newParentId == null || newParentId.isEmpty()) ? null : newParentId);
         addAuth(webClient.put().uri("/api/files/{fileId}/parent", fileId).bodyValue(body))
                 .retrieve()
                 .bodyToMono(Void.class)

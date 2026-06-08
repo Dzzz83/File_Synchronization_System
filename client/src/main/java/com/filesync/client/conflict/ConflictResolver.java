@@ -4,6 +4,7 @@ import com.filesync.client.db.LocalMetadataRepository;
 import com.filesync.client.file.FileHasher;
 import com.filesync.client.http.SyncHttpClient;
 import com.filesync.common.dto.FileMetadataDto;
+import com.filesync.common.enums.SyncStatus;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -45,10 +46,27 @@ public class ConflictResolver {
                         try {
                             Files.writeString(localPath, mergedContent);
                             String newHash = FileHasher.computeHash(localPath);
-                            file.setSha256Hash(newHash);
-                            file.setSize(Files.size(localPath));
-                            file.setLastModified(Files.getLastModifiedTime(localPath).toInstant());
-                            httpClient.createMetadata(file);
+
+                            FileMetadataDto updatedDto = FileMetadataDto.builder()
+                                    .fileId(file.getFileId())
+                                    .relativePath(file.getRelativePath())
+                                    .size(Files.size(localPath))
+                                    .sha256Hash(newHash)
+                                    .lastModified(Files.getLastModifiedTime(localPath).toInstant())
+                                    .ownerId(file.getOwnerId())
+                                    .status(SyncStatus.SYNCED)
+                                    .folderId(file.getFolderId())
+                                    .parentId(file.getParentId())
+                                    .build();
+
+                            // Preserve optional fields
+                            updatedDto.setVersionVectorJson(file.getVersionVectorJson());
+                            updatedDto.setSharedWith(file.getSharedWith());
+                            updatedDto.setDirectory(file.isDirectory());
+
+                            httpClient.createMetadata(updatedDto);
+                            // ========================================================
+
                             long fileSize = Files.size(localPath);
                             if (fileSize > 5 * 1024 * 1024) {
                                 httpClient.uploadLargeFile(file.getFileId(), localPath, file.getFolderId(), null);

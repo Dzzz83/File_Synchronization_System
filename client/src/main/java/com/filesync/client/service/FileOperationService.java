@@ -5,6 +5,7 @@ import com.filesync.client.file.FileHasher;
 import com.filesync.client.http.SyncHttpClient;
 import com.filesync.common.dto.FileMetadataDto;
 import com.filesync.common.enums.SyncStatus;
+import javafx.application.Platform;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -36,58 +37,82 @@ public class FileOperationService {
         httpClient.downloadFile(fileId, destination);
     }
 
+    // FIXED: Added ProgressService integration
     public void uploadFile(Path localFilePath, UUID parentId) throws IOException {
+        ProgressService ps = ProgressService.getInstance();
         String fileName = localFilePath.getFileName().toString();
-        String fileId = UUID.randomUUID().toString();
-        long fileSize = Files.size(localFilePath);
-        long threshold = 5 * 1024 * 1024;
+        Platform.runLater(() -> ps.startOperation("Uploading " + fileName));
 
-        FileMetadataDto dto = new FileMetadataDto();
-        dto.setFileId(fileId);
-        dto.setRelativePath(fileName);
-        dto.setSize(fileSize);
-        dto.setSha256Hash(FileHasher.computeHash(localFilePath));
-        dto.setLastModified(Files.getLastModifiedTime(localFilePath).toInstant());
-        dto.setOwnerId(ownerId);
-        dto.setStatus(SyncStatus.SYNCED);
-        dto.setFolderId(folderId);
-        dto.setParentId(parentId);
+        try {
+            String fileId = UUID.randomUUID().toString();
+            long fileSize = Files.size(localFilePath);
+            long threshold = 5 * 1024 * 1024;
 
-        httpClient.createMetadata(dto);
+            // Inside uploadFile method
+            FileMetadataDto dto = FileMetadataDto.forUpload(
+                    fileId, fileName, fileSize,
+                    FileHasher.computeHash(localFilePath),
+                    Files.getLastModifiedTime(localFilePath).toInstant(),
+                    ownerId, folderId, parentId
+            );
+            httpClient.createMetadata(dto);
 
-        if (fileSize > threshold) {
-            httpClient.uploadLargeFile(fileId, localFilePath, folderId, null);
-        } else {
-            httpClient.uploadFile(fileId, localFilePath, folderId);
+            if (fileSize > threshold) {
+                httpClient.uploadLargeFile(fileId, localFilePath, folderId, (bytesUploaded, totalBytes) -> {
+                    Platform.runLater(() -> {
+                        ps.updateProgress(bytesUploaded, totalBytes);
+                        ps.updateMessage(String.format("Uploading %s: %d / %d KB",
+                                fileName, bytesUploaded / 1024, totalBytes / 1024));
+                    });
+                });
+            } else {
+                httpClient.uploadFile(fileId, localFilePath, folderId);
+                Platform.runLater(() -> ps.updateProgress(fileSize, fileSize));
+            }
+        } finally {
+            Platform.runLater(ps::finishOperation);
         }
     }
 
+    // FIXED: Added ProgressService integration
     public void editFile(FileMetadataDto fileDto, String newContent) throws IOException {
+        ProgressService ps = ProgressService.getInstance();
+        String fileName = fileDto.getRelativePath();
+        Platform.runLater(() -> ps.startOperation("Saving " + fileName));
+
         Path tempFile = Files.createTempFile("edited_", ".tmp");
         try {
             Files.writeString(tempFile, newContent);
             String newHash = FileHasher.computeHash(tempFile);
-            FileMetadataDto updatedDto = new FileMetadataDto();
-            updatedDto.setFileId(fileDto.getFileId());
-            updatedDto.setRelativePath(fileDto.getRelativePath());
-            updatedDto.setSize(Files.size(tempFile));
-            updatedDto.setSha256Hash(newHash);
-            updatedDto.setLastModified(Instant.now());
-            updatedDto.setOwnerId(ownerId);
-            updatedDto.setStatus(SyncStatus.SYNCED);
-            updatedDto.setFolderId(folderId);
-            updatedDto.setParentId(fileDto.getParentId());
+            FileMetadataDto updatedDto = FileMetadataDto.forUpload(
+                    fileDto.getFileId(),
+                    fileName,
+                    Files.size(tempFile),
+                    newHash,
+                    Instant.now(),
+                    ownerId,
+                    folderId,
+                    fileDto.getParentId()
+            );
 
             httpClient.createMetadata(updatedDto);
 
             long fileSize = Files.size(tempFile);
             if (fileSize > 5 * 1024 * 1024) {
-                httpClient.uploadLargeFile(fileDto.getFileId(), tempFile, folderId, null);
+                httpClient.uploadLargeFile(fileDto.getFileId(), tempFile, folderId, (bytesUploaded, totalBytes) -> {
+                    Platform.runLater(() -> {
+                        ps.updateProgress(bytesUploaded, totalBytes);
+                        ps.updateMessage(String.format("Saving %s: %d / %d KB",
+                                fileName, bytesUploaded / 1024, totalBytes / 1024));
+                    });
+                });
             } else {
                 httpClient.uploadFile(fileDto.getFileId(), tempFile, folderId);
+                Platform.runLater(() -> ps.updateProgress(fileSize, fileSize));
             }
         } finally {
             Files.deleteIfExists(tempFile);
+            Platform.runLater(ps::finishOperation);
         }
     }
 

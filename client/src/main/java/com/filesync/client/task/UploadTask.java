@@ -43,16 +43,12 @@ public class UploadTask extends Task<Void> {
             updateProgress(0, fileSize);
 
             String fileId = UUID.randomUUID().toString();
-            FileMetadataDto dto = new FileMetadataDto();
-            dto.setFileId(fileId);
-            dto.setRelativePath(fileName);
-            dto.setSize(fileSize);
-            dto.setSha256Hash(computeHash(localFile));
-            dto.setLastModified(Files.getLastModifiedTime(localFile).toInstant());
-            dto.setOwnerId(ownerId);
-            dto.setStatus(SyncStatus.SYNCED);
-            dto.setFolderId(folderId);
-            dto.setParentId(parentId);
+            FileMetadataDto dto = FileMetadataDto.forUpload(
+                    fileId, fileName, fileSize,
+                    computeHash(localFile),
+                    Files.getLastModifiedTime(localFile).toInstant(),
+                    ownerId, folderId, parentId
+            );
             httpClient.createMetadata(dto);
 
             if (fileSize > 5 * 1024 * 1024) {

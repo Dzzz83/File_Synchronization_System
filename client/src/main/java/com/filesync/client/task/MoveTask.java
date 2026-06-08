@@ -2,6 +2,7 @@ package com.filesync.client.task;
 
 import com.filesync.client.http.SyncHttpClient;
 import javafx.concurrent.Task;
+
 import java.util.List;
 
 public class MoveTask extends Task<Void> {
@@ -20,16 +21,21 @@ public class MoveTask extends Task<Void> {
     @Override
     protected Void call() throws Exception {
         int total = fileIds.size();
+        updateMessage("Moving " + total + " item(s)...");
+        updateProgress(0, total);
+
         for (int i = 0; i < total; i++) {
             if (isCancelled()) {
-                updateMessage("Cancelled");
-                return null;
+                updateMessage("Move cancelled");
+                break;
             }
-            updateProgress(i, total);
-            updateMessage("Moving " + fileNames.get(i) + "...");
-            httpClient.moveFile(fileIds.get(i), targetFolderId);
+            String fileId = fileIds.get(i);
+            String fileName = (i < fileNames.size()) ? fileNames.get(i) : fileId;
+            updateMessage("Moving " + fileName + "...");
+            httpClient.moveFile(fileId, targetFolderId);
+            updateProgress(i + 1, total);
         }
-        updateProgress(total, total);
+
         updateMessage("Move complete");
         return null;
     }

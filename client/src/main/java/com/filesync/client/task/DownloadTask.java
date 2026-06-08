@@ -26,7 +26,7 @@ public class DownloadTask extends Task<Void> {
 
         try {
             updateMessage("Downloading " + fileName + "...");
-            updateProgress(0, 1); // Will be updated by callback
+            updateProgress(0, 1);
 
             httpClient.downloadFile(fileId, destination, (bytesDownloaded, totalBytes) -> {
                 updateProgress(bytesDownloaded, totalBytes);

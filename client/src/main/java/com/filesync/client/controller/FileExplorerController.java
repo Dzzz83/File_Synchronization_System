@@ -189,7 +189,12 @@ public class FileExplorerController {
 
     private String resolveDropTargetId(ServerFileItem target) {
         if ("..".equals(target.getRelativePath())) {
-            return pathStack.isEmpty() ? null : pathStack.peek().toString();
+            if (pathStack.isEmpty()) {
+                return ""; // move to personal root
+            } else {
+                UUID parent = pathStack.peek();
+                return parent == null ? "" : parent.toString();
+            }
         } else if (target.isDirectory()) {
             return target.getFileId();
         }
@@ -204,14 +209,13 @@ public class FileExplorerController {
         });
     }
 
-    // ==================== Navigation ====================
-
     private void onFolderDoubleClick(ServerFileItem item) {
         if (!item.isDirectory()) return;
 
         if ("..".equals(item.getRelativePath())) {
             handleGoUp();
         } else {
+            // Always push the current parent ID (may be null for personal root)
             pathStack.push(currentParentId);
             currentParentId = UUID.fromString(item.getFileId());
             refreshWindow();

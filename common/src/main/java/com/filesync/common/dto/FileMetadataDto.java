@@ -60,4 +60,40 @@ public class FileMetadataDto {
     public void setDirectory(boolean directory) { isDirectory = directory; }
     public UUID getParentId() { return parentId; }
     public void setParentId(UUID parentId) { this.parentId = parentId; }
+
+    // BUILDER
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+        private final FileMetadataDto dto = new FileMetadataDto();
+
+        public Builder fileId(String fileId) { dto.fileId = fileId; return this; }
+        public Builder relativePath(String relativePath) { dto.relativePath = relativePath; return this; }
+        public Builder size(long size) { dto.size = size; return this; }
+        public Builder sha256Hash(String sha256Hash) { dto.sha256Hash = sha256Hash; return this; }
+        public Builder lastModified(Instant lastModified) { dto.lastModified = lastModified; return this; }
+        public Builder ownerId(String ownerId) { dto.ownerId = ownerId; return this; }
+        public Builder status(SyncStatus status) { dto.status = status; return this; }
+        public Builder folderId(UUID folderId) { dto.folderId = folderId; return this; }
+        public Builder parentId(UUID parentId) { dto.parentId = parentId; return this; }
+        public FileMetadataDto build() { return dto; }
+    }
+
+    // Convenience factory for common upload scenario
+    public static FileMetadataDto forUpload(String fileId, String relativePath, long size, String hash,
+                                            Instant lastModified, String ownerId, UUID folderId, UUID parentId) {
+        return builder()
+                .fileId(fileId)
+                .relativePath(relativePath)
+                .size(size)
+                .sha256Hash(hash)
+                .lastModified(lastModified)
+                .ownerId(ownerId)
+                .status(SyncStatus.SYNCED)
+                .folderId(folderId)
+                .parentId(parentId)
+                .build();
+    }
 }
