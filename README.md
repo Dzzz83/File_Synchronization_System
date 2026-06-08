@@ -75,6 +75,7 @@ File_Synchronization_System/
 - Two chunk storage implementations:
     - `LocalDiskChunkStorage` – stores chunks on local disk, assembles them, then saves the final file using the chosen full‑file storage.
     - `R2ChunkStorageService` – uses S3 multipart upload to send parts directly to R2. The final file is assembled on the cloud side, with no local disk usage for chunks or assembly.
+- **Folder size caching** – The size of a folder is automatically computed as the total size of all files inside it (including subfolders) and stored in the database. This value is updated incrementally on every file upload, delete, move, or edit, eliminating recursive size calculations on each listing. The client displays folder sizes in a human‑readable format (KB, MB, GB).
 - Streaming upload and download – no entire file loaded into memory.
 - Conflict detection when editing a file: client sends the original hash, server returns 409 if the file changed since last download.
 - **Asynchronous sync** – endpoint `POST /api/sync/start` returns a task ID. The server performs the file comparison in a background thread and stores the resulting actions (upload, download, conflict, etc.) as JSON. Client polls `GET /api/sync/status/{taskId}` until completion. This prevents HTTP timeouts and supports many concurrent syncs.
@@ -89,16 +90,18 @@ File_Synchronization_System/
 
 - Startup dialog with tabs for login (username + password) and registration, plus separate windows for forgot password and reset password.
 - Login validates credentials with the server and stores the JWT. Logout clears the token.
-- Main file list: table showing path, size, last modified, and buttons for upload, download, edit, delete, refresh.
-- Upload uses chunked upload for files larger than 5 MB, with **parallel chunk upload** (up to 5 chunks concurrently) for faster large file transfers. Every chunk request includes the JWT.
-- Download works via the streaming endpoint with the token.
+- Main file list: table showing path, human‑readable size (e.g., 1.5 MB, 256 KB), last modified date, and buttons for upload, download, edit, delete, refresh.
+- Upload uses chunked upload for files larger than 5 MB, with **parallel chunk upload** (up to 5 chunks concurrently) for faster large file transfers. The global progress bar shows real‑time byte‑level progress for both uploads and downloads. Every chunk request includes the JWT.
+- Download works via the streaming endpoint with the token, and now reports progress through the global progress bar (including estimated bytes transferred).
 - Edit: downloads a text file, allows editing. When saving, the server compares the original hash; if a conflict occurs, the side‑by‑side diff viewer (reused from the sync client) opens, and the user can merge the changes.
 - Delete: removes metadata and the actual file from storage.
 - All file operations are performed via HTTP calls that include the JWT.
 - **Shared folders management** – a separate tab lists all shared folders accessible to the user. Owners see a red badge on the “Manage Requests” button when pending requests exist. Owners can add/update members (READ/WRITE), approve access requests, and delete the folder.
 - **Modular UI** – dialogs (create folder, add member, request access, pending requests) are separated into their own FXML files and controller classes, following a clear separation of UI and logic.
 - **File explorer navigation** – users can double‑click folders to navigate inside, and use the “..” entry to go up one level. The same explorer is used for personal files and for browsing inside shared folders, providing a consistent experience.
+- **Drag & drop file moves** – Files and folders can be moved to a different location by dragging them onto a folder or the “..” (parent folder) entry. Moving to the root of personal files or out of shared folders is fully supported, with automatic permission checks.
 - **Upload file or folder** – a single “Upload” button offers a choice between uploading a single file or an entire folder (with subfolders preserved). Large files use chunked upload; folder upload shows a progress dialog.
+
 ### Client – Sync Client (Automatic)
 
 - Watches a local folder using Java’s WatchService.
