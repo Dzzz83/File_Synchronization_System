@@ -52,7 +52,6 @@ public class StartupController {
 
         loginButton.setDisable(true);
         loginButton.setText("Logging in...");
-        ForgetpassButton.setDisable(true);
 
         ExecutorService executor = ServerAdminApp.getInstance().getExecutor();
         Task<String[]> loginTask = new Task<>() {
@@ -95,7 +94,6 @@ public class StartupController {
 
         registerButton.setDisable(true);
         registerButton.setText("Registering...");
-        ForgetpassButton.setDisable(true);
 
         ExecutorService executor = ServerAdminApp.getInstance().getExecutor();
         Task<Boolean> registerTask = new Task<>() {
