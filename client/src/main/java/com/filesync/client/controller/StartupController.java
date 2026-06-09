@@ -22,6 +22,7 @@ public class StartupController {
     @FXML private PasswordField loginPasswordField;
     @FXML private Button loginButton;
     @FXML private Button registerButton;
+    @FXML private Button ForgetpassButton;
 
     private Stage primaryStage;
 
@@ -51,6 +52,7 @@ public class StartupController {
 
         loginButton.setDisable(true);
         loginButton.setText("Logging in...");
+        ForgetpassButton.setDisable(true);
 
         ExecutorService executor = ServerAdminApp.getInstance().getExecutor();
         Task<String[]> loginTask = new Task<>() {
@@ -93,6 +95,7 @@ public class StartupController {
 
         registerButton.setDisable(true);
         registerButton.setText("Registering...");
+        ForgetpassButton.setDisable(true);
 
         ExecutorService executor = ServerAdminApp.getInstance().getExecutor();
         Task<Boolean> registerTask = new Task<>() {

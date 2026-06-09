@@ -7,6 +7,9 @@ import com.filesync.common.dto.FileMetadataDto;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.collections.ObservableList;
+import com.filesync.client.icon.FileIconResolver;
+import javafx.scene.Node;
+import javafx.scene.control.Label;
 
 import java.util.List;
 import java.util.UUID;
@@ -52,10 +55,11 @@ public class RefreshTask extends Task<Void> {
             fileItems.clear();
             if (showParentEntry) {
                 fileItems.add(new ServerFileItem(
-                        "parent", "..", 0, null, null, folderId, true, null
+                        "parent", "..", 0, null, null, folderId, true, null,new Label("◀=")
                 ));
             }
             for (FileMetadataDto dto : files) {
+                Node icon = FileIconResolver.getIconForFile(dto.getRelativePath());
                 fileItems.add(new ServerFileItem(
                         dto.getFileId(),
                         dto.getRelativePath(),
@@ -64,7 +68,8 @@ public class RefreshTask extends Task<Void> {
                         dto.getSha256Hash(),
                         dto.getFolderId(),
                         dto.isDirectory(),
-                        dto.getParentId()
+                        dto.getParentId(),
+                        icon
                 ));
             }
             if (onSuccess != null) {

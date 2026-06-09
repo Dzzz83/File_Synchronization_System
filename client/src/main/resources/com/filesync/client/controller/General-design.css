@@ -192,7 +192,7 @@
 
 /* App Icon (Emoji or Font Icon) */
 .app-icon {
-    -fx-font-size: 128px;
+    -fx-font-size: 180px;
     -fx-text-fill: #4299e1;
 }
 

@@ -6,18 +6,24 @@
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.cell.PropertyValueFactory?>
 
-<VBox alignment="CENTER" spacing="10" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.FileExplorerController">
+<VBox alignment="CENTER" spacing="10" xmlns="http://javafx.com/javafx/26"
+      xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.FileExplorerController">
     <padding>
         <Insets bottom="0" left="0" right="0" top="0" />
     </padding>
 
     <TableView fx:id="fileTable" VBox.vgrow="ALWAYS">
         <columns>
-            <TableColumn fx:id="pathColumn" prefWidth="300" text="File Path" />
+            <TableColumn fx:id="iconColumn" maxWidth="100.0" prefWidth="50.0" minWidth="30.0">
+                <cellValueFactory>
+                    <PropertyValueFactory property="icon" />
+                </cellValueFactory>
+            </TableColumn>
+            <TableColumn fx:id="pathColumn" prefWidth="400.7999725341797" text="File Path" />
             <TableColumn fx:id="lastModifiedColumn" prefWidth="183.20001220703125" text="Last Modified" />
             <TableColumn fx:id="sizeColumn" prefWidth="132.79995727539062" text="Size" />
-            <TableColumn fx:id="sizeColumn1" prefWidth="224.00002441406252" text="Description" />
         </columns>
     </TableView>
 
@@ -28,6 +34,6 @@
         <Button fx:id="deleteButton" onAction="#handleDelete" text="Delete" />
         <Button fx:id="refreshButton" onAction="#handleRefresh" text="Refresh" />
         <Button onAction="#handleLogout" text="Logout" />
-        <Button fx:id="newFolderButton" text="New Folder" onAction="#handleNewFolder"/>
+        <Button fx:id="newFolderButton" onAction="#handleNewFolder" text="New Folder" />
     </HBox>
 </VBox>

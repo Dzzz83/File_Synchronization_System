@@ -21,6 +21,7 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.*;
 import javafx.stage.*;
+import javafx.scene.Node;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -38,6 +39,7 @@ public class FileExplorerController {
     @FXML private TableColumn<ServerFileItem, String> pathColumn;
     @FXML private TableColumn<ServerFileItem, Long> sizeColumn;
     @FXML private TableColumn<ServerFileItem, String> lastModifiedColumn;
+    @FXML private TableColumn<ServerFileItem, Node> iconColumn;
 
     // Buttons for disabling during operations
     @FXML private Button uploadButton;
@@ -230,7 +232,7 @@ public class FileExplorerController {
         if ("..".equals(item.getRelativePath())) {
             handleGoUp();
         } else {
-            // Always push the current parent ID (may be null for personal root)
+            // Always push the current parent ID (maybe null for personal root)
             pathStack.push(currentParentId);
             currentParentId = UUID.fromString(item.getFileId());
             refreshWindow();

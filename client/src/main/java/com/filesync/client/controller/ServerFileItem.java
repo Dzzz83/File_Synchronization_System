@@ -2,6 +2,7 @@ package com.filesync.client.controller;
 
 import java.time.Instant;
 import java.util.UUID;
+import javafx.scene.Node;
 
 public class ServerFileItem {
     private final String fileId;
@@ -12,9 +13,10 @@ public class ServerFileItem {
     private final UUID folderId;
     private final boolean isDirectory;
     private final UUID parentId;
+    private final Node icon;
 
     public ServerFileItem(String fileId, String relativePath, long size, Instant lastModified, String sha256Hash,
-                          UUID folderId, boolean isDirectory, UUID parentId) {
+                          UUID folderId, boolean isDirectory, UUID parentId, Node icon) {
         this.fileId = fileId;
         this.relativePath = relativePath;
         this.size = size;
@@ -23,6 +25,7 @@ public class ServerFileItem {
         this.folderId = folderId;
         this.isDirectory = isDirectory;
         this.parentId = parentId;
+        this.icon = icon;
     }
 
     public UUID getFolderId() {
@@ -35,4 +38,5 @@ public class ServerFileItem {
     public Instant getLastModified() { return lastModified; }
     public String getSha256Hash() { return sha256Hash; }
     public boolean isDirectory() { return isDirectory; }
+    public Node getIcon() { return icon; }
 }

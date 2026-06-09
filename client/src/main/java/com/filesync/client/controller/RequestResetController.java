@@ -32,11 +32,11 @@ public class RequestResetController {
     private void handleSendCode() {
         String email = emailField.getText().trim();
         if (email.isEmpty()) {
-            showAlert("Error", "Please enter your email.");
+            showAlert("❌Error", "Please enter your email.");
             return;
         }
 
-        sendButton.setDisable(true);
+        //sendButton.setDisable(true);
         sendButton.setText("Sending...");
 
         Task<Void> sendTask = new Task<>() {

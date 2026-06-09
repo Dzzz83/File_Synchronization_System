@@ -6,7 +6,8 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox spacing="10" alignment="CENTER" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.SharedFoldersController">
+<VBox spacing="10" alignment="CENTER" styleClass="root-pane" stylesheets="@General-design.css"
+      xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.SharedFoldersController">
     <VBox fx:id="container" VBox.vgrow="ALWAYS">
         <TableView fx:id="foldersTable" VBox.vgrow="ALWAYS">
             <columns>

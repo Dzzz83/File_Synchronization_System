@@ -18,7 +18,7 @@
 <?import javafx.scene.shape.Circle?>
 <?import javafx.scene.text.Font?>
 
-<GridPane prefHeight="593.0" prefWidth="811.0" styleClass="root-pane" stylesheets="@General-design.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.StartupController">
+<GridPane minHeight="700.0" minWidth="1100.0" prefHeight="700.0" prefWidth="1100.0" styleClass="root-pane" stylesheets="@General-design.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.StartupController">
    <columnConstraints>
       <ColumnConstraints hgrow="SOMETIMES" maxWidth="470.40001220703124" minWidth="10.0" prefWidth="180.2000030517578" />
       <ColumnConstraints hgrow="SOMETIMES" maxWidth="488.7999755859375" minWidth="10.0" prefWidth="227.39999694824218" />
@@ -33,9 +33,9 @@
        <!-- LEFT SIDE WITH ICON AND TITLE -->
        <VBox alignment="CENTER" spacing="15" GridPane.columnSpan="2" GridPane.rowIndex="1">
            <children>
-               <Label styleClass="app-icon" text="📁" />
+               <Label prefWidth="224.0" styleClass="app-icon" text="📁" />
                <Label styleClass="app-title" text="FileSync" />
-            <BorderPane prefHeight="45.0" prefWidth="373.0" />
+            <BorderPane prefHeight="26.0" prefWidth="642.0" />
                <Label styleClass="app-subtitle" text="Sync your files across all devices" />
                <HBox alignment="CENTER" spacing="5">
                    <Circle fill="#48bb78" radius="5" />
@@ -57,7 +57,7 @@
                   <center>
                      <FlowPane>
                         <children>
-                            <TextField fx:id="serverUrlField" prefHeight="31.0" prefWidth="231.0" text="http://192.168.1.223" />
+                            <TextField fx:id="serverUrlField" prefHeight="31.0" prefWidth="231.0" text="http://localhost:8080" />
                         </children>
                      </FlowPane>
                   </center>
@@ -87,7 +87,7 @@
                      </children>
                   </FlowPane>
                   <Pane prefHeight="9.0" prefWidth="400.0" />
-                      <Button fx:id="loginButton" onAction="#handleLogin" prefHeight="34.0" prefWidth="68.0" text="Login" />
+                      <Button fx:id="loginButton" onAction="#handleLogin" prefHeight="40.0" prefWidth="134.0" text="Login" />
                   </VBox>
               </Tab>
               <Tab text="Register">
@@ -126,7 +126,7 @@
           </TabPane>
       
                                                                                                                                                                                                  <HBox alignment="CENTER" prefHeight="42.0" prefWidth="400.0" spacing="10">
-              <Button onAction="#handleForgotPassword" prefHeight="40.0" prefWidth="193.0" text="Forgot Password?" />
+              <Button fx:id="ForgetpassButton" onAction="#handleForgotPassword" prefHeight="40.0" prefWidth="193.0" text="Forgot Password?" />
           </HBox>
       </VBox>
    </children>
