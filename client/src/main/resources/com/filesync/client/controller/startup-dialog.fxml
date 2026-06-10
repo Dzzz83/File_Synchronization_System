@@ -64,62 +64,46 @@
                </BorderPane>
             </center>
          </BorderPane>
-      
-                                                                                                                                                                                        <TabPane prefWidth="365.0">
-              <Tab text="Login">
+          <TabPane prefWidth="365.0">
+              <Tab text="Login" closable="false">
                   <VBox alignment="CENTER_LEFT" prefHeight="278.0" prefWidth="400.0" spacing="10">
                       <Label text="Username (owner Id):">
-                     <font>
-                        <Font name="System Italic" size="15.0" />
-                     </font></Label>
-                  <FlowPane>
-                     <children>
-                            <TextField fx:id="ownerIdField" prefHeight="35.0" prefWidth="380.0" />
-                     </children>
-                  </FlowPane>
+                          <font><Font name="System Italic" size="15.0" /></font>
+                      </Label>
+                      <FlowPane>
+                          <TextField fx:id="ownerIdField" prefHeight="35.0" prefWidth="380.0" />
+                      </FlowPane>
                       <Label text="Password:">
-                     <font>
-                        <Font name="System Italic" size="15.0" />
-                     </font></Label>
-                  <FlowPane>
-                     <children>
-                            <PasswordField fx:id="loginPasswordField" prefHeight="35.0" prefWidth="380.0" />
-                     </children>
-                  </FlowPane>
-                  <Pane prefHeight="9.0" prefWidth="400.0" />
+                          <font><Font name="System Italic" size="15.0" /></font>
+                      </Label>
+                      <FlowPane>
+                          <PasswordField fx:id="loginPasswordField" prefHeight="35.0" prefWidth="380.0" />
+                      </FlowPane>
+                      <Pane prefHeight="9.0" prefWidth="400.0" />
                       <Button fx:id="loginButton" onAction="#handleLogin" prefHeight="40.0" prefWidth="134.0" text="Login" />
                   </VBox>
               </Tab>
-              <Tab text="Register">
+              <Tab text="Register" closable="false">
                   <VBox alignment="CENTER_LEFT" fillWidth="false" prefHeight="341.0" prefWidth="400.0" spacing="10">
                       <Label text="Username:">
-                     <font>
-                        <Font name="System Italic" size="15.0" />
-                     </font></Label>
-                  <FlowPane>
-                     <children>
-                            <TextField fx:id="registerUsernameField" prefHeight="35.0" prefWidth="380.0" />
-                     </children>
-                  </FlowPane>
+                          <font><Font name="System Italic" size="15.0" /></font>
+                      </Label>
+                      <FlowPane>
+                          <TextField fx:id="registerUsernameField" prefHeight="35.0" prefWidth="380.0" />
+                      </FlowPane>
                       <Label text="Password:">
-                     <font>
-                        <Font name="System Italic" size="15.0" />
-                     </font></Label>
-                  <FlowPane>
-                     <children>
-                            <PasswordField fx:id="registerPasswordField" prefHeight="35.0" prefWidth="380.0" />
-                     </children>
-                  </FlowPane>
+                          <font><Font name="System Italic" size="15.0" /></font>
+                      </Label>
+                      <FlowPane>
+                          <PasswordField fx:id="registerPasswordField" prefHeight="35.0" prefWidth="380.0" />
+                      </FlowPane>
                       <Label text="Email:">
-                     <font>
-                        <Font name="System Italic" size="15.0" />
-                     </font></Label>
-                  <FlowPane>
-                     <children>
-                            <TextField fx:id="registerEmailField" prefHeight="35.0" prefWidth="380.0" />
-                     </children>
-                  </FlowPane>
-                  <Pane prefHeight="5.0" prefWidth="200.0" />
+                          <font><Font name="System Italic" size="15.0" /></font>
+                      </Label>
+                      <FlowPane>
+                          <TextField fx:id="registerEmailField" prefHeight="35.0" prefWidth="380.0" />
+                      </FlowPane>
+                      <Pane prefHeight="5.0" prefWidth="200.0" />
                       <Button fx:id="registerButton" alignment="CENTER" contentDisplay="CENTER" onAction="#handleRegister" prefHeight="40.0" prefWidth="146.0" text="Register" />
                   </VBox>
               </Tab>
