@@ -45,12 +45,20 @@ public class PermissionService {
 
     public boolean canWrite(String userId, String fileId) {
         FileMetadataEntity file = fileMetadataRepository.findById(fileId).orElse(null);
-        if (file == null) return false;
+        System.out.println("canWrite check: userId=" + userId + ", fileId=" + fileId);
+        if (file == null) {
+            System.out.println("  file not found");
+            return false;
+        }
+        System.out.println("  file.ownerId=" + file.getOwnerId() + ", file.folderId=" + file.getFolderId());
         if (file.getFolderId() == null) {
-            return file.getOwnerId().equals(userId);
+            boolean result = file.getOwnerId().equals(userId);
+            System.out.println("  personal file, result=" + result);
+            return result;
         } else {
-            // return a boolean for whether the file has write access
-            return hasWriteAccess(file.getFolderId(), userId);
+            boolean hasWrite = hasWriteAccess(file.getFolderId(), userId);
+            System.out.println("  shared folder, hasWriteAccess=" + hasWrite);
+            return hasWrite;
         }
     }
 

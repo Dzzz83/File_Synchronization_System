@@ -1,5 +1,6 @@
 package com.filesync.common.dto;
 
+import com.filesync.common.enums.Permission;
 import com.filesync.common.enums.SyncStatus;
 import java.time.Instant;
 import java.util.Set;
@@ -18,6 +19,7 @@ public class FileMetadataDto {
     private UUID folderId;
     private boolean isDirectory;
     private UUID parentId;
+    private Permission userPermission;
 
     public FileMetadataDto() {}
 
@@ -60,6 +62,8 @@ public class FileMetadataDto {
     public void setDirectory(boolean directory) { isDirectory = directory; }
     public UUID getParentId() { return parentId; }
     public void setParentId(UUID parentId) { this.parentId = parentId; }
+    public Permission getUserPermission() { return userPermission; }
+    public void setUserPermission(Permission userPermission) { this.userPermission = userPermission; }
 
     // BUILDER
     public static Builder builder() {
@@ -79,6 +83,10 @@ public class FileMetadataDto {
         public Builder folderId(UUID folderId) { dto.folderId = folderId; return this; }
         public Builder parentId(UUID parentId) { dto.parentId = parentId; return this; }
         public FileMetadataDto build() { return dto; }
+        public Builder userPermission(Permission userPermission) {
+            dto.userPermission = userPermission;
+            return this;
+        }
     }
 
     // Convenience factory for common upload scenario

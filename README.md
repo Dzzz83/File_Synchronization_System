@@ -85,6 +85,7 @@ File_Synchronization_System/
 - **Rate limiting** – a Bucket4j filter limits each IP to 100 requests per minute, protecting the server from abusive clients.
 - **Embedded monitoring** – JavaMelody provides a web dashboard at `/monitoring` showing CPU, memory, HTTP requests, SQL queries, and more (no extra setup).
 - **Shared folders** – users can create shared folders, add members with READ/WRITE permissions, request access by folder name (search), and approve requests. Folder owners can delete a shared folder (removes all files and members). All file operations respect folder‑level permissions.
+- **Permission field in file metadata** – The endpoint `GET /api/files/user/{ownerId}` now returns a `userPermission` field (`READ`, `WRITE`, or `NONE`) for each file, allowing the client to enforce fine‑grained access control without additional round trips.
 
 ### Client – Admin GUI (JavaFX)
 
@@ -101,7 +102,11 @@ File_Synchronization_System/
 - **File explorer navigation** – users can double‑click folders to navigate inside, and use the “..” entry to go up one level. The same explorer is used for personal files and for browsing inside shared folders, providing a consistent experience.
 - **Drag & drop file moves** – Files and folders can be moved to a different location by dragging them onto a folder or the “..” (parent folder) entry. Moving to the root of personal files or out of shared folders is fully supported, with automatic permission checks.
 - **Upload file or folder** – a single “Upload” button offers a choice between uploading a single file or an entire folder (with subfolders preserved). Large files use chunked upload; folder upload shows a progress dialog.
-
+- **Global progress indicator** – A top‑right status bar shows the current operation (upload, download, delete, move, edit, folder upload, refresh) with real‑time progress. The bar is non‑blocking, follows the observer pattern, and buttons are automatically disabled during operations to prevent concurrent actions.
+- **Breadcrumb path display** – A label above the file table shows the current navigation path (e.g., `My Files / Documents / Work`). It updates when entering folders, going up, or exiting shared folders, providing clear context.
+- **Direct text file editing via double‑click** – Users can double‑click any `.txt` file to open the editor immediately. The Edit button has been removed to declutter the interface. Write permission is enforced client‑side before opening the editor.
+- **Permission‑sensitive buttons** – The Delete and Download buttons are dynamically enabled/disabled based on the selected file’s `userPermission` (WRITE for delete, READ/WRITE for download). This prevents users from attempting unauthorized actions.
+- **Refactored FileExplorerController** – The controller has been split into helper classes (`DragDropHandler`, `BreadcrumbManager`, `ButtonPermissionManager`, `BulkOperationHandler`), improving maintainability and adhering to the Single Responsibility Principle.
 ### Client – Sync Client (Automatic)
 
 - Watches a local folder using Java’s WatchService.

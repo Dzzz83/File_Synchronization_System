@@ -83,7 +83,7 @@ public class SharedFoldersController {
         container.getChildren().add(foldersTable);
     }
 
-    private void showFolderExplorer(UUID folderId) {
+    private void showFolderExplorer(SharedFolderItem item) {
         showingFoldersList = false;
         actionButtons.setVisible(false);
         actionButtons.setManaged(false);
@@ -91,8 +91,9 @@ public class SharedFoldersController {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/filesync/client/controller/server-file-list.fxml"));
             VBox explorerRoot = loader.load();
             currentExplorer = loader.getController();
-            currentExplorer.setExecutorService(executorService);  // inject executor
-            currentExplorer.initialize(httpClient, ownerId, folderId, null);
+            currentExplorer.setExecutorService(executorService);
+            // Pass the shared folder name as root display name
+            currentExplorer.initialize(httpClient, ownerId, item.getId(), null, item.getName());
             currentExplorer.setOnExitSharedFolder(this::showSharedFoldersList);
             container.getChildren().clear();
             container.getChildren().add(explorerRoot);
@@ -108,7 +109,7 @@ public class SharedFoldersController {
     }
 
     private void onFolderDoubleClick(SharedFolderItem item) {
-        showFolderExplorer(item.getId());
+        showFolderExplorer(item);
     }
 
     private void updateRequestsButton(UUID folderId) {
@@ -278,8 +279,6 @@ public class SharedFoldersController {
     private void disableButtons(boolean disable) {
         manageRequestsButton.setDisable(disable);
         deleteFolderButton.setDisable(disable);
-        // Also disable the "Create Folder" button if you have a reference
-        // You can add @FXML private Button createFolderButton; and disable it too.
     }
 
     private void showAlert(String title, String message) {

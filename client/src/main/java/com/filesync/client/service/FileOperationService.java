@@ -116,8 +116,8 @@ public class FileOperationService {
         }
     }
 
-    public void resolveConflict(FileMetadataDto fileDto, Path localPath, FileMetadataDto currentMeta) throws IOException {
-        ConflictResolver.resolve(fileDto, localPath, httpClient, null);
+    public void resolveConflict(FileMetadataDto currentMeta, Path localPath) throws IOException {
+        ConflictResolver.resolve(currentMeta, localPath, httpClient, null);
     }
 
     public FileMetadataDto getMetadata(String fileId) {

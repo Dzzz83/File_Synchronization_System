@@ -2,6 +2,7 @@ package com.filesync.server.controller;
 
 import com.filesync.common.dto.FileMetadataDto;
 import com.filesync.common.dto.CreateFolderRequest;
+import com.filesync.common.enums.Permission;
 import com.filesync.server.domain.FileMetadataEntity;
 import com.filesync.server.service.FileMetaDataService;
 import com.filesync.server.service.PermissionService;
@@ -30,6 +31,7 @@ public class FileController {
 
     @PostMapping("/metadata")
     public ResponseEntity<?> saveMetaData(@RequestBody FileMetadataDto fileMetadataDto, Authentication authentication) {
+        System.out.println("saveMetaData: user=" + authentication.getName() + ", dto.fileId=" + fileMetadataDto.getFileId() + ", dto.ownerId=" + fileMetadataDto.getOwnerId());
         String userId = authentication.getName();
         boolean exists = fileMetaDataService.existsById(fileMetadataDto.getFileId());
 
@@ -69,37 +71,6 @@ public class FileController {
             }
             return ResponseEntity.ok(convertToDto(saved));
         }
-    }
-
-    @GetMapping("/user/{ownerId}")
-    public ResponseEntity<?> getFilesByOwner(@PathVariable("ownerId") String ownerId,
-                                             @RequestParam(name = "parentId", required = false) UUID parentId,
-                                             @RequestParam(name = "folderId", required = false) UUID folderId,
-                                             Authentication authentication) {
-        String userId = authentication.getName();
-        if (!ownerId.equals(userId)) {
-            return ResponseEntity.status(403).body("Not authorized");
-        }
-
-        List<FileMetadataEntity> entities;
-        if (folderId != null) {
-            if (!permissionService.canReadFolder(userId, folderId)) {
-                return ResponseEntity.status(403).body("No access to shared folder");
-            }
-            if (parentId != null) {
-                entities = fileMetaDataService.getFilesByParent(parentId);
-            } else {
-                entities = fileMetaDataService.getSharedFolderRootFiles(folderId);
-            }
-        } else {
-            if (parentId != null) {
-                entities = fileMetaDataService.getFilesByParent(parentId);
-            } else {
-                entities = fileMetaDataService.getPersonalRootFiles(ownerId);
-            }
-        }
-        // No enrichment needed – folder sizes are already correct in DB
-        return ResponseEntity.ok(entities.stream().map(this::convertToDto).collect(Collectors.toList()));
     }
 
     @GetMapping("/{fileId}")
@@ -204,6 +175,64 @@ public class FileController {
             }
         }
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/user/{ownerId}")
+    public ResponseEntity<?> getFilesByOwner(@PathVariable("ownerId") String ownerId,
+                                             @RequestParam(name = "parentId", required = false) UUID parentId,
+                                             @RequestParam(name = "folderId", required = false) UUID folderId,
+                                             Authentication authentication) {
+        String userId = authentication.getName();
+        if (!ownerId.equals(userId)) {
+            return ResponseEntity.status(403).body("Not authorized");
+        }
+
+        List<FileMetadataEntity> entities;
+        if (folderId != null) {
+            if (!permissionService.canReadFolder(userId, folderId)) {
+                return ResponseEntity.status(403).body("No access to shared folder");
+            }
+            if (parentId != null) {
+                entities = fileMetaDataService.getFilesByParent(parentId);
+            } else {
+                entities = fileMetaDataService.getSharedFolderRootFiles(folderId);
+            }
+        } else {
+            if (parentId != null) {
+                entities = fileMetaDataService.getFilesByParent(parentId);
+            } else {
+                entities = fileMetaDataService.getPersonalRootFiles(ownerId);
+            }
+        }
+
+        List<FileMetadataDto> dtos = entities.stream()
+                .map(entity -> {
+                    FileMetadataDto dto = convertToDto(entity);
+                    // Compute user's permission for this file
+                    Permission perm = computeUserPermission(userId, entity);
+                    dto.setUserPermission(perm);
+                    return dto;
+                })
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(dtos);
+    }
+
+    private Permission computeUserPermission(String userId, FileMetadataEntity file) {
+        if (file.getFolderId() == null) {
+            // Personal file – owner has WRITE, others (should not happen) have NONE
+            return file.getOwnerId().equals(userId) ? Permission.WRITE : Permission.NONE;
+        } else {
+            // Shared folder – check membership
+            UUID folderId = file.getFolderId();
+            if (permissionService.canWriteToFolder(userId, folderId)) {
+                return Permission.WRITE;
+            } else if (permissionService.canReadFolder(userId, folderId)) {
+                return Permission.READ;
+            } else {
+                return Permission.NONE;
+            }
+        }
     }
 
     // ==================== Conversion Helpers ====================

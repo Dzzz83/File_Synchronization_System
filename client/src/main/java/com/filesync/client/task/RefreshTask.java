@@ -1,6 +1,7 @@
 package com.filesync.client.task;
 
 import com.filesync.client.controller.ServerFileItem;
+import com.filesync.common.enums.Permission;
 import com.filesync.client.http.SyncHttpClient;
 import com.filesync.client.service.ProgressService;
 import com.filesync.common.dto.FileMetadataDto;
@@ -55,7 +56,8 @@ public class RefreshTask extends Task<Void> {
             fileItems.clear();
             if (showParentEntry) {
                 fileItems.add(new ServerFileItem(
-                        "parent", "..", 0, null, null, folderId, true, null,new Label("◀=")
+                        "parent", "..", 0, null, null, folderId, true, null, new Label("◀back"),
+                        Permission.NONE
                 ));
             }
             for (FileMetadataDto dto : files) {
@@ -69,7 +71,8 @@ public class RefreshTask extends Task<Void> {
                         dto.getFolderId(),
                         dto.isDirectory(),
                         dto.getParentId(),
-                        icon
+                        icon,
+                        dto.getUserPermission()
                 ));
             }
             if (onSuccess != null) {

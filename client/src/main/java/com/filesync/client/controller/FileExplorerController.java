@@ -1,16 +1,19 @@
 package com.filesync.client.controller;
 
+import com.filesync.client.controller.helper.BulkOperationHandler;
+import com.filesync.client.controller.helper.ButtonPermissionManager;
+import com.filesync.client.controller.helper.DragDropHandler;
+import com.filesync.client.controller.helper.BreadcrumbManager;
 import com.filesync.client.dialog.*;
 import com.filesync.client.http.SyncHttpClient;
-import com.filesync.client.model.DragData;
-import com.filesync.client.model.FileTransferData;
 import com.filesync.client.service.FileOperationService;
 import com.filesync.client.service.FolderUploadService;
 import com.filesync.client.service.ProgressService;
 import com.filesync.client.task.*;
 import com.filesync.common.dto.FileMetadataDto;
+import com.filesync.common.enums.Permission;
 import javafx.application.Platform;
-import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -19,7 +22,7 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.input.*;
+import javafx.scene.input.MouseEvent;
 import javafx.stage.*;
 import javafx.scene.Node;
 
@@ -27,89 +30,93 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Stack;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class FileExplorerController {
-    // FXML components
     @FXML private TableView<ServerFileItem> fileTable;
     @FXML private TableColumn<ServerFileItem, String> pathColumn;
     @FXML private TableColumn<ServerFileItem, Long> sizeColumn;
     @FXML private TableColumn<ServerFileItem, String> lastModifiedColumn;
     @FXML private TableColumn<ServerFileItem, Node> iconColumn;
+    @FXML private Label pathLabel;
 
-    // Buttons for disabling during operations
     @FXML private Button uploadButton;
     @FXML private Button downloadButton;
     @FXML private Button deleteButton;
     @FXML private Button newFolderButton;
-    @FXML private Button editButton;
     @FXML private Button refreshButton;
 
-    // State
-    private UUID currentParentId;
-    private final Stack<UUID> pathStack = new Stack<>();
     private SyncHttpClient httpClient;
     private String ownerId;
     private UUID folderId;
-    private Runnable onExitSharedFolder;
     private ExecutorService executorService;
-
-    // Services
     private FileOperationService fileService;
+
+    private BreadcrumbManager breadcrumbManager;
+    private BulkOperationHandler bulkOperationHandler;
+    private DragDropHandler dragDropHandler;
     private final ObservableList<ServerFileItem> fileItems = FXCollections.observableArrayList();
 
-    // ==================== Initialization ====================
-
-    public void initialize(SyncHttpClient httpClient, String ownerId, UUID folderId, UUID parentId) {
+    public void initialize(SyncHttpClient httpClient, String ownerId, UUID folderId, UUID parentId, String rootDisplayName) {
         if (executorService == null) {
             throw new IllegalStateException("ExecutorService must be set before calling initialize()");
         }
         this.httpClient = httpClient;
         this.ownerId = ownerId;
         this.folderId = folderId;
-        this.currentParentId = parentId;
         this.fileService = new FileOperationService(httpClient, ownerId, folderId);
 
         configureTableColumns();
         configureTableSelection();
         configureRowFactory();
-        refreshWindow();
 
-        // Disable buttons while any operation is running
-        ProgressService ps = ProgressService.getInstance();
-        uploadButton.disableProperty().bind(ps.busyProperty());
-        downloadButton.disableProperty().bind(ps.busyProperty());
-        deleteButton.disableProperty().bind(ps.busyProperty());
-        newFolderButton.disableProperty().bind(ps.busyProperty());
-        editButton.disableProperty().bind(ps.busyProperty());
-        refreshButton.disableProperty().bind(ps.busyProperty());
+        breadcrumbManager = new BreadcrumbManager(pathLabel, rootDisplayName);
+        breadcrumbManager.setCurrentParentId(parentId);
+        breadcrumbManager.setOnExitSharedFolder(this::showSharedFoldersList);
+
+        bulkOperationHandler = new BulkOperationHandler(httpClient, fileService, this::refreshWindow, executorService);
+        dragDropHandler = new DragDropHandler(fileTable, (fileIds, targetId) -> {
+            List<String> names = fileIds.stream().map(id -> "item").collect(Collectors.toList());
+            bulkOperationHandler.bulkMove(fileIds, names, targetId);
+        });
+
+        new ButtonPermissionManager(fileTable, ProgressService.getInstance(), deleteButton, downloadButton);
+
+        refreshWindow();
     }
 
     public void setExecutorService(ExecutorService executorService) {
         this.executorService = executorService;
     }
 
-    private void configureTableColumns() {
-        pathColumn.setCellValueFactory(new PropertyValueFactory<>("relativePath"));
+    public void setOnExitSharedFolder(Runnable callback) {
+        // Override the exit handler in breadcrumb manager
+        breadcrumbManager.setOnExitSharedFolder(() -> {
+            breadcrumbManager.reset();
+            callback.run();
+        });
+    }
 
-        // Size column: numeric value (for sorting) with custom formatting
-        sizeColumn.setCellValueFactory(new PropertyValueFactory<>("size"));
-        sizeColumn.setCellFactory(column -> new TableCell<ServerFileItem, Long>() {
-            @Override
-            protected void updateItem(Long item, boolean empty) {
+    private void configureTableColumns() {
+        iconColumn.setCellFactory(column -> new TableCell<>() {
+            @Override protected void updateItem(Node item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                } else {
-                    setText(formatFileSize(item));
-                }
+                setGraphic(empty || item == null ? null : item);
             }
         });
+        iconColumn.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().getIcon()));
 
+        pathColumn.setCellValueFactory(new PropertyValueFactory<>("relativePath"));
+        sizeColumn.setCellValueFactory(new PropertyValueFactory<>("size"));
+        sizeColumn.setCellFactory(column -> new TableCell<>() {
+            @Override protected void updateItem(Long item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : formatFileSize(item));
+            }
+        });
         lastModifiedColumn.setCellValueFactory(new PropertyValueFactory<>("lastModified"));
         fileTable.setItems(fileItems);
     }
@@ -121,141 +128,56 @@ public class FileExplorerController {
     private void configureRowFactory() {
         fileTable.setRowFactory(tv -> {
             TableRow<ServerFileItem> row = new TableRow<>();
-            setupDragAndDrop(row);
-            setupDoubleClick(row);
+            dragDropHandler.setupDragAndDrop(row);
+            row.setOnMouseClicked(this::onRowDoubleClick);
             return row;
         });
     }
 
-    // ==================== Drag & Drop ====================
-
-    private void setupDragAndDrop(TableRow<ServerFileItem> row) {
-        row.setOnDragDetected(event -> onDragDetected(row, event));
-        row.setOnDragOver(event -> onDragOver(row, event));
-        row.setOnDragDropped(event -> onDragDropped(row, event));
-    }
-
-    private void onDragDetected(TableRow<ServerFileItem> row, MouseEvent event) {
-        if (row.isEmpty()) return;
-        ObservableList<ServerFileItem> selected = fileTable.getSelectionModel().getSelectedItems();
-        if (selected.isEmpty()) return;
-
-        List<String> fileIds = selected.stream()
-                .map(ServerFileItem::getFileId)
-                .collect(Collectors.toList());
-        List<String> fileNames = selected.stream()
-                .map(ServerFileItem::getRelativePath)
-                .collect(Collectors.toList());
-
-        Dragboard db = row.startDragAndDrop(TransferMode.MOVE);
-        ClipboardContent content = new ClipboardContent();
-
-        try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
-             ObjectOutputStream oos = new ObjectOutputStream(bos)) {
-            DragData dragData = new DragData(fileIds, fileNames);
-            oos.writeObject(dragData);
-            content.put(FileTransferData.DRAG_DATA, bos.toByteArray());
-        } catch (IOException e) {
-            e.printStackTrace();
-            return;
-        }
-        db.setContent(content);
-        event.consume();
-    }
-
-    private void onDragOver(TableRow<ServerFileItem> row, DragEvent event) {
-        if (!row.isEmpty() && row.getItem().isDirectory()) {
-            Dragboard db = event.getDragboard();
-            if (db.hasContent(FileTransferData.DRAG_DATA)) {
-                event.acceptTransferModes(TransferMode.MOVE);
+    private void onRowDoubleClick(MouseEvent event) {
+        if (event.getClickCount() == 2) {
+            TableRow<ServerFileItem> row = (TableRow<ServerFileItem>) event.getSource();
+            if (!row.isEmpty()) {
+                onItemDoubleClick(row.getItem());
             }
         }
-        event.consume();
     }
 
-    private void onDragDropped(TableRow<ServerFileItem> row, DragEvent event) {
-        Dragboard db = event.getDragboard();
-        if (!db.hasContent(FileTransferData.DRAG_DATA)) {
-            event.setDropCompleted(false);
-            event.consume();
-            return;
-        }
-
-        try {
-            byte[] data = (byte[]) db.getContent(FileTransferData.DRAG_DATA);
-            try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(data))) {
-                DragData dragData = (DragData) ois.readObject();
-                List<String> fileIds = dragData.getFileIds();
-                List<String> fileNames = dragData.getFileNames();
-
-                ServerFileItem target = row.getItem();
-                String targetId = resolveDropTargetId(target);
-                if (targetId != null) {
-                    bulkMove(fileIds, fileNames, targetId);
-                    event.setDropCompleted(true);
-                } else {
-                    event.setDropCompleted(false);
+    private void onItemDoubleClick(ServerFileItem item) {
+        if (item.isDirectory()) {
+            if ("..".equals(item.getRelativePath())) {
+                if (breadcrumbManager.canGoUp()) {
+                    breadcrumbManager.navigateUp();
+                    refreshWindow();
+                } else if (folderId != null) {
+                    breadcrumbManager.exitSharedFolder();
                 }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            event.setDropCompleted(false);
-        }
-        event.consume();
-    }
-
-    private String resolveDropTargetId(ServerFileItem target) {
-        if ("..".equals(target.getRelativePath())) {
-            if (pathStack.isEmpty()) {
-                return ""; // move to personal root
             } else {
-                UUID parent = pathStack.peek();
-                return parent == null ? "" : parent.toString();
+                breadcrumbManager.navigateInto(UUID.fromString(item.getFileId()), item.getRelativePath());
+                refreshWindow();
             }
-        } else if (target.isDirectory()) {
-            return target.getFileId();
-        }
-        return null;
-    }
-
-    private void setupDoubleClick(TableRow<ServerFileItem> row) {
-        row.setOnMouseClicked(event -> {
-            if (event.getClickCount() == 2 && !row.isEmpty()) {
-                onFolderDoubleClick(row.getItem());
+        } else if (isTextFile(item)) {
+            if (item.getUserPermission() != Permission.WRITE) {
+                showAlert("Permission Denied", "You don't have write permission to edit this file.");
+                return;
             }
-        });
-    }
-
-    private void onFolderDoubleClick(ServerFileItem item) {
-        if (!item.isDirectory()) return;
-
-        if ("..".equals(item.getRelativePath())) {
-            handleGoUp();
-        } else {
-            // Always push the current parent ID (maybe null for personal root)
-            pathStack.push(currentParentId);
-            currentParentId = UUID.fromString(item.getFileId());
-            refreshWindow();
+            fileTable.getSelectionModel().select(item);
+            handleEdit();
         }
     }
 
-    private void handleGoUp() {
-        if (!pathStack.isEmpty()) {
-            currentParentId = pathStack.pop();
-            refreshWindow();
-        } else if (folderId != null && onExitSharedFolder != null) {
-            onExitSharedFolder.run();
-        }
+    private boolean isTextFile(ServerFileItem item) {
+        if (item.isDirectory()) return false;
+        String path = item.getRelativePath();
+        return path != null && path.toLowerCase().endsWith(".txt");
     }
-
-    // ==================== File Listing ====================
 
     private void refreshWindow() {
         ProgressService ps = ProgressService.getInstance();
         ps.startOperation("Refreshing...");
 
-        boolean showParent = (currentParentId != null || !pathStack.isEmpty() || folderId != null);
-        RefreshTask task = new RefreshTask(httpClient, ownerId, folderId, currentParentId, fileItems, showParent);
+        boolean showParent = (breadcrumbManager.getCurrentParentId() != null || !breadcrumbManager.getPathStack().isEmpty() || folderId != null);
+        RefreshTask task = new RefreshTask(httpClient, ownerId, folderId, breadcrumbManager.getCurrentParentId(), fileItems, showParent);
         task.setOnFailed(e -> {
             ps.finishOperation();
             showAlert("Error", "Failed to load files: " + task.getException().getMessage());
@@ -263,46 +185,37 @@ public class FileExplorerController {
         executorService.submit(task);
     }
 
-    // ==================== File Operations ====================
-
-    @FXML
-    private void handleRefresh() {
-        refreshWindow();
+    private void showSharedFoldersList() {
+        // This method is called when exiting a shared folder – close the explorer and return to parent view.
+        // In practice, the parent (SharedFoldersController) should handle this via the callback.
+        // Here we simply run the callback set via setOnExitSharedFolder.
+        if (breadcrumbManager != null) breadcrumbManager.reset();
     }
 
-    @FXML
-    private void handleDelete() {
+    // ==================== File Operations (event handlers) ====================
+
+    @FXML private void handleRefresh() { refreshWindow(); }
+
+    @FXML private void handleDelete() {
         ObservableList<ServerFileItem> selected = fileTable.getSelectionModel().getSelectedItems();
         if (selected.isEmpty()) {
             showAlert("No selection", "Please select at least one item to delete");
             return;
         }
-        if (containsParentEntry(selected)) {
+        if (selected.stream().anyMatch(item -> "..".equals(item.getRelativePath()))) {
             showAlert("Invalid Action", "Cannot delete the parent directory entry.");
             return;
         }
 
-        String message = buildDeleteConfirmationMessage(selected);
-        boolean confirmed = ConfirmationDialog.show((Stage) fileTable.getScene().getWindow(), message);
-        if (confirmed) {
-            bulkDelete(selected);
+        String message = selected.size() == 1 ?
+                "Delete \"" + selected.get(0).getRelativePath() + "\"?\nThis action cannot be undone." :
+                "Delete " + selected.size() + " items?\nThis action cannot be undone.";
+        if (ConfirmationDialog.show((Stage) fileTable.getScene().getWindow(), message)) {
+            bulkOperationHandler.bulkDelete(selected);
         }
     }
 
-    private boolean containsParentEntry(ObservableList<ServerFileItem> items) {
-        return items.stream().anyMatch(item -> "..".equals(item.getRelativePath()));
-    }
-
-    private String buildDeleteConfirmationMessage(ObservableList<ServerFileItem> items) {
-        if (items.size() == 1) {
-            return "Delete \"" + items.get(0).getRelativePath() + "\"?\nThis action cannot be undone.";
-        } else {
-            return "Delete " + items.size() + " items?\nThis action cannot be undone.";
-        }
-    }
-
-    @FXML
-    private void handleDownload() {
+    @FXML private void handleDownload() {
         ServerFileItem selected = fileTable.getSelectionModel().getSelectedItem();
         if (selected == null) {
             showAlert("No selection", "Please select a file to download");
@@ -320,25 +233,14 @@ public class FileExplorerController {
 
         ProgressService ps = ProgressService.getInstance();
         ps.startOperation("Downloading " + selected.getRelativePath());
-
         DownloadTask task = new DownloadTask(httpClient, selected.getFileId(), saveFile.toPath(), selected.getRelativePath());
         task.messageProperty().addListener((obs, old, msg) -> ps.updateMessage(msg));
-        // DownloadTask doesn't report progress, so we keep indeterminate progress bar
-
-        task.setOnSucceeded(e -> {
-            ps.finishOperation();
-            showAlert("Download completed", "File saved to " + saveFile.getPath());
-        });
-        task.setOnFailed(e -> {
-            ps.finishOperation();
-            showAlert("Download failed", task.getException().getMessage());
-        });
-
+        task.setOnSucceeded(e -> { ps.finishOperation(); showAlert("Download completed", "File saved to " + saveFile.getPath()); });
+        task.setOnFailed(e -> { ps.finishOperation(); showAlert("Download failed", task.getException().getMessage()); });
         executorService.submit(task);
     }
 
-    @FXML
-    private void handleUpload() {
+    @FXML private void handleUpload() {
         UploadChoiceDialog.show((Stage) fileTable.getScene().getWindow(), this::uploadFile, this::uploadFolder);
     }
 
@@ -350,20 +252,11 @@ public class FileExplorerController {
 
         ProgressService ps = ProgressService.getInstance();
         ps.startOperation("Uploading " + selectedFile.getName());
-
-        UploadTask task = new UploadTask(httpClient, ownerId, folderId, currentParentId, selectedFile.toPath());
+        UploadTask task = new UploadTask(httpClient, ownerId, folderId, breadcrumbManager.getCurrentParentId(), selectedFile.toPath());
         task.messageProperty().addListener((obs, old, msg) -> ps.updateMessage(msg));
         task.progressProperty().addListener((obs, old, val) -> ps.updateProgress(val.doubleValue(), 1.0));
-
-        task.setOnSucceeded(e -> {
-            ps.finishOperation();
-            refreshWindow();
-            showAlert("Success", "Uploaded: " + selectedFile.getName());
-        });
-        task.setOnFailed(e -> {
-            ps.finishOperation();
-            showAlert("Error", "Upload failed: " + task.getException().getMessage());
-        });
+        task.setOnSucceeded(e -> { ps.finishOperation(); refreshWindow(); showAlert("Success", "Uploaded: " + selectedFile.getName()); });
+        task.setOnFailed(e -> { ps.finishOperation(); showAlert("Error", "Upload failed: " + task.getException().getMessage()); });
         executorService.submit(task);
     }
 
@@ -373,8 +266,7 @@ public class FileExplorerController {
         File selectedDir = chooser.showDialog(fileTable.getScene().getWindow());
         if (selectedDir == null) return;
 
-        // Count total files in the folder (including subfolders)
-        int totalFiles = 0;
+        int totalFiles;
         try (Stream<Path> walk = Files.walk(selectedDir.toPath())) {
             totalFiles = (int) walk.filter(Files::isRegularFile).count();
         } catch (IOException e) {
@@ -382,7 +274,6 @@ public class FileExplorerController {
             return;
         }
         final int finalTotalFiles = totalFiles;
-
         final ProgressService ps = ProgressService.getInstance();
         ps.startOperation("Uploading folder " + selectedDir.getName());
         ps.updateProgress(0, finalTotalFiles);
@@ -390,26 +281,18 @@ public class FileExplorerController {
         executorService.submit(() -> {
             try {
                 FolderUploadService service = new FolderUploadService(
-                        httpClient, ownerId, folderId, currentParentId,
-                        selectedDir.toPath(), msg -> { /* optional: log to console or ignore */ }, ps, finalTotalFiles
+                        httpClient, ownerId, folderId, breadcrumbManager.getCurrentParentId(),
+                        selectedDir.toPath(), msg -> {}, ps, finalTotalFiles
                 );
                 service.upload();
-                Platform.runLater(() -> {
-                    ps.finishOperation();
-                    refreshWindow();
-                    showAlert("Success", "Folder uploaded successfully.");
-                });
+                Platform.runLater(() -> { ps.finishOperation(); refreshWindow(); showAlert("Success", "Folder uploaded successfully."); });
             } catch (Exception e) {
-                Platform.runLater(() -> {
-                    ps.finishOperation();
-                    showAlert("Folder Upload Error", e.getMessage());
-                });
+                Platform.runLater(() -> { ps.finishOperation(); showAlert("Folder Upload Error", e.getMessage()); });
             }
         });
     }
 
-    @FXML
-    private void handleEdit() {
+    @FXML private void handleEdit() {
         ServerFileItem selected = fileTable.getSelectionModel().getSelectedItem();
         if (selected == null) {
             showAlert("No selection", "Please select a file to edit.");
@@ -426,7 +309,6 @@ public class FileExplorerController {
 
         ProgressService ps = ProgressService.getInstance();
         ps.startOperation("Downloading " + selected.getRelativePath() + " for editing");
-
         EditTask editTask = new EditTask(httpClient, selected.getFileId(), selected.getRelativePath());
         editTask.messageProperty().addListener((obs, old, msg) -> ps.updateMessage(msg));
 
@@ -435,83 +317,70 @@ public class FileExplorerController {
             try {
                 Path tempFile = editTask.getValue();
                 String originalContent = Files.readString(tempFile);
-
-                // Open editor on UI thread
-                Platform.runLater(() -> {
-                    try {
-                        FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/filesync/client/controller/edit-dialog.fxml"));
-                        Parent root = loader.load();
-                        EditDialogController dialogController = loader.getController();
-                        Stage dialogStage = new Stage();
-                        dialogStage.setTitle("Edit File");
-                        dialogStage.initModality(Modality.WINDOW_MODAL);
-                        dialogStage.setScene(new Scene(root));
-                        dialogStage.setResizable(true);
-
-                        final String[] newContent = {null};
-                        dialogController.setData(originalContent, editedContent -> {
-                            newContent[0] = editedContent;
-                            dialogStage.close();
-                        });
-                        dialogStage.showAndWait();
-
-                        if (newContent[0] != null) {
-                            // Get fresh metadata (server might have changed)
-                            FileMetadataDto currentMeta = fileService.getMetadata(selected.getFileId());
-                            if (!currentMeta.getSha256Hash().equals(selected.getSha256Hash())) {
-                                handleConflict(selected, currentMeta, newContent[0]);
-                            } else {
-                                fileService.editFile(currentMeta, newContent[0]);
-                                refreshWindow();
-                                showAlert("Success", "File updated: " + selected.getRelativePath());
-                            }
-                        }
-                        Files.deleteIfExists(tempFile);
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
-                        showAlert("Edit failed", ex.getMessage());
-                    }
-                });
+                Platform.runLater(() -> openEditDialog(selected, tempFile, originalContent));
             } catch (Exception ex) {
                 showAlert("Edit failed", "Could not open file: " + ex.getMessage());
             }
         });
-
-        editTask.setOnFailed(e -> {
-            ps.finishOperation();
-            showAlert("Edit failed", editTask.getException().getMessage());
-        });
-
+        editTask.setOnFailed(e -> { ps.finishOperation(); showAlert("Edit failed", editTask.getException().getMessage()); });
         executorService.submit(editTask);
+    }
+
+    private void openEditDialog(ServerFileItem selected, Path tempFile, String originalContent) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/filesync/client/controller/edit-dialog.fxml"));
+            Parent root = loader.load();
+            EditDialogController dialogController = loader.getController();
+            Stage dialogStage = new Stage();
+            dialogStage.setTitle("Edit File");
+            dialogStage.initModality(Modality.WINDOW_MODAL);
+            dialogStage.setScene(new Scene(root));
+            dialogStage.setResizable(true);
+
+            final String[] newContent = {null};
+            dialogController.setData(originalContent, editedContent -> {
+                newContent[0] = editedContent;
+                dialogStage.close();
+            });
+            dialogStage.showAndWait();
+
+            if (newContent[0] != null) {
+                FileMetadataDto currentMeta = fileService.getMetadata(selected.getFileId());
+                if (!currentMeta.getSha256Hash().equals(selected.getSha256Hash())) {
+                    handleConflict(selected, currentMeta, newContent[0]);
+                } else {
+                    fileService.editFile(currentMeta, newContent[0]);
+                    refreshWindow();
+                    showAlert("Success", "File updated: " + selected.getRelativePath());
+                }
+            }
+            Files.deleteIfExists(tempFile);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            showAlert("Edit failed", ex.getMessage());
+        }
     }
 
     private void handleConflict(ServerFileItem selected, FileMetadataDto currentMeta, String newContent) throws IOException {
         Path userTemp = Files.createTempFile("user_", ".tmp");
         Files.writeString(userTemp, newContent);
-        FileMetadataDto conflictDto = new FileMetadataDto();
-        conflictDto.setFileId(selected.getFileId());
-        conflictDto.setRelativePath(selected.getRelativePath());
-        conflictDto.setSha256Hash(currentMeta.getSha256Hash());
-        conflictDto.setFolderId(selected.getFolderId());
         try {
-            fileService.resolveConflict(conflictDto, userTemp, currentMeta);
+            fileService.resolveConflict(currentMeta, userTemp);
             refreshWindow();
             showAlert("Success", "Conflict resolved and file updated: " + selected.getRelativePath());
         } catch (Exception e) {
-            showAlert("Conflict Error", "Unable to resolve conflict. Please refresh and try again.");
+            showAlert("Conflict Error", "Unable to resolve conflict: " + e.getMessage());
         } finally {
             Files.deleteIfExists(userTemp);
         }
     }
 
-    @FXML
-    private void handleNewFolder() {
+    @FXML private void handleNewFolder() {
         Stage owner = (Stage) fileTable.getScene().getWindow();
-        CreateFolderDialog.show(owner, httpClient, ownerId, folderId, currentParentId, this::refreshWindow, executorService);
+        CreateFolderDialog.show(owner, httpClient, ownerId, folderId, breadcrumbManager.getCurrentParentId(), this::refreshWindow, executorService);
     }
 
-    @FXML
-    private void handleLogout() {
+    @FXML private void handleLogout() {
         fileService.logout();
         fileService.close();
         Stage stage = (Stage) fileTable.getScene().getWindow();
@@ -523,51 +392,12 @@ public class FileExplorerController {
         }
     }
 
-    // ==================== Bulk Operations ====================
-
-    private void bulkMove(List<String> fileIds, List<String> fileNames, String targetFolderId) {
-        ProgressService ps = ProgressService.getInstance();
-        ps.startOperation("Moving " + fileIds.size() + " item(s)");
-
-        MoveTask task = new MoveTask(httpClient, fileIds, targetFolderId, fileNames);
-        task.messageProperty().addListener((obs, old, msg) -> ps.updateMessage(msg));
-        task.progressProperty().addListener((obs, old, val) -> ps.updateProgress(val.doubleValue(), 1.0));
-
-        task.setOnSucceeded(e -> {
-            ps.finishOperation();
-            refreshWindow();
-            showAlert("Success", "Moved " + fileIds.size() + " item(s)");
-        });
-        task.setOnFailed(e -> {
-            ps.finishOperation();
-            showAlert("Error", "Move failed: " + task.getException().getMessage());
-        });
-
-        executorService.submit(task);
-    }
-
-    private void bulkDelete(ObservableList<ServerFileItem> items) {
-        List<String> fileIds = items.stream().map(ServerFileItem::getFileId).collect(Collectors.toList());
-        List<String> fileNames = items.stream().map(ServerFileItem::getRelativePath).collect(Collectors.toList());
-
-        ProgressService ps = ProgressService.getInstance();
-        ps.startOperation("Deleting " + fileIds.size() + " item(s)");
-
-        DeleteTask task = new DeleteTask(fileService, fileIds, fileNames);
-        task.messageProperty().addListener((obs, old, msg) -> ps.updateMessage(msg));
-        task.progressProperty().addListener((obs, old, val) -> ps.updateProgress(val.doubleValue(), 1.0));
-
-        task.setOnSucceeded(e -> {
-            ps.finishOperation();
-            refreshWindow();
-            showAlert("Success", "Deleted " + items.size() + " item(s)");
-        });
-        task.setOnFailed(e -> {
-            ps.finishOperation();
-            showAlert("Error", "Delete failed: " + task.getException().getMessage());
-        });
-
-        executorService.submit(task);
+    private void showAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 
     private String formatFileSize(long size) {
@@ -580,19 +410,5 @@ public class FileExplorerController {
             unitIndex++;
         }
         return String.format("%.1f %s", converted, units[unitIndex]);
-    }
-
-    // ==================== Utilities ====================
-
-    private void showAlert(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
-
-    public void setOnExitSharedFolder(Runnable callback) {
-        this.onExitSharedFolder = callback;
     }
 }

@@ -22,6 +22,6 @@
         <Button text="Request Access" onAction="#handleRequestAccess"/>
         <Button text="Manage Members" onAction="#handleManageMembers"/>
         <Button fx:id="manageRequestsButton" text="Manage Requests" disable="true"/>
-        <Button fx:id="deleteFolderButton" text="Delete Folder" disable="true"/>
+        <Button fx:id="deleteFolderButton" text="Delete Folder" disable="true" onAction="#handleDeleteFolder"/>
     </HBox>
 </VBox>

@@ -2,6 +2,8 @@ package com.filesync.client.controller;
 
 import java.time.Instant;
 import java.util.UUID;
+
+import com.filesync.common.enums.Permission;
 import javafx.scene.Node;
 
 public class ServerFileItem {
@@ -14,9 +16,10 @@ public class ServerFileItem {
     private final boolean isDirectory;
     private final UUID parentId;
     private final Node icon;
+    private final Permission userPermission;
 
     public ServerFileItem(String fileId, String relativePath, long size, Instant lastModified, String sha256Hash,
-                          UUID folderId, boolean isDirectory, UUID parentId, Node icon) {
+                          UUID folderId, boolean isDirectory, UUID parentId, Node icon, Permission userPermission) {
         this.fileId = fileId;
         this.relativePath = relativePath;
         this.size = size;
@@ -26,6 +29,7 @@ public class ServerFileItem {
         this.isDirectory = isDirectory;
         this.parentId = parentId;
         this.icon = icon;
+        this.userPermission = userPermission;
     }
 
     public UUID getFolderId() {
@@ -39,4 +43,5 @@ public class ServerFileItem {
     public String getSha256Hash() { return sha256Hash; }
     public boolean isDirectory() { return isDirectory; }
     public Node getIcon() { return icon; }
+    public Permission getUserPermission() { return userPermission; }
 }

@@ -53,7 +53,7 @@ public class ServerAdminApp extends Application {
             VBox personalRoot = personalLoader.load();
             FileExplorerController personalController = personalLoader.getController();
             personalController.setExecutorService(ServerAdminApp.getInstance().getExecutor());
-            personalController.initialize(httpClient, username, null, null);
+            personalController.initialize(httpClient, username, null, null, "My Files");
             Tab personalTab = new Tab("My Files", personalRoot);
             personalTab.setClosable(false);
 

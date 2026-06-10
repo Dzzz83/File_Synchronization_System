@@ -64,6 +64,10 @@ public class ConflictResolver {
                             updatedDto.setSharedWith(file.getSharedWith());
                             updatedDto.setDirectory(file.isDirectory());
 
+                            System.out.println("=== ConflictResolver updatedDto ===");
+                            System.out.println("ownerId: " + updatedDto.getOwnerId());
+                            System.out.println("folderId: " + updatedDto.getFolderId());
+                            System.out.println("parentId: " + updatedDto.getParentId());
                             httpClient.createMetadata(updatedDto);
                             // ========================================================
 

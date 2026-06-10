@@ -28,7 +28,11 @@ public class SyncHttpClient {
     public SyncHttpClient(String baseUrl) {
         this.webClient = WebClient.builder()
                 .baseUrl(baseUrl)
-                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(100 * 1024 * 1024))
+                .filter((request, next) -> {
+                    System.out.println("Request: " + request.method() + " " + request.url());
+                    request.headers().forEach((k, v) -> System.out.println("  " + k + ": " + v));
+                    return next.exchange(request);
+                })
                 .build();
         this.chunkedUploader = new ChunkedUploader(webClient);
     }
@@ -88,6 +92,14 @@ public class SyncHttpClient {
     }
 
     public void createMetadata(FileMetadataDto dto) {
+        System.out.println("=== createMetadata DEBUG ===");
+        System.out.println("Token present: " + (authToken != null && !authToken.isEmpty()));
+        System.out.println("fileId: " + dto.getFileId());
+        System.out.println("ownerId: " + dto.getOwnerId());
+        System.out.println("folderId: " + dto.getFolderId());
+        System.out.println("parentId: " + dto.getParentId());
+        System.out.println("relativePath: " + dto.getRelativePath());
+        System.out.println("isDirectory: " + dto.isDirectory());
         addAuth(webClient.post().uri("/api/files/metadata").bodyValue(dto))
                 .retrieve()
                 .bodyToMono(String.class)
