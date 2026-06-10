@@ -52,6 +52,7 @@ public class StartupController {
 
         loginButton.setDisable(true);
         loginButton.setText("Logging in...");
+        ForgetpassButton.setDisable(true);  // NEW
 
         ExecutorService executor = ServerAdminApp.getInstance().getExecutor();
         Task<String[]> loginTask = new Task<>() {
@@ -67,13 +68,14 @@ public class StartupController {
             String[] result = loginTask.getValue();
             Platform.runLater(() -> {
                 ServerAdminApp.showMainWindow(serverUrl, result[1], result[0]);
-                primaryStage.close(); // close login window
+                primaryStage.close();
             });
         });
         loginTask.setOnFailed(e -> {
             Platform.runLater(() -> {
                 loginButton.setDisable(false);
                 loginButton.setText("Login");
+                ForgetpassButton.setDisable(false);  // NEW
                 showAlert("Login failed", loginTask.getException().getMessage());
             });
         });
@@ -94,6 +96,7 @@ public class StartupController {
 
         registerButton.setDisable(true);
         registerButton.setText("Registering...");
+        ForgetpassButton.setDisable(true);  // NEW
 
         ExecutorService executor = ServerAdminApp.getInstance().getExecutor();
         Task<Boolean> registerTask = new Task<>() {
@@ -108,6 +111,7 @@ public class StartupController {
             Platform.runLater(() -> {
                 registerButton.setDisable(false);
                 registerButton.setText("Register");
+                ForgetpassButton.setDisable(false);  // NEW
                 if (success) {
                     showAlert("Success", "Registration successful. You can now login.");
                     ownerIdField.setText(username);
@@ -120,6 +124,7 @@ public class StartupController {
             Platform.runLater(() -> {
                 registerButton.setDisable(false);
                 registerButton.setText("Register");
+                ForgetpassButton.setDisable(false);
                 showAlert("Registration failed", registerTask.getException().getMessage());
             });
         });
