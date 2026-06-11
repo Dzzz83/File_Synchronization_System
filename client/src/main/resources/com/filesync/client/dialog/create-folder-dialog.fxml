@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox spacing="15" alignment="CENTER" xmlns:fx="http://javafx.com/fxml" fx:controller="com.filesync.client.controller.CreateFolderDialogController">
+    <padding>
+        <Insets top="15" right="15" bottom="15" left="15"/>
+    </padding>
+
+    <Label text="Name:"/>
+    <TextField fx:id="nameField" promptText="Folder name"/>
+
+    <Label text="Members (optional):"/>
+    <ListView fx:id="membersList" prefHeight="150"/>
+
+    <Label text="Add new member:"/>
+    <HBox spacing="5">
+        <TextField fx:id="searchField" promptText="Search by username or email" HBox.hgrow="ALWAYS"/>
+        <Button fx:id="searchButton" text="Search"/>
+    </HBox>
+    <ListView fx:id="searchResults" prefHeight="100"/>
+
+    <Label text="Permission:"/>
+    <ComboBox fx:id="permissionCombo"/>
+    <Button fx:id="addMemberBtn" text="Add Member" disable="true"/>
+
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <Button fx:id="createBtn" text="Create" defaultButton="true"/>
+        <Button fx:id="cancelBtn" text="Cancel" cancelButton="true"/>
+    </HBox>
+</VBox>
