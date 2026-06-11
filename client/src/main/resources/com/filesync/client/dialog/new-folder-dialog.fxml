@@ -12,37 +12,37 @@
 <?import javafx.scene.text.Font?>
 
 <VBox alignment="CENTER" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.CreateFolderController">
-   <children>
-      <VBox alignment="CENTER" maxWidth="300.0" spacing="10" styleClass="tab" stylesheets="@General-design.css">
-          <padding>
-              <Insets bottom="10" left="10" right="10" top="10" />
-          </padding>
-          <Label alignment="CENTER" layoutX="56.0" layoutY="-5.0" prefHeight="38.0" prefWidth="261.0" text="Folder name">
-              <font>
-                  <Font name="System Bold" size="18.0" />
-              </font>
-              <textFill>
-                  <LinearGradient endX="0.37404580152671746" endY="0.7175572810282236" startX="0.6946564885496183" startY="0.2328245002804823">
-                      <stops>
-                          <Stop>
-                              <color>
-                                  <Color red="0.18315789103507996" green="0.5250526070594788" blue="0.9157894849777222" />
-                              </color>
-                          </Stop>
-                          <Stop offset="1.0">
-                              <color>
-                                  <Color red="0.1792982518672943" green="0.4345847964286804" blue="0.7684210538864136" />
-                              </color>
-                          </Stop>
-                      </stops>
-                  </LinearGradient>
-              </textFill>
-          </Label>
-          <TextField fx:id="nameField" />
-          <HBox alignment="CENTER" spacing="10">
-              <Button onAction="#onCreate" style="-fx-background-color: white;" text="Create" />
-              <Button onAction="#onCancel" style="-fx-background-color: white;" text="Cancel" />
-          </HBox>
-      </VBox>
-   </children>
+    <children>
+        <VBox alignment="CENTER" maxWidth="300.0" spacing="10" styleClass="tab" stylesheets="@General-design.css">
+            <padding>
+                <Insets bottom="10" left="10" right="10" top="10" />
+            </padding>
+            <Label alignment="CENTER" layoutX="56.0" layoutY="-5.0" prefHeight="38.0" prefWidth="261.0" text="Folder name">
+                <font>
+                    <Font name="System Bold" size="18.0" />
+                </font>
+                <textFill>
+                    <LinearGradient endX="0.37404580152671746" endY="0.7175572810282236" startX="0.6946564885496183" startY="0.2328245002804823">
+                        <stops>
+                            <Stop>
+                                <color>
+                                    <Color red="0.18315789103507996" green="0.5250526070594788" blue="0.9157894849777222" />
+                                </color>
+                            </Stop>
+                            <Stop offset="1.0">
+                                <color>
+                                    <Color red="0.1792982518672943" green="0.4345847964286804" blue="0.7684210538864136" />
+                                </color>
+                            </Stop>
+                        </stops>
+                    </LinearGradient>
+                </textFill>
+            </Label>
+            <TextField fx:id="nameField" />
+            <HBox alignment="CENTER" spacing="10">
+                <Button fx:id="createButton" onAction="#onCreate" style="-fx-background-color: white;" text="Create" />
+                <Button onAction="#onCancel" style="-fx-background-color: white;" text="Cancel" />
+            </HBox>
+        </VBox>
+    </children>
 </VBox>
