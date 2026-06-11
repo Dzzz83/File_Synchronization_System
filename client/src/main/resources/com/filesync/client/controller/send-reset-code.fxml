@@ -14,16 +14,17 @@
 <?import javafx.scene.paint.Stop?>
 <?import javafx.scene.text.Font?>
 
-<VBox xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.RequestResetController">
+<VBox xmlns="http://javafx.com/javafx/26" styleClass="root-pane" stylesheets="@General-design.css"
+      xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.RequestResetController"
+      maxWidth="500" >
    <children>
-      <GridPane alignment="CENTER" hgap="10" prefHeight="218.0" prefWidth="411.0" styleClass="root-pane" stylesheets="@General-design.css" vgap="10">
+      <GridPane alignment="CENTER" hgap="10" prefHeight="218.0" prefWidth="411.0"  vgap="10">
           <padding>
               <Insets bottom="20" left="20" right="20" top="20" />
           </padding>
          <Pane GridPane.columnSpan="2">
             <children>
-            
-                      <Label alignment="CENTER" layoutX="56.0" layoutY="-5.0" prefHeight="38.0" prefWidth="197.0" text="Forget password?">
+                <Label alignment="CENTER" layoutX="56.0" layoutY="-5.0" prefHeight="38.0" prefWidth="197.0" text="Forget password?">
                   <font>
                      <Font name="System Bold Italic" size="21.0" />
                   </font>

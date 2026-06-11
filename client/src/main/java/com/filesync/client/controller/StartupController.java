@@ -75,7 +75,7 @@ public class StartupController {
             Platform.runLater(() -> {
                 loginButton.setDisable(false);
                 loginButton.setText("Login");
-                ForgetpassButton.setDisable(false);  // NEW
+                ForgetpassButton.setDisable(false);
                 showAlert("Login failed", loginTask.getException().getMessage());
             });
         });

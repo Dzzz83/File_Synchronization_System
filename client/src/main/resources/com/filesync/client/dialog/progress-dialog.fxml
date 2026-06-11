@@ -5,12 +5,16 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ProgressBar?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
 
-<VBox spacing="10" alignment="CENTER" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.ProgressDialogController">    <padding>
-        <Insets top="10" right="10" bottom="10" left="10"/>
+<VBox alignment="CENTER" spacing="10" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.ProgressDialogController">    <padding>
+        <Insets bottom="10" left="10" right="10" top="10" />
     </padding>
-    <Label fx:id="titleLabel" text="Progress"/>
-    <Label fx:id="messageLabel" text="Processing..."/>
-    <ProgressBar fx:id="progressBar" prefWidth="300"/>
-    <Button fx:id="cancelButton" text="Cancel"/>
+    <Label fx:id="titleLabel" styleClass="app-title" stylesheets="@General-design.css" text="Progress">
+      <font>
+         <Font size="18.0" />
+      </font></Label>
+    <Label fx:id="messageLabel" text="Processing..." />
+    <ProgressBar fx:id="progressBar" prefWidth="300" />
+    <Button fx:id="cancelButton" styleClass="password-field" stylesheets="@General-design.css" text="Cancel" />
 </VBox>

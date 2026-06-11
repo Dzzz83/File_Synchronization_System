@@ -6,19 +6,22 @@
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox spacing="10" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.filesync.client.controller.EditDialogController"
-      styleClass="root-pane" stylesheets="@General-design.css">
-    <padding>
-        <Insets top="10" right="10" bottom="10" left="10"/>
-    </padding>
 
-    <TextArea fx:id="textArea" wrapText="true" prefHeight="400" prefWidth="600"/>
-
-    <ButtonBar>
-        <buttons>
-            <Button fx:id="saveButton" text="Save" defaultButton="true" onAction="#handleSave"/>
-            <Button fx:id="cancelButton" text="Cancel" cancelButton="true" onAction="#handleCancel"/>
-        </buttons>
-    </ButtonBar>
+<VBox alignment="CENTER" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.EditDialogController">
+   <children>
+      <VBox alignment="CENTER" maxWidth="800.0" spacing="10" styleClass="root-pane" stylesheets="@General-design.css">
+          <padding>
+              <Insets bottom="10" left="10" right="10" top="10" />
+          </padding>
+      
+          <TextArea fx:id="textArea" maxWidth="800.0" prefHeight="400" prefWidth="600" wrapText="true" />
+      
+          <ButtonBar>
+              <buttons>
+                  <Button fx:id="saveButton" defaultButton="true" onAction="#handleSave" text="Save" />
+                  <Button fx:id="cancelButton" cancelButton="true" onAction="#handleCancel" text="Cancel" />
+              </buttons>
+          </ButtonBar>
+      </VBox>
+   </children>
 </VBox>

@@ -1,0 +1,226 @@
+/* Root GridPane Background */
+.root-pane {
+    -fx-background-image: url("https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?w=1200");
+    -fx-background-size: cover;
+    -fx-background-position: right center;
+    -fx-background-repeat: no-repeat;
+}
+
+/* Main VBox Container */
+.main-vbox {
+    -fx-background-color: linear-gradient(to bottom, #ffffff, #abd0f1);
+    -fx-background-radius: 15;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 20, 0, 0, 5);
+}
+
+/* TextFields and PasswordFields */
+.text-field, .password-field {
+    -fx-background-color: #f7fafc;
+    -fx-border-color: #cbd5e0;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 8 12;
+    -fx-font-size: 13px;
+    -fx-prompt-text-fill: #a0aec0;
+}
+
+.text-field:focused, .password-field:focused {
+    -fx-border-color: #4299e1;
+    -fx-background-color: white;
+    -fx-border-width: 2px;
+}
+
+/* Server URL specific styling */
+#serverUrlField {
+    -fx-background-color: #edf2f7;
+    -fx-border-color: #cbd5e0;
+    -fx-text-fill: #616461;
+    -fx-font-family: sans-serif;
+    -fx-font-weight: bold;
+}
+
+/* TabPane Styling */
+.tab-pane {
+    -fx-background-color: transparent;
+    -fx-tab-min-width: 120;
+}
+
+.tab-pane .tab-header-area {
+    -fx-padding: 10 0 0 0;
+}
+
+.tab-pane .tab-header-background {
+    -fx-background-color: transparent;
+}
+
+.tab-pane .tab {
+    -fx-background-color: #edf2f7;
+    -fx-background-radius: 10 10 0 0;
+    -fx-padding: 8 20;
+}
+
+.tab-pane .tab:selected {
+    -fx-background-color: white;
+    -fx-border-color: #4299e1;
+    -fx-border-width: 0 0 2 0;
+}
+
+.tab-pane .tab .tab-label {
+    -fx-text-fill: #4a5568;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+
+.tab-pane .tab:selected .tab-label {
+    -fx-text-fill: #4299e1;
+}
+
+/* Buttons General */
+.button {
+    -fx-font-family: "Microsoft JhengHei UI";
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 25;
+    -fx-cursor: hand;
+    -fx-padding: 10 24;
+    -fx-min-width: 100;
+    -fx-transition: all 0.3s ease;
+}
+
+/* Login Button */
+.button:default {
+    -fx-background-color: linear-gradient(to bottom, #4299e1, #3182ce);
+    -fx-text-fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(66,153,225,0.3), 8, 0, 0, 2);
+}
+
+.button:default:hover {
+    -fx-background-color: linear-gradient(to bottom, #3182ce, #2c5282);
+}
+
+/* Register Button */
+#handleRegister {
+    -fx-background-color: linear-gradient(to bottom, #48bb78, #38a169);
+    -fx-text-fill: white;
+}
+
+#handleRegister:hover {
+    -fx-background-color: linear-gradient(to bottom, #38a169, #2f855a);
+}
+
+/* Forgot Password Button */
+#handleForgotPassword {
+    -fx-background-color: transparent;
+    -fx-text-fill: #718096;
+    -fx-border-color: #cbd5e0;
+    -fx-border-radius: 8;
+    -fx-underline: false;
+}
+
+#handleForgotPassword:hover {
+    -fx-text-fill: #e53e3e;
+    -fx-border-color: #e53e3e;
+    -fx-background-color: #fff5f5;
+}
+
+/* FlowPane adjustments */
+.flow-pane {
+    -fx-hgap: 10;
+    -fx-vgap: 10;
+}
+
+/* VBox inside Tabs */
+.vbox-tab-content {
+    -fx-padding: 20;
+}
+
+/* Error/Success States (optional - add via code) */
+.error-field {
+    -fx-border-color: #e53e3e;
+    -fx-border-width: 2px;
+}
+
+.success-field {
+    -fx-border-color: #38a169;
+    -fx-border-width: 2px;
+}
+
+/* HBox styling */
+.hbox-button-container {
+    -fx-padding: 10 0 0 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 500px) {
+    .main-vbox {
+        -fx-pref-width: 350;
+    }
+
+    .tab-pane .tab {
+        -fx-padding: 6 15;
+    }
+}
+/* ==================== */
+/* LEFT SIDE TITLE STYLES */
+/* ==================== */
+
+/* App Title - Big Text */
+.app-title {
+    -fx-font-weight: bold;
+    -fx-font-family: "Segoe UI", "Microsoft YaHei", "Arial";
+    -fx-text-fill: linear-gradient(to bottom, #2c5282, #4299e1);
+    -fx-effect: dropshadow(gaussian, rgba(66,153,225,0.3), 10, 0, 0, 2);
+    -fx-padding: 0;
+}
+
+/* App Subtitle */
+.app-subtitle {
+    -fx-font-size: 36px;
+    -fx-font-family: "Segoe UI", "Microsoft YaHei", "Arial";
+    -fx-text-fill: #4a5568;
+    -fx-font-weight: normal;
+    -fx-padding: 0;
+}
+
+/* App Version */
+.app-version {
+    -fx-font-size: 24px;
+    -fx-text-fill: #a0aec0;
+    -fx-font-family: monospace;
+}
+
+/* App Icon (Emoji or Font Icon) */
+.app-icon {
+    -fx-font-size: 180px;
+    -fx-text-fill: #4299e1;
+}
+
+/* Status Text */
+.status-text {
+    -fx-font-size: 24px;
+    -fx-text-fill: #48bb78;
+    -fx-font-weight: bold;
+}
+
+/* Animated Title with Gradient */
+.app-title-gradient {
+    -fx-font-size: 52px;
+    -fx-font-weight: bold;
+    -fx-font-family: "Segoe UI", "Microsoft YaHei", "Arial";
+    -fx-background-color: linear-gradient(to right, #2c5282, #4299e1, #63b3ed);
+    -fx-background-radius: 0;
+}
+
+/* Divider Line */
+.title-divider {
+    -fx-background-color: #cbd5e0;
+    -fx-pref-height: 2;
+    -fx-max-width: 200;
+}
+
+/* Left Panel Background (Optional) */
+.left-panel {
+    -fx-background-color: rgba(255, 255, 255, 0.5);
+    -fx-background-radius: 15;
+    -fx-padding: 30;
+}

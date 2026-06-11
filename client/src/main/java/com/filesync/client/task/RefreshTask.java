@@ -56,7 +56,7 @@ public class RefreshTask extends Task<Void> {
             fileItems.clear();
             if (showParentEntry) {
                 fileItems.add(new ServerFileItem(
-                        "parent", "..", 0, null, null, folderId, true, null, new Label("◀back"),
+                        "parent", "..", 0, null, null, folderId, true, null, new Label("◀--"),
                         Permission.NONE
                 ));
             }
