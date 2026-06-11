@@ -10,10 +10,10 @@
 
 <VBox alignment="CENTER" spacing="10" styleClass="root-pane" stylesheets="@General-design.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.FileExplorerController">
 
-    <!-- Path display label -->
+    <!-- Path display label (master) -->
     <Label fx:id="pathLabel" maxWidth="1000.0" style="-fx-padding: 5 0 5 10; -fx-background-color: #f5f5f5; -fx-border-color: #ddd; -fx-border-width: 0 0 1 0;" text="/" wrapText="false" VBox.vgrow="NEVER" />
 
-    <!-- File table -->
+    <!-- File table (master) -->
     <TableView fx:id="fileTable" maxWidth="1000.0" prefWidth="840.0" VBox.vgrow="ALWAYS">
         <columns>
             <TableColumn fx:id="iconColumn" maxWidth="80.0" minWidth="40.0" prefWidth="40.0" />
@@ -23,11 +23,12 @@
         </columns>
     </TableView>
 
-    <!-- Button toolbar -->
+    <!-- Button toolbar (master + Play button from video_task) -->
     <ToolBar>
         <HBox alignment="CENTER" spacing="10" HBox.hgrow="ALWAYS">
             <Button fx:id="uploadButton" onAction="#handleUpload" text="Upload" />
             <Button fx:id="downloadButton" onAction="#handleDownload" text="Download" />
+            <Button fx:id="playButton" onAction="#handlePlay" text="Play" />
             <Button fx:id="deleteButton" onAction="#handleDelete" text="Delete" />
             <Button fx:id="newFolderButton" onAction="#handleNewFolder" text="New Folder" />
             <Button fx:id="refreshButton" onAction="#handleRefresh" text="Refresh" />
