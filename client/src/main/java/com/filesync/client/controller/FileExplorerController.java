@@ -49,7 +49,6 @@ public class FileExplorerController {
     @FXML private Button deleteButton;
     @FXML private Button newFolderButton;
     @FXML private Button refreshButton;
-    @FXML private Button playButton;
 
     private SyncHttpClient httpClient;
     private String ownerId;
@@ -86,12 +85,6 @@ public class FileExplorerController {
         });
 
         new ButtonPermissionManager(fileTable, ProgressService.getInstance(), deleteButton, downloadButton);
-        playButton.disableProperty().bind(
-                javafx.beans.binding.Bindings.createBooleanBinding(() -> {
-                    ServerFileItem selected = fileTable.getSelectionModel().getSelectedItem();
-                    return selected == null || !isMediaFile(selected.getRelativePath());
-                }, fileTable.getSelectionModel().selectedItemProperty())
-        );
 
         refreshWindow();
     }
@@ -101,7 +94,6 @@ public class FileExplorerController {
     }
 
     public void setOnExitSharedFolder(Runnable callback) {
-        // Override the exit handler in breadcrumb manager
         breadcrumbManager.setOnExitSharedFolder(() -> {
             breadcrumbManager.reset();
             callback.run();
@@ -164,6 +156,12 @@ public class FileExplorerController {
                 breadcrumbManager.navigateInto(UUID.fromString(item.getFileId()), item.getRelativePath());
                 refreshWindow();
             }
+        } else if (isMediaFile(item.getRelativePath())) {
+            if (item.getUserPermission() == Permission.READ || item.getUserPermission() == Permission.WRITE) {
+                MediaPlayerDialog.show(item.getFileId(), item.getRelativePath(), httpClient);
+            } else {
+                showAlert("Permission Denied", "You don't have permission to play this file.");
+            }
         } else if (isTextFile(item)) {
             if (item.getUserPermission() != Permission.WRITE) {
                 showAlert("Permission Denied", "You don't have write permission to edit this file.");
@@ -180,6 +178,13 @@ public class FileExplorerController {
         return path != null && path.toLowerCase().endsWith(".txt");
     }
 
+    private boolean isMediaFile(String fileName) {
+        int dot = fileName.lastIndexOf('.');
+        if (dot == -1) return false;
+        String ext = fileName.substring(dot + 1).toLowerCase();
+        return List.of("mp3", "wav", "mp4", "avi", "mov", "mkv").contains(ext);
+    }
+
     private void refreshWindow() {
         ProgressService ps = ProgressService.getInstance();
         ps.startOperation("Refreshing...");
@@ -194,9 +199,6 @@ public class FileExplorerController {
     }
 
     private void showSharedFoldersList() {
-        // This method is called when exiting a shared folder – close the explorer and return to parent view.
-        // In practice, the parent (SharedFoldersController) should handle this via the callback.
-        // Here we simply run the callback set via setOnExitSharedFolder.
         if (breadcrumbManager != null) breadcrumbManager.reset();
     }
 
@@ -250,27 +252,6 @@ public class FileExplorerController {
 
     @FXML private void handleUpload() {
         UploadChoiceDialog.show((Stage) fileTable.getScene().getWindow(), this::uploadFile, this::uploadFolder);
-    }
-
-    @FXML
-    private void handlePlay() {
-        ServerFileItem selected = fileTable.getSelectionModel().getSelectedItem();
-        if (selected == null) {
-            showAlert("No selection", "Please select a file to play.");
-            return;
-        }
-        if (!isMediaFile(selected.getRelativePath())) {
-            showAlert("Not Supported", "This file type is not supported for playback.");
-            return;
-        }
-        MediaPlayerDialog.show(selected.getFileId(), selected.getRelativePath(), httpClient);
-    }
-
-    private boolean isMediaFile(String fileName) {
-        int dot = fileName.lastIndexOf('.');
-        if (dot == -1) return false;
-        String ext = fileName.substring(dot + 1).toLowerCase();
-        return List.of("mp3", "wav", "mp4", "avi", "mov", "mkv").contains(ext);
     }
 
     private void uploadFile() {
