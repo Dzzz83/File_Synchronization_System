@@ -9,6 +9,7 @@ import com.filesync.client.http.SyncHttpClient;
 import com.filesync.client.service.FileOperationService;
 import com.filesync.client.service.FolderUploadService;
 import com.filesync.client.service.ProgressService;
+import com.filesync.client.dialog.MediaPlayerDialog;
 import com.filesync.client.task.*;
 import com.filesync.common.dto.FileMetadataDto;
 import com.filesync.common.enums.Permission;
@@ -48,6 +49,7 @@ public class FileExplorerController {
     @FXML private Button deleteButton;
     @FXML private Button newFolderButton;
     @FXML private Button refreshButton;
+    @FXML private Button playButton;
 
     private SyncHttpClient httpClient;
     private String ownerId;
@@ -84,6 +86,12 @@ public class FileExplorerController {
         });
 
         new ButtonPermissionManager(fileTable, ProgressService.getInstance(), deleteButton, downloadButton);
+        playButton.disableProperty().bind(
+                javafx.beans.binding.Bindings.createBooleanBinding(() -> {
+                    ServerFileItem selected = fileTable.getSelectionModel().getSelectedItem();
+                    return selected == null || !isMediaFile(selected.getRelativePath());
+                }, fileTable.getSelectionModel().selectedItemProperty())
+        );
 
         refreshWindow();
     }
@@ -242,6 +250,27 @@ public class FileExplorerController {
 
     @FXML private void handleUpload() {
         UploadChoiceDialog.show((Stage) fileTable.getScene().getWindow(), this::uploadFile, this::uploadFolder);
+    }
+
+    @FXML
+    private void handlePlay() {
+        ServerFileItem selected = fileTable.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showAlert("No selection", "Please select a file to play.");
+            return;
+        }
+        if (!isMediaFile(selected.getRelativePath())) {
+            showAlert("Not Supported", "This file type is not supported for playback.");
+            return;
+        }
+        MediaPlayerDialog.show(selected.getFileId(), selected.getRelativePath(), httpClient);
+    }
+
+    private boolean isMediaFile(String fileName) {
+        int dot = fileName.lastIndexOf('.');
+        if (dot == -1) return false;
+        String ext = fileName.substring(dot + 1).toLowerCase();
+        return List.of("mp3", "wav", "mp4", "avi", "mov", "mkv").contains(ext);
     }
 
     private void uploadFile() {

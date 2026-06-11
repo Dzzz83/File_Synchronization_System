@@ -1,12 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox alignment="CENTER" spacing="10" styleClass="root-pane" stylesheets="@General-design.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.SharedFoldersController">
+<VBox spacing="10" alignment="CENTER" styleClass="root-pane" stylesheets="@General-design.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.SharedFoldersController">
+    <padding>
+        <Insets top="10" right="10" bottom="10" left="10" />
+    </padding>
+
     <VBox fx:id="container" alignment="CENTER" VBox.vgrow="ALWAYS">
         <TableView fx:id="foldersTable" maxHeight="700" maxWidth="800" VBox.vgrow="ALWAYS">
             <columns>
@@ -16,11 +21,12 @@
             </columns>
         </TableView>
     </VBox>
+
     <HBox fx:id="actionButtons" alignment="CENTER" spacing="10">
         <Button onAction="#handleCreateFolder" text="Create New Folder" />
         <Button onAction="#handleRequestAccess" text="Request Access" />
         <Button onAction="#handleManageMembers" text="Manage Members" />
-        <Button fx:id="manageRequestsButton" disable="true" text="Manage Requests" />
-        <Button fx:id="deleteFolderButton" disable="true" onAction="#handleDeleteFolder" text="Delete Folder" />
+        <Button fx:id="manageRequestsButton" onAction="#handleManageRequests" disable="true" text="Manage Requests" />
+        <Button fx:id="deleteFolderButton" onAction="#handleDeleteFolder" disable="true" text="Delete Folder" />
     </HBox>
 </VBox>

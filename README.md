@@ -107,6 +107,10 @@ File_Synchronization_System/
 - **Direct text file editing via double‑click** – Users can double‑click any `.txt` file to open the editor immediately. The Edit button has been removed to declutter the interface. Write permission is enforced client‑side before opening the editor.
 - **Permission‑sensitive buttons** – The Delete and Download buttons are dynamically enabled/disabled based on the selected file’s `userPermission` (WRITE for delete, READ/WRITE for download). This prevents users from attempting unauthorized actions.
 - **Refactored FileExplorerController** – The controller has been split into helper classes (`DragDropHandler`, `BreadcrumbManager`, `ButtonPermissionManager`, `BulkOperationHandler`), improving maintainability and adhering to the Single Responsibility Principle.
+- **Integrated media player** – Supports playback of audio (MP3, WAV) and video (MP4, AVI, MOV, MKV) files directly inside the admin GUI. The player window includes play/pause, seek slider with click‑to‑seek, volume control, rewind/forward (10 seconds), and a time display. If JavaFX cannot decode the file (e.g., due to missing codecs), the player automatically falls back to the system’s default media player, ensuring reliable playback on any Windows system.
+- **Write‑permission enforcement for editing** – The Edit button has been removed; users can double‑click any `.txt` file to open the editor, but only if they have WRITE permission. Read‑only files cannot be edited, and an alert explains the restriction.
+- **Permission‑sensitive buttons** – The Delete button is enabled only for files/folders with WRITE permission; the Download button is enabled for READ or WRITE permission. This prevents users from attempting unauthorised actions.
+
 ### Client – Sync Client (Automatic)
 
 - Watches a local folder using Java’s WatchService.
