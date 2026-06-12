@@ -24,8 +24,10 @@ public class SyncHttpClient {
     private final WebClient webClient;
     private String authToken;
     private final ChunkedUploader chunkedUploader;
+    private final String baseUrl;
 
     public SyncHttpClient(String baseUrl) {
+        this.baseUrl = baseUrl;
         this.webClient = WebClient.builder()
                 .baseUrl(baseUrl)
                 .filter((request, next) -> {
@@ -34,6 +36,10 @@ public class SyncHttpClient {
                 })
                 .build();
         this.chunkedUploader = new ChunkedUploader(webClient);
+    }
+
+    public String getBaseUrl() {
+        return baseUrl;
     }
 
     public String login(String loginInput, String password) {
@@ -406,6 +412,7 @@ public class SyncHttpClient {
             throw new RuntimeException("Invalid UUID returned from server: " + response.getFileId(), e);
         }
     }
+
 
     public String getAuthToken() {
         return authToken;

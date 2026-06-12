@@ -1,9 +1,11 @@
 package com.filesync.client.shared;
 
+import com.filesync.client.controller.ChatController;
 import com.filesync.client.dialog.*;
 import com.filesync.client.files.FileExplorerController;
-import com.filesync.common.dto.CreateFolderDto;
 import com.filesync.client.http.SyncHttpClient;
+import com.filesync.client.websocket.ChatClient;
+import com.filesync.common.dto.CreateFolderDto;
 import com.filesync.common.dto.SharedFolderDto;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -37,6 +39,7 @@ public class SharedFoldersController {
     private ExecutorService executorService;
     private ObservableList<SharedFolderItem> folderItems = FXCollections.observableArrayList();
     private FileExplorerController currentExplorer;
+    private ChatController currentChatController;
     private boolean showingFoldersList = true;
 
     public void initialize(SyncHttpClient httpClient, String ownerId, ExecutorService executorService) {
@@ -80,6 +83,11 @@ public class SharedFoldersController {
         showingFoldersList = true;
         actionButtons.setVisible(true);
         actionButtons.setManaged(true);
+        // Dispose chat before clearing container
+        if (currentChatController != null) {
+            currentChatController.dispose();
+            currentChatController = null;
+        }
         container.getChildren().clear();
         container.getChildren().add(foldersTable);
     }
@@ -89,17 +97,40 @@ public class SharedFoldersController {
         actionButtons.setVisible(false);
         actionButtons.setManaged(false);
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/filesync/client/controller/server-file-list.fxml"));
-            VBox explorerRoot = loader.load();
-            currentExplorer = loader.getController();
+            // Dispose previous chat if any (important when switching folders without returning to list)
+            if (currentChatController != null) {
+                currentChatController.dispose();
+                currentChatController = null;
+            }
+
+            // Load file explorer
+            FXMLLoader fileLoader = new FXMLLoader(getClass().getResource("/com/filesync/client/files/server-file-list.fxml"));
+            VBox explorerRoot = fileLoader.load();
+            currentExplorer = fileLoader.getController();
             currentExplorer.setExecutorService(executorService);
-            // Pass the shared folder name as root display name
             currentExplorer.initialize(httpClient, ownerId, item.getId(), null, item.getName());
             currentExplorer.setOnExitSharedFolder(this::showSharedFoldersList);
+
+            // Load chat view
+            FXMLLoader chatLoader = new FXMLLoader(getClass().getResource("/com/filesync/client/shared/chat-view.fxml"));
+            VBox chatRoot = chatLoader.load();
+            currentChatController = chatLoader.getController();
+            ChatClient chatClient = new ChatClient(httpClient.getBaseUrl(), httpClient.getAuthToken());
+            currentChatController.setData(chatClient, item.getId(), ownerId);
+
+            // Combine in TabPane
+            TabPane tabPane = new TabPane();
+            Tab filesTab = new Tab("Files", explorerRoot);
+            filesTab.setClosable(false);
+            Tab chatTab = new Tab("Chat", chatRoot);
+            chatTab.setClosable(false);
+            tabPane.getTabs().addAll(filesTab, chatTab);
+
+            // Replace container content
             container.getChildren().clear();
-            container.getChildren().add(explorerRoot);
-            VBox.setVgrow(explorerRoot, Priority.ALWAYS);
-            explorerRoot.setMaxHeight(Double.MAX_VALUE);
+            container.getChildren().add(tabPane);
+            VBox.setVgrow(tabPane, Priority.ALWAYS);
+            tabPane.setMaxHeight(Double.MAX_VALUE);
         } catch (Exception e) {
             e.printStackTrace();
             showAlert("Error", "Could not open folder: " + e.getMessage());
@@ -142,7 +173,6 @@ public class SharedFoldersController {
     }
 
     private void refreshFolders() {
-        // Disable table while loading
         foldersTable.setDisable(true);
 
         Task<List<SharedFolderDto>> refreshTask = new Task<>() {
@@ -181,7 +211,6 @@ public class SharedFoldersController {
         CreateFolderDto dto = CreateSharedFolderDialog.show(owner, httpClient, executorService);
         if (dto == null) return;
 
-        // Disable buttons during creation
         disableButtons(true);
         Task<Void> createTask = new Task<>() {
             @Override
@@ -218,7 +247,6 @@ public class SharedFoldersController {
             showAlert("No selection", "Please select a folder");
             return;
         }
-        // Pass executor to the dialog (your AddMemberDialog must accept it)
         AddMemberDialog.show(selected.getId(), httpClient, () -> {
             refreshFolders();
             if (foldersTable.getSelectionModel().getSelectedItem() != null &&
@@ -232,7 +260,6 @@ public class SharedFoldersController {
     private void handleManageRequests() {
         SharedFolderItem selected = foldersTable.getSelectionModel().getSelectedItem();
         if (selected == null) return;
-        // Pass executor to the dialog (your PendingRequestsDialog already expects it)
         PendingRequestsDialog.show(selected.getId(), httpClient, () -> {
             refreshFolders();
             if (foldersTable.getSelectionModel().getSelectedItem() != null &&

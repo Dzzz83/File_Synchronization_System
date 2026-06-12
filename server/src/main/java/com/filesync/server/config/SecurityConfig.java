@@ -64,7 +64,8 @@ public class SecurityConfig {
                                 "/api/users/reset-password",
                                 "/health",
                                 "/monitoring",
-                                "/monitoring/**"
+                                "/monitoring/**",
+                                "/ws/chat/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

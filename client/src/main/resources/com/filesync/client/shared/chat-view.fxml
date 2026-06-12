@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox spacing="8.0" stylesheets="/com/filesync/client/css/styles.css" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.ChatController" VBox.vgrow="ALWAYS">
+    <padding>
+        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+    </padding>
+
+    <Label text="Discussion &amp; Coordination" style="-fx-font-weight: bold; -fx-font-size: 14px;" />
+
+    <ListView fx:id="messageList" VBox.vgrow="ALWAYS" />
+
+    <Label text="Active Collaborators:" style="-fx-font-weight: bold;" />
+    <ListView fx:id="activeUsersList" prefHeight="70.0" minHeight="50.0" />
+
+    <HBox spacing="8.0">
+        <TextField fx:id="messageField" HBox.hgrow="ALWAYS" promptText="Type a message..." onAction="#sendMessage" />
+        <Button fx:id="sendButton" text="Send" onAction="#sendMessage" prefWidth="70.0" />
+    </HBox>
+</VBox>
