@@ -29,6 +29,9 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.MouseEvent;
 import javafx.stage.*;
 import javafx.scene.Node;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFRun;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -51,6 +54,7 @@ public class FileExplorerController {
     @FXML private Button uploadButton;
     @FXML private Button downloadButton;
     @FXML private Button deleteButton;
+    @FXML private Button newFileButton;
     @FXML private Button newFolderButton;
     @FXML private Button refreshButton;
 
@@ -89,6 +93,10 @@ public class FileExplorerController {
         });
 
         new ButtonPermissionManager(fileTable, ProgressService.getInstance(), deleteButton, downloadButton);
+
+        ProgressService ps = ProgressService.getInstance();
+        newFileButton.disableProperty().bind(ps.busyProperty());
+        newFolderButton.disableProperty().bind(ps.busyProperty());
 
         refreshWindow();
     }
@@ -184,6 +192,9 @@ public class FileExplorerController {
             }
             Stage stage = (Stage) fileTable.getScene().getWindow();
             DocumentViewerDialog.show(stage, item, httpClient, executorService);
+        } else if (isImageFile(item)) {
+            Stage stage = (Stage) fileTable.getScene().getWindow();
+            ImageViewerDialog.show(stage, item, httpClient, executorService);
         } else {
             showAlert("Unsupported File Type", "This file type cannot be opened directly.");
         }
@@ -216,6 +227,15 @@ public class FileExplorerController {
 
     private boolean isDocx(ServerFileItem item) {
         return item.getRelativePath().toLowerCase(Locale.ROOT).endsWith(".docx");
+    }
+
+    private boolean isImageFile(ServerFileItem item) {
+        if (item.isDirectory()) return false;
+        String name = item.getRelativePath();
+        if (name == null) return false;
+        String lower = name.toLowerCase();
+        return lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") ||
+                lower.endsWith(".gif") || lower.endsWith(".bmp");
     }
 
     private void refreshWindow() {
@@ -371,7 +391,7 @@ public class FileExplorerController {
 
     private void openEditDialog(ServerFileItem selected, Path tempFile, String originalContent) {
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/filesync/client/controller/edit-dialog.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/filesync/client/files/edit/edit-dialog.fxml"));
             Parent root = loader.load();
             EditDialogController dialogController = loader.getController();
             Stage dialogStage = new Stage();
@@ -421,6 +441,69 @@ public class FileExplorerController {
     @FXML private void handleNewFolder() {
         Stage owner = (Stage) fileTable.getScene().getWindow();
         CreateFolderDialog.show(owner, httpClient, ownerId, folderId, breadcrumbManager.getCurrentParentId(), this::refreshWindow, executorService);
+    }
+
+    private void createMinimalDocx(Path targetFile) throws Exception {
+        try (XWPFDocument document = new XWPFDocument();
+             FileOutputStream out = new FileOutputStream(targetFile.toFile())) {
+            XWPFParagraph paragraph = document.createParagraph();
+            XWPFRun run = paragraph.createRun();
+            run.setText("");
+            document.write(out);
+        }
+    }
+
+    @FXML
+    private void handleNewFile() {
+        Stage owner = (Stage) fileTable.getScene().getWindow();
+        String fullName = CreateFileDialog.showAndWait(owner);
+        if (fullName == null) return;
+
+        ProgressService ps = ProgressService.getInstance();
+        ps.startOperation("Creating " + fullName);
+
+        try {
+            Path tempFile = Files.createTempFile("newfile_", fullName);
+            String ext = fullName.substring(fullName.lastIndexOf('.'));
+            if (".docx".equals(ext)) {
+                createMinimalDocx(tempFile);
+            } else {
+                String initialContent = getInitialContentForExtension(ext);
+                if (!initialContent.isEmpty()) {
+                    Files.writeString(tempFile, initialContent);
+                }
+            }
+            UploadTask task = new UploadTask(httpClient, ownerId, folderId, breadcrumbManager.getCurrentParentId(), tempFile, fullName);
+            task.messageProperty().addListener((obs, old, msg) -> ps.updateMessage(msg));
+            task.progressProperty().addListener((obs, old, val) -> ps.updateProgress(val.doubleValue(), 1.0));
+            task.setOnSucceeded(e -> {
+                ps.finishOperation();
+                refreshWindow();
+                showAlert("Success", "File created: " + fullName);
+                try { Files.deleteIfExists(tempFile); } catch (IOException ignored) {}
+            });
+            task.setOnFailed(e -> {
+                ps.finishOperation();
+                showAlert("Error", "Failed to create file: " + task.getException().getMessage());
+                try { Files.deleteIfExists(tempFile); } catch (IOException ignored) {}
+            });
+            executorService.submit(task);
+        } catch (Exception e) {
+            ps.finishOperation();
+            showAlert("Error", "Could not create temporary file: " + e.getMessage());
+        }
+    }
+
+    private String getInitialContentForExtension(String ext) {
+        switch (ext) {
+            case ".json": return "{}";
+            case ".xml": return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
+            case ".html": return "<!DOCTYPE html>\n<html>\n<head><title>New Page</title></head>\n<body>\n</body>\n</html>";
+            case ".css": return "/* CSS */";
+            case ".js": return "// JavaScript";
+            case ".md": return "# Title";
+            default: return "";
+        }
     }
 
     @FXML private void handleLogout() {

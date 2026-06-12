@@ -23,7 +23,9 @@ All code follows SOLID principles. The server is stateless, making it suitable f
 - Flyway for database migrations
 - JavaMelody for embedded monitoring
 - Bucket4j for rate limiting
-
+- `Apache PDFBox` (PDF rendering)
+- `Apache POI` (DOCX manipulation)
+- `JSoup` (HTML conversion for DOCX)
 ## Project Structure
 
 The project is split into three Maven modules:
@@ -110,6 +112,9 @@ File_Synchronization_System/
 - **Integrated media player** – Supports playback of audio (MP3, WAV) and video (MP4, AVI, MOV, MKV) files directly inside the admin GUI. The player window includes play/pause, seek slider with click‑to‑seek, volume control, rewind/forward (10 seconds), and a time display. If JavaFX cannot decode the file (e.g., due to missing codecs), the player automatically falls back to the system’s default media player, ensuring reliable playback on any Windows system.
 - **Write‑permission enforcement for editing** – The Edit button has been removed; users can double‑click any `.txt` file to open the editor, but only if they have WRITE permission. Read‑only files cannot be edited, and an alert explains the restriction.
 - **Permission‑sensitive buttons** – The Delete button is enabled only for files/folders with WRITE permission; the Download button is enabled for READ or WRITE permission. This prevents users from attempting unauthorised actions.
+- **PDF viewer** – Double‑click a PDF file to open a dedicated viewer with page navigation, zoom in/out, and fit‑to‑width controls. Large PDFs are rendered page‑by‑page with caching for smooth navigation.
+- **DOCX editor** – Double‑click a DOCX file to open a rich text editor (based on JavaFX HTMLEditor). Supports bold, italic, underline, and plain text editing. Changes are saved back to the server with full conflict detection.
+- **Real‑time chat in shared folders** – When a shared folder is opened, a chat tab appears alongside the file explorer. Users can exchange messages in real time, see a list of active collaborators (updated automatically), and view message history when they re‑enter the folder. The chat uses WebSocket (STOMP) with RabbitMQ for horizontal scalability and Redis for tracking active users. Stale active users are cleaned up automatically after a configurable timeout.
 
 ### Client – Sync Client (Automatic)
 
@@ -127,6 +132,8 @@ File_Synchronization_System/
 - **Delete folder** – owners can delete the entire folder, which removes all files (both metadata and actual storage) and members.
 - **Permission enforcement** – READ allows download/list, WRITE allows upload/edit/delete. Permissions are checked on every file operation.
 - **Integrated file explorer** – double‑click a shared folder to open its contents inside the same tab (instead of a new window). The explorer has the same buttons and “..” navigation as the personal files tab. A “Back to folders” button appears when inside a shared folder (or the “..” entry at the root exits back to the shared folder list).
+- **Real‑time chat** – Each shared folder has its own chat room where members can coordinate and discuss changes. Messages are persisted and displayed as history when a user rejoins the folder. Active collaborators are shown in real time, with stale entries removed automatically.
+
 ### OOP & SOLID Highlights
 
 - **Single Responsibility**: each class has one purpose (FolderScanner, ChunkedUploader, ConflictResolver, JwtService, etc.).
@@ -148,24 +155,14 @@ File_Synchronization_System/
 - **Embedded monitoring** – JavaMelody dashboard at `/monitoring` for real‑time metrics.
 - **Horizontal scaling** – demonstrated by running two server instances behind Nginx with load balancing.
 - **Parallel folder upload** – files inside a folder are uploaded concurrently (up to 5 at a time) while preserving the directory structure.
-## What’s Already Deployed and Running
-
-The server is live on **Render** (free tier) at:  
-`https://file-synchronization-system.onrender.com`
-
-It uses:
-- Neon.tech PostgreSQL (free)
-- Cloudflare R2 for file storage
-- CloudAMQP RabbitMQ (free “Little Lemur” plan)
-- A `/health` endpoint that an external cron job pings every 10 minutes to keep the instance awake (avoids cold starts during demos).
-
-The JavaFX client works with this public URL – just enter the URL in the login screen.
+- **Real‑time WebSocket messaging** – Chat messages are broadcast via RabbitMQ, enabling seamless scaling across multiple server instances.
+- **Active user tracking with Redis** – Tracks which users are currently viewing a shared folder; stale entries are cleaned up by a scheduled job to prevent ghost users.
 
 ## Future Enhancements (Optional)
 
 - **Distributed tracing** (Jaeger) for request flows across services.
-- **Redis caching** for frequently accessed file metadata.
 - **Kubernetes deployment** with Horizontal Pod Autoscaling.
+- Image preview and inline image support in chat
 
 ## How to Run
 
