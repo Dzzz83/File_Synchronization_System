@@ -5,6 +5,7 @@ import com.filesync.client.controller.helper.ButtonPermissionManager;
 import com.filesync.client.controller.helper.DragDropHandler;
 import com.filesync.client.controller.helper.BreadcrumbManager;
 import com.filesync.client.dialog.*;
+import com.filesync.client.document.DocumentViewerDialog;
 import com.filesync.client.http.SyncHttpClient;
 import com.filesync.client.service.FileOperationService;
 import com.filesync.client.service.FolderUploadService;
@@ -31,6 +32,7 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
@@ -169,6 +171,19 @@ public class FileExplorerController {
             }
             fileTable.getSelectionModel().select(item);
             handleEdit();
+        } else if (isPdfOrDocx(item)) {
+            if (isDocx(item) && item.getUserPermission() != Permission.WRITE) {
+                showAlert("Permission Denied", "You need write permission to edit a DOCX file.");
+                return;
+            }
+            if (isPdf(item) && (item.getUserPermission() != Permission.READ && item.getUserPermission() != Permission.WRITE)) {
+                showAlert("Permission Denied", "You need read permission to view this PDF.");
+                return;
+            }
+            Stage stage = (Stage) fileTable.getScene().getWindow();
+            DocumentViewerDialog.show(stage, item, httpClient, executorService);
+        } else {
+            showAlert("Unsupported File Type", "This file type cannot be opened directly.");
         }
     }
 
@@ -183,6 +198,22 @@ public class FileExplorerController {
         if (dot == -1) return false;
         String ext = fileName.substring(dot + 1).toLowerCase();
         return List.of("mp3", "wav", "mp4", "avi", "mov", "mkv").contains(ext);
+    }
+
+    private boolean isPdfOrDocx(ServerFileItem item) {
+        if (item.isDirectory()) return false;
+        String name = item.getRelativePath();
+        if (name == null) return false;
+        String lower = name.toLowerCase();
+        return lower.endsWith(".pdf") || lower.endsWith(".docx");
+    }
+
+    private boolean isPdf(ServerFileItem item) {
+        return item.getRelativePath().toLowerCase(Locale.ROOT).endsWith(".pdf");
+    }
+
+    private boolean isDocx(ServerFileItem item) {
+        return item.getRelativePath().toLowerCase(Locale.ROOT).endsWith(".docx");
     }
 
     private void refreshWindow() {

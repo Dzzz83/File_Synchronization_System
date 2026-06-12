@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox spacing="8" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.filesync.client.document.PdfViewerController">
+    <padding>
+        <Insets top="8" right="8" bottom="8" left="8" />
+    </padding>
+
+    <HBox spacing="8" alignment="CENTER_LEFT">
+        <Button fx:id="previousButton" text="Previous" onAction="#previousPage" />
+        <Button fx:id="nextButton" text="Next" onAction="#nextPage" />
+
+        <Label text="Page:" />
+        <TextField fx:id="pageField" prefWidth="60" onAction="#goToPage" />
+        <Label fx:id="totalPagesLabel" />
+        <Button text="Go" onAction="#goToPage" />
+
+        <Button text="Zoom Out" onAction="#zoomOut" />
+        <Button text="Zoom In" onAction="#zoomIn" />
+        <Button text="Fit Width" onAction="#fitWidth" />
+
+        <Label fx:id="statusLabel" text="Ready" />
+    </HBox>
+
+    <ScrollPane fitToWidth="true" fitToHeight="true" VBox.vgrow="ALWAYS">
+        <ImageView fx:id="pageImageView" preserveRatio="true" smooth="true" />
+    </ScrollPane>
+</VBox>
