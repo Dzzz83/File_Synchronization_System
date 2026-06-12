@@ -1,6 +1,6 @@
 package com.filesync.client.dialog;
 
-import com.filesync.client.controller.MediaPlayerController;
+import com.filesync.client.media.MediaPlayerController;
 import com.filesync.client.http.SyncHttpClient;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -24,7 +24,7 @@ public class MediaPlayerDialog {
                 throw new RuntimeException("Downloaded file is empty");
             }
 
-            FXMLLoader loader = new FXMLLoader(MediaPlayerDialog.class.getResource("/com/filesync/client/player/media-player.fxml"));
+            FXMLLoader loader = new FXMLLoader(MediaPlayerDialog.class.getResource("/com/filesync/client/media/media-player.fxml"));
             Scene scene = new Scene(loader.load(), 800, 600);
             MediaPlayerController controller = loader.getController();
             Stage stage = new Stage();

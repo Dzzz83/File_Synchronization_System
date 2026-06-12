@@ -330,9 +330,12 @@ public class SyncHttpClient {
                 .block();
     }
 
-    public void requestAccessToFolder(UUID folderId) {
+    public void requestAccessToFolder(UUID folderId, Permission requestedPermission) {
+        Map<String, String> body = new HashMap<>();
+        body.put("permission", requestedPermission.name());
         addAuth(webClient.post()
-                .uri("/api/shared-folders/{folderId}/request-access", folderId))
+                .uri("/api/shared-folders/{folderId}/request-access", folderId)
+                .bodyValue(body))
                 .retrieve()
                 .bodyToMono(Void.class)
                 .block();

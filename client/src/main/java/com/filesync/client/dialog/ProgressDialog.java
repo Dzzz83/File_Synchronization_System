@@ -1,6 +1,5 @@
 package com.filesync.client.dialog;
 
-import com.filesync.client.controller.ProgressDialogController;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.stage.Modality;

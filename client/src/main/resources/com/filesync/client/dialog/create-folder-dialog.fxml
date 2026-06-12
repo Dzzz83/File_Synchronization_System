@@ -11,7 +11,7 @@
 <?import javafx.scene.text.Font?>
 
 
-<VBox alignment="CENTER" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.CreateSharedFolderController">
+<VBox alignment="CENTER" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.shared.create.CreateSharedFolderController">
    <children>
       <VBox alignment="CENTER" maxWidth="400.0" spacing="15" stylesheets="@General-design.css">
           <padding>

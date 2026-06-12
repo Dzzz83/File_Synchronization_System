@@ -1,6 +1,6 @@
 package com.filesync.client.dialog;
 
-import com.filesync.client.controller.RequestAccessController;
+import com.filesync.client.shared.requests.RequestAccessController;
 import com.filesync.client.http.SyncHttpClient;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -10,7 +10,7 @@ import javafx.stage.Stage;
 public class RequestAccessDialog {
     public static void show(SyncHttpClient httpClient) {
         try {
-            FXMLLoader loader = new FXMLLoader(RequestAccessDialog.class.getResource("/com/filesync/client/dialog/request-access-dialog.fxml"));
+            FXMLLoader loader = new FXMLLoader(RequestAccessDialog.class.getResource("/com/filesync/client/shared/requests/request-access-dialog.fxml"));
             Scene scene = new Scene(loader.load(), 400, 450);
             RequestAccessController controller = loader.getController();
             Stage dialogStage = new Stage();

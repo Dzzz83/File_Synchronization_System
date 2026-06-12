@@ -1,6 +1,6 @@
 package com.filesync.client.document;
 
-import com.filesync.client.controller.ServerFileItem;
+import com.filesync.client.files.ServerFileItem;
 import com.filesync.client.http.SyncHttpClient;
 import com.filesync.client.service.ProgressService;
 import javafx.application.Platform;

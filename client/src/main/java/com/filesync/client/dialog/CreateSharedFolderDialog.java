@@ -1,6 +1,6 @@
 package com.filesync.client.dialog;
 
-import com.filesync.client.controller.CreateSharedFolderController;
+import com.filesync.client.shared.create.CreateSharedFolderController;
 import com.filesync.client.http.SyncHttpClient;
 import com.filesync.common.dto.CreateFolderDto;
 import javafx.fxml.FXMLLoader;
@@ -14,7 +14,7 @@ public class CreateSharedFolderDialog {
 
     public static CreateFolderDto show(Stage owner, SyncHttpClient httpClient, ExecutorService executorService) {
         try {
-            FXMLLoader loader = new FXMLLoader(CreateSharedFolderDialog.class.getResource("/com/filesync/client/dialog/create-shared-folder.fxml"));
+            FXMLLoader loader = new FXMLLoader(CreateSharedFolderDialog.class.getResource("/com/filesync/client/shared/create/create-shared-folder.fxml"));
             Scene scene = new Scene(loader.load(), 400, 500);
             CreateSharedFolderController controller = loader.getController();
             Stage dialogStage = new Stage();

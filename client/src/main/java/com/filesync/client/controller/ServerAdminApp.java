@@ -1,15 +1,20 @@
 package com.filesync.client.controller;
 
+import com.filesync.client.auth.StartupController;
+import com.filesync.client.files.FileExplorerController;
 import com.filesync.client.http.SyncHttpClient;
+import com.filesync.client.shared.SharedFoldersController;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
-import javafx.scene.layout.*;
+import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
+import java.net.URL;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -32,7 +37,11 @@ public class ServerAdminApp extends Application {
         instance = this;
         executorService = Executors.newCachedThreadPool();
 
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/filesync/client/controller/startup-dialog.fxml"));
+        URL startupUrl = getClass().getResource("/com/filesync/client/auth/startup-dialog.fxml");
+        if (startupUrl == null) {
+            throw new IllegalStateException("Missing FXML: /com/filesync/client/auth/startup-dialog.fxml");
+        }
+        FXMLLoader loader = new FXMLLoader(startupUrl);
         Scene scene = new Scene(loader.load(), 1100, 700);
         StartupController controller = loader.getController();
         controller.setPrimaryStage(primaryStage);
@@ -49,7 +58,11 @@ public class ServerAdminApp extends Application {
             TabPane tabPane = new TabPane();
 
             // Personal files tab
-            FXMLLoader personalLoader = new FXMLLoader(ServerAdminApp.class.getResource("/com/filesync/client/controller/server-file-list.fxml"));
+            URL personalFxml = ServerAdminApp.class.getResource("/com/filesync/client/files/server-file-list.fxml");
+            if (personalFxml == null) {
+                throw new IllegalStateException("Missing FXML: /com/filesync/client/files/server-file-list.fxml");
+            }
+            FXMLLoader personalLoader = new FXMLLoader(personalFxml);
             VBox personalRoot = personalLoader.load();
             FileExplorerController personalController = personalLoader.getController();
             personalController.setExecutorService(ServerAdminApp.getInstance().getExecutor());
@@ -58,7 +71,11 @@ public class ServerAdminApp extends Application {
             personalTab.setClosable(false);
 
             // Shared folders tab
-            FXMLLoader sharedLoader = new FXMLLoader(ServerAdminApp.class.getResource("/com/filesync/client/controller/shared-folders-view.fxml"));
+            URL sharedFxml = ServerAdminApp.class.getResource("/com/filesync/client/shared/shared-folders-view.fxml");
+            if (sharedFxml == null) {
+                throw new IllegalStateException("Missing FXML: /com/filesync/client/shared/shared-folders-view.fxml");
+            }
+            FXMLLoader sharedLoader = new FXMLLoader(sharedFxml);
             VBox sharedRoot = sharedLoader.load();
             SharedFoldersController sharedController = sharedLoader.getController();
             sharedController.initialize(httpClient, username, ServerAdminApp.getInstance().getExecutor());
@@ -67,21 +84,23 @@ public class ServerAdminApp extends Application {
 
             tabPane.getTabs().addAll(personalTab, sharedTab);
 
-            // Load progress bar
-            FXMLLoader progressLoader = new FXMLLoader(ServerAdminApp.class.getResource("/com/filesync/client/controller/global-progress.fxml"));
+            // Global progress bar
+            URL progressFxml = ServerAdminApp.class.getResource("/com/filesync/client/service/global-progress.fxml");
+            if (progressFxml == null) {
+                throw new IllegalStateException("Missing FXML: /com/filesync/client/service/global-progress.fxml");
+            }
+            FXMLLoader progressLoader = new FXMLLoader(progressFxml);
             Parent progressRoot = progressLoader.load();
-            progressRoot.setMouseTransparent(true);  // Allow clicks to pass through
+            progressRoot.setMouseTransparent(true);
 
             AnchorPane root = new AnchorPane();
             root.getChildren().addAll(tabPane, progressRoot);
 
-            // Make tabPane fill entire AnchorPane
             AnchorPane.setTopAnchor(tabPane, 0.0);
             AnchorPane.setBottomAnchor(tabPane, 0.0);
             AnchorPane.setLeftAnchor(tabPane, 0.0);
             AnchorPane.setRightAnchor(tabPane, 0.0);
 
-            // Position progress bar at top-right
             AnchorPane.setTopAnchor(progressRoot, 10.0);
             AnchorPane.setRightAnchor(progressRoot, 10.0);
 
@@ -97,6 +116,12 @@ public class ServerAdminApp extends Application {
             }
         } catch (Exception e) {
             e.printStackTrace();
+            // Show a user‑friendly error dialog
+            javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
+            alert.setTitle("Initialization Error");
+            alert.setHeaderText("Failed to open main window");
+            alert.setContentText(e.getMessage());
+            alert.showAndWait();
         }
     }
 

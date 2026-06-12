@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox alignment="CENTER" stylesheets="/com/filesync/client/css/styles.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.shared.members.AddMemberController">
+    <children>
+        <VBox alignment="CENTER" maxWidth="300.0" spacing="10">
+            <padding>
+                <Insets bottom="10" left="10" right="10" top="10" />
+            </padding>
+
+            <Label text="Search user:">
+                <font>
+                    <Font size="16.0" />
+                </font>
+            </Label>
+            <TextField fx:id="searchField" promptText="Search by username or email" />
+            <ListView fx:id="resultsList" prefHeight="200" />
+            <GridPane alignment="CENTER">
+                <columnConstraints>
+                    <ColumnConstraints hgrow="SOMETIMES" maxWidth="135.99998779296874" minWidth="10.0" prefWidth="135.99998779296874" />
+                    <ColumnConstraints hgrow="SOMETIMES" maxWidth="119.20000457763672" minWidth="10.0" prefWidth="112.80001220703124" />
+                </columnConstraints>
+                <rowConstraints>
+                    <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                </rowConstraints>
+                <children>
+                    <Label prefHeight="20.0" prefWidth="77.0" text="Permission:" GridPane.halignment="RIGHT">
+                        <font>
+                            <Font size="15.0" />
+                        </font>
+                    </Label>
+                    <ComboBox fx:id="permissionBox" GridPane.columnIndex="1" />
+                </children>
+            </GridPane>
+            <Button fx:id="addButton" text="Add" />
+            <Button fx:id="closeButton" text="Close" />
+        </VBox>
+    </children>
+</VBox>

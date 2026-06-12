@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox spacing="10" alignment="CENTER" stylesheets="/com/filesync/client/css/styles.css" xmlns:fx="http://javafx.com/fxml" fx:controller="com.filesync.client.shared.requests.RequestAccessController">
+    <padding>
+        <Insets top="10" right="10" bottom="10" left="10"/>
+    </padding>
+
+    <Label text="Enter folder name to search:"/>
+    <TextField fx:id="searchField"/>
+    <Button fx:id="searchButton" text="Search"/>
+    <Label text="Results:"/>
+    <ListView fx:id="resultsList" prefHeight="200"/>
+
+    <Label text="Requested Permission:"/>
+    <ComboBox fx:id="permissionCombo" promptText="Select permission"/>
+
+    <Button fx:id="requestButton" text="Request Access" disable="true"/>
+    <Button fx:id="cancelButton" text="Cancel"/>
+</VBox>

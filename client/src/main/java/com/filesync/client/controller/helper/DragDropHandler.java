@@ -1,6 +1,6 @@
 package com.filesync.client.controller.helper;
 
-import com.filesync.client.controller.ServerFileItem;
+import com.filesync.client.files.ServerFileItem;
 import com.filesync.client.model.DragData;
 import com.filesync.client.model.FileTransferData;
 import javafx.scene.control.TableRow;
@@ -9,7 +9,6 @@ import javafx.scene.input.*;
 
 import java.io.*;
 import java.util.List;
-import java.util.UUID;
 import java.util.function.BiConsumer;
 
 public class DragDropHandler {

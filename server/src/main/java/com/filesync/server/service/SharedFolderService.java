@@ -50,19 +50,20 @@ public class SharedFolderService {
     }
 
     public void addMember(UUID folderId, String userId, Permission permission) {
+        System.out.println("SERVER: Adding member " + userId + " to folder " + folderId + " with permission " + permission);
         Optional<SharedFolderMemberEntity> existing = memberRepository.findByFolderIdAndUserId(folderId, userId);
         if (existing.isPresent()) {
-            // Update permission of existing member
             SharedFolderMemberEntity member = existing.get();
             member.setPermission(permission);
             memberRepository.save(member);
+            System.out.println("SERVER: Updated existing member to " + permission);
         } else {
-            // Add new member
             SharedFolderMemberEntity member = new SharedFolderMemberEntity();
             member.setFolderId(folderId);
             member.setUserId(userId);
             member.setPermission(permission);
             memberRepository.save(member);
+            System.out.println("SERVER: Added new member with " + permission);
         }
     }
 
@@ -81,30 +82,41 @@ public class SharedFolderService {
     }
 
     @Transactional
-    public void createRequest(UUID folderId, String requesterId) {
-        // Check if request already exists
+    public void createRequest(UUID folderId, String requesterId, Permission requestedPermission) {
         if (requestRepository.findByFolderIdAndRequesterId(folderId, requesterId).isPresent()) {
             throw new RuntimeException("Request already pending");
         }
         SharedFolderRequestEntity request = new SharedFolderRequestEntity();
         request.setFolderId(folderId);
         request.setRequesterId(requesterId);
+        request.setRequestedPermission(requestedPermission);
         requestRepository.save(request);
     }
 
     @Transactional
     public void approveRequest(UUID requestId, String ownerId) {
+        System.out.println("DEBUG: approveRequest called for requestId=" + requestId + ", ownerId=" + ownerId);
+
         SharedFolderRequestEntity request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Request not found"));
+
+        System.out.println("DEBUG: Found request - requesterId=" + request.getRequesterId()
+                + ", requestedPermission=" + request.getRequestedPermission());
+
         SharedFolderEntity folder = folderRepository.findById(request.getFolderId())
                 .orElseThrow(() -> new RuntimeException("Folder not found"));
+
         if (!folder.getOwnerId().equals(ownerId)) {
             throw new RuntimeException("Only folder owner can approve");
         }
-        // Add user as READ-only by default (owner can later upgrade)
-        addMember(folder.getId(), request.getRequesterId(), Permission.READ);
+
+        System.out.println("DEBUG: Adding member with permission=" + request.getRequestedPermission());
+        addMember(folder.getId(), request.getRequesterId(), request.getRequestedPermission());
+
         request.setStatus("APPROVED");
         requestRepository.save(request);
+
+        System.out.println("DEBUG: Request approved and member added.");
     }
 
     @Transactional

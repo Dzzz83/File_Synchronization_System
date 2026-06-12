@@ -7,7 +7,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox alignment="CENTER" spacing="10" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.ProgressDialogController">    <padding>
+<VBox alignment="CENTER" spacing="10" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.dialog.ProgressDialogController">    <padding>
         <Insets bottom="10" left="10" right="10" top="10" />
     </padding>
     <Label fx:id="titleLabel" styleClass="app-title" stylesheets="@General-design.css" text="Progress">

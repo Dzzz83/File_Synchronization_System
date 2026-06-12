@@ -1,5 +1,6 @@
 package com.filesync.server.domain;
 
+import com.filesync.common.enums.Permission;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
@@ -11,13 +12,18 @@ public class SharedFolderRequestEntity {
     private UUID id;
     private UUID folderId;
     private String requesterId;
-    private String status;  // PENDING, APPROVED, REJECTED
+    private String status;
     private Instant requestedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "requested_permission", nullable = false)
+    private Permission requestedPermission;
 
     public SharedFolderRequestEntity() {
         this.id = UUID.randomUUID();
         this.requestedAt = Instant.now();
         this.status = "PENDING";
+        this.requestedPermission = Permission.READ; // default for existing rows
     }
 
     public UUID getId() { return id; }
@@ -34,4 +40,7 @@ public class SharedFolderRequestEntity {
 
     public Instant getRequestedAt() { return requestedAt; }
     public void setRequestedAt(Instant requestedAt) { this.requestedAt = requestedAt; }
+
+    public Permission getRequestedPermission() { return requestedPermission; }
+    public void setRequestedPermission(Permission requestedPermission) { this.requestedPermission = requestedPermission; }
 }

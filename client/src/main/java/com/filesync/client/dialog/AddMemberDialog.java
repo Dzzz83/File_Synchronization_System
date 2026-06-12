@@ -1,6 +1,6 @@
 package com.filesync.client.dialog;
 
-import com.filesync.client.controller.AddMemberController;
+import com.filesync.client.shared.members.AddMemberController;
 import com.filesync.client.http.SyncHttpClient;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -13,7 +13,7 @@ import java.util.concurrent.ExecutorService;
 public class AddMemberDialog {
     public static void show(UUID folderId, SyncHttpClient httpClient, Runnable onSuccess, ExecutorService executorService) {
         try {
-            FXMLLoader loader = new FXMLLoader(AddMemberDialog.class.getResource("/com/filesync/client/dialog/add-member-dialog.fxml"));
+            FXMLLoader loader = new FXMLLoader(AddMemberDialog.class.getResource("/com/filesync/client/shared/members/add-member-dialog.fxml"));
             Scene scene = new Scene(loader.load(), 300, 400);
             AddMemberController controller = loader.getController();
             Stage dialogStage = new Stage();

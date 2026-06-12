@@ -1,6 +1,6 @@
 package com.filesync.client.dialog;
 
-import com.filesync.client.controller.CreateFolderController;
+import com.filesync.client.files.CreateFolderController;
 import com.filesync.client.http.SyncHttpClient;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;

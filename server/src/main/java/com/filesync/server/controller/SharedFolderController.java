@@ -100,9 +100,19 @@ public class SharedFolderController
     }
 
     @PostMapping("/{folderId}/request-access")
-    public ResponseEntity<?> requestAccess(@PathVariable("folderId") UUID folderId, Authentication authentication) {
+    public ResponseEntity<?> requestAccess(@PathVariable("folderId") UUID folderId,
+                                           @RequestBody(required = false) Map<String, String> body,
+                                           Authentication authentication) {
         String userId = authentication.getName();
-        folderService.createRequest(folderId, userId);
+        Permission requestedPermission = Permission.READ; // default
+        if (body != null && body.containsKey("permission")) {
+            try {
+                requestedPermission = Permission.valueOf(body.get("permission"));
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body("Invalid permission value");
+            }
+        }
+        folderService.createRequest(folderId, userId, requestedPermission);
         return ResponseEntity.ok().build();
     }
 
@@ -117,7 +127,8 @@ public class SharedFolderController
         List<Map<String, String>> result = requests.stream()
                 .map(req -> Map.of(
                         "requestId", req.getId().toString(),
-                        "requesterId", req.getRequesterId()
+                        "requesterId", req.getRequesterId(),
+                        "requestedPermission", req.getRequestedPermission().name()
                 ))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(result);

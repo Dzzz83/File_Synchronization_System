@@ -1,6 +1,6 @@
 package com.filesync.client.dialog;
 
-import com.filesync.client.controller.ApproveRequestsController;
+import com.filesync.client.shared.requests.ApproveRequestsController;
 import com.filesync.client.http.SyncHttpClient;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -13,7 +13,7 @@ import java.util.concurrent.ExecutorService;
 public class PendingRequestsDialog {
     public static void show(UUID folderId, SyncHttpClient httpClient, Runnable onApproved, ExecutorService executorService) {
         try {
-            FXMLLoader loader = new FXMLLoader(PendingRequestsDialog.class.getResource("/com/filesync/client/dialog/pending-requests-dialog.fxml"));
+            FXMLLoader loader = new FXMLLoader(PendingRequestsDialog.class.getResource("/com/filesync/client/shared/requests/pending-requests-dialog.fxml"));
             Scene scene = new Scene(loader.load(), 350, 250);
             ApproveRequestsController controller = loader.getController();
             Stage dialogStage = new Stage();

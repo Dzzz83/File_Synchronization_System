@@ -1,6 +1,6 @@
 package com.filesync.client.controller.helper;
 
-import com.filesync.client.controller.ServerFileItem;
+import com.filesync.client.files.ServerFileItem;
 import com.filesync.client.service.ProgressService;
 import com.filesync.common.enums.Permission;
 import javafx.beans.binding.Bindings;

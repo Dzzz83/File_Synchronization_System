@@ -1,6 +1,6 @@
 package com.filesync.client.controller.helper;
 
-import com.filesync.client.controller.ServerFileItem;
+import com.filesync.client.files.ServerFileItem;
 import com.filesync.client.http.SyncHttpClient;
 import com.filesync.client.service.FileOperationService;
 import com.filesync.client.service.ProgressService;
