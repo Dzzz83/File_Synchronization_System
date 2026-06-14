@@ -21,11 +21,17 @@ public class ConfirmResetController {
     private PasswordResetService resetService;
     private Stage dialogStage;
     private ExecutorService executorService;
+    private String email;
 
-    public void setData(PasswordResetService resetService, Stage dialogStage, ExecutorService executorService) {
+    public void setData(PasswordResetService resetService, Stage dialogStage, ExecutorService executorService, String email) {
         this.resetService = resetService;
         this.dialogStage = dialogStage;
         this.executorService = executorService;
+        this.email = email;
+    }
+
+    public void requestFocus() {
+        Platform.runLater(() -> tokenField.requestFocus());
     }
 
     @FXML
@@ -43,14 +49,13 @@ public class ConfirmResetController {
             return;
         }
 
-        // Disable button during operation
         resetButton.setDisable(true);
         resetButton.setText("Resetting...");
 
         Task<Boolean> resetTask = new Task<>() {
             @Override
             protected Boolean call() throws Exception {
-                return resetService.resetPassword(token, newPassword);
+                return resetService.resetPassword(email, token, newPassword);
             }
         };
         resetTask.setOnSucceeded(e -> {
@@ -70,7 +75,9 @@ public class ConfirmResetController {
             Platform.runLater(() -> {
                 resetButton.setDisable(false);
                 resetButton.setText("Reset Password");
-                showAlert("Error", resetTask.getException().getMessage());
+                Throwable ex = resetTask.getException();
+                String msg = (ex != null && ex.getMessage() != null) ? ex.getMessage() : "Unknown error";
+                showAlert("Error", "Reset failed: " + msg);
             });
         });
         executorService.submit(resetTask);

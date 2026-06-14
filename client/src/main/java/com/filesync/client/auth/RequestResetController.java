@@ -32,11 +32,11 @@ public class RequestResetController {
     private void handleSendCode() {
         String email = emailField.getText().trim();
         if (email.isEmpty()) {
-            showAlert("❌Error", "Please enter your email.");
+            showAlert("Error", "Please enter your email.");
             return;
         }
 
-        //sendButton.setDisable(true);
+        sendButton.setDisable(true);
         sendButton.setText("Sending...");
 
         Task<Void> sendTask = new Task<>() {
@@ -50,7 +50,8 @@ public class RequestResetController {
             Platform.runLater(() -> {
                 showAlert("Success", "A 6-digit code has been sent to your email.");
                 dialogStage.close();
-                openConfirmReset();
+                // Use a second runLater to ensure the close has fully processed
+                Platform.runLater(this::openConfirmReset);
             });
         });
         sendTask.setOnFailed(e -> {
@@ -65,7 +66,7 @@ public class RequestResetController {
 
     private void openConfirmReset() {
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/filesync/client/controller/confirm-reset.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/filesync/client/auth/confirm-reset.fxml"));
             Parent root = loader.load();
             ConfirmResetController controller = loader.getController();
             Stage stage = new Stage();
@@ -74,8 +75,16 @@ public class RequestResetController {
             stage.initOwner(dialogStage.getOwner());
             stage.setScene(new Scene(root));
             stage.setResizable(false);
-            // Pass the same executor to ConfirmResetController
-            controller.setData(resetService, stage, executorService);
+            controller.setData(resetService, stage, executorService, emailField.getText().trim());
+
+            stage.setOnShown(e -> {
+                Platform.runLater(() -> {
+                    stage.toFront();
+                    stage.requestFocus();
+                    controller.requestFocus();
+                });
+            });
+
             stage.showAndWait();
         } catch (Exception e) {
             e.printStackTrace();

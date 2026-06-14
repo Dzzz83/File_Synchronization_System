@@ -53,7 +53,7 @@ public class StartupController {
 
         loginButton.setDisable(true);
         loginButton.setText("Logging in...");
-        ForgetpassButton.setDisable(true);  // NEW
+        ForgetpassButton.setDisable(true);
 
         ExecutorService executor = ServerAdminApp.getInstance().getExecutor();
         Task<String[]> loginTask = new Task<>() {
@@ -97,7 +97,7 @@ public class StartupController {
 
         registerButton.setDisable(true);
         registerButton.setText("Registering...");
-        ForgetpassButton.setDisable(true);  // NEW
+        ForgetpassButton.setDisable(true);
 
         ExecutorService executor = ServerAdminApp.getInstance().getExecutor();
         Task<Boolean> registerTask = new Task<>() {
@@ -112,7 +112,7 @@ public class StartupController {
             Platform.runLater(() -> {
                 registerButton.setDisable(false);
                 registerButton.setText("Register");
-                ForgetpassButton.setDisable(false);  // NEW
+                ForgetpassButton.setDisable(false);
                 if (success) {
                     showAlert("Success", "Registration successful. You can now login.");
                     ownerIdField.setText(username);
@@ -141,7 +141,8 @@ public class StartupController {
         }
 
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/filesync/client/controller/send-reset-code.fxml"));
+            // Fixed: absolute path to the FXML
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/filesync/client/auth/send-reset-code.fxml"));
             Parent root = loader.load();
             RequestResetController controller = loader.getController();
             Stage dialogStage = new Stage();
@@ -150,7 +151,6 @@ public class StartupController {
             dialogStage.initOwner(primaryStage);
             dialogStage.setScene(new Scene(root));
             dialogStage.setResizable(false);
-            // Pass the executor
             controller.setData(serverUrl, dialogStage, ServerAdminApp.getInstance().getExecutor());
             dialogStage.showAndWait();
         } catch (Exception e) {

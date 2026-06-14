@@ -268,33 +268,34 @@ public class SyncHttpClient {
     }
 
     public void forgotPassword(String email) {
+        Map<String, String> body = Map.of("email", email);
+        addAuth(webClient.post()
+                .uri("/api/users/forgot-password")
+                .bodyValue(body))
+                .retrieve()
+                .bodyToMono(Void.class)
+                .block();
+    }
+
+    public boolean resetPassword(String email, String token, String newPassword) {
+        Map<String, String> body = Map.of(
+                "email", email,
+                "token", token,
+                "newPassword", newPassword
+        );
         try {
-            Map<String, String> body = Map.of("email", email);
-            webClient.post()
-                    .uri("/api/users/forgot-password")
-                    .bodyValue(body)
+            addAuth(webClient.post()
+                    .uri("/api/users/reset-password")
+                    .bodyValue(body))
                     .retrieve()
                     .bodyToMono(Void.class)
                     .block();
-        } catch (Exception e) {
-            throw new RuntimeException("Forgot password request failed: " + e.getMessage());
-        }
-    }
-
-    public boolean resetPassword(String token, String newPassword) {
-        try {
-            Map<String, String> body = Map.of("token", token, "newPassword", newPassword);
-            Map<?, ?> response = webClient.post()
-                    .uri("/api/users/reset-password")
-                    .bodyValue(body)
-                    .retrieve()
-                    .bodyToMono(Map.class)
-                    .block();
-            return response != null && !response.containsKey("error");
-        } catch (Exception e) {
+            return true;
+        } catch (WebClientResponseException e) {
             return false;
         }
     }
+
 
     public List<SharedFolderDto> getUserSharedFolders(String userId) {
         SharedFolderDto[] folders = addAuth(webClient.get()

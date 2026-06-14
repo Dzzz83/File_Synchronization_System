@@ -36,6 +36,9 @@ import org.apache.poi.xwpf.usermodel.XWPFRun;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -47,7 +50,8 @@ public class FileExplorerController {
     @FXML private TableView<ServerFileItem> fileTable;
     @FXML private TableColumn<ServerFileItem, String> pathColumn;
     @FXML private TableColumn<ServerFileItem, Long> sizeColumn;
-    @FXML private TableColumn<ServerFileItem, String> lastModifiedColumn;
+    // FIX: column now holds Instant, not String
+    @FXML private TableColumn<ServerFileItem, Instant> lastModifiedColumn;
     @FXML private TableColumn<ServerFileItem, Node> iconColumn;
     @FXML private Label pathLabel;
 
@@ -129,7 +133,24 @@ public class FileExplorerController {
                 setText(empty || item == null ? null : formatFileSize(item));
             }
         });
+
+        // Corrected: column type is Instant, cell factory formats to readable string
         lastModifiedColumn.setCellValueFactory(new PropertyValueFactory<>("lastModified"));
+        lastModifiedColumn.setCellFactory(column -> new TableCell<>() {
+            private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                    .withZone(ZoneId.systemDefault());
+
+            @Override
+            protected void updateItem(Instant instant, boolean empty) {
+                super.updateItem(instant, empty);
+                if (empty || instant == null) {
+                    setText(null);
+                } else {
+                    setText(formatter.format(instant));
+                }
+            }
+        });
+
         fileTable.setItems(fileItems);
     }
 

@@ -69,8 +69,6 @@ public class UserController {
         User user = optionalUser.get();
         int tokenValue = 100_000 + random.nextInt(900_000);
         String plainToken = String.valueOf(tokenValue);
-
-        // hash token using BCrypt
         String hashedToken = passwordEncoder.encode(plainToken);
         user.setResetToken(hashedToken);
         user.setTokenExpiry(LocalDateTime.now().plusHours(1));
@@ -79,10 +77,17 @@ public class UserController {
         try {
             emailService.sendResetToken(user.getEmail(), plainToken);
             log.info("Reset token sent to {}", user.getEmail());
+            return ResponseEntity.ok(Map.of("message", "Reset code sent to your email"));
         } catch (Exception e) {
-            log.error("Failed to send email", e);
+            log.error("Failed to send reset email to {}: {}", user.getEmail(), e.getMessage(), e);
+            log.error("Failed to send email to {}: {}", user.getEmail(), e.getMessage(), e);
+            e.printStackTrace();
+            // Rollback token (optional)
+            user.setResetToken(null);
+            user.setTokenExpiry(null);
+            userRepository.save(user);
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to send reset code. Please try again later."));
         }
-        return ResponseEntity.ok(Map.of("message", "Reset code sent to your email"));
     }
 
     @PostMapping("/reset-password")

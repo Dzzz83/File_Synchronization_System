@@ -42,7 +42,6 @@ public class ForgotPasswordController {
             return;
         }
 
-        // Disable button during operation
         resetButton.setDisable(true);
         resetButton.setText("Resetting...");
 
@@ -55,11 +54,11 @@ public class ForgotPasswordController {
             }
         };
         forgotTask.setOnSucceeded(e -> {
-            // Step 2: Reset password with token
+            // Step 2: Reset password with token and email
             Task<Boolean> resetTask = new Task<>() {
                 @Override
                 protected Boolean call() throws Exception {
-                    return syncHttpClient.resetPassword(token, newPassword);
+                    return syncHttpClient.resetPassword(email, token, newPassword);
                 }
             };
             resetTask.setOnSucceeded(ev -> {
@@ -78,7 +77,9 @@ public class ForgotPasswordController {
             });
             resetTask.setOnFailed(ev -> {
                 Platform.runLater(() -> {
-                    showAlert("Error", resetTask.getException().getMessage());
+                    Throwable ex = resetTask.getException();
+                    String msg = (ex != null && ex.getMessage() != null) ? ex.getMessage() : "Reset failed";
+                    showAlert("Error", msg);
                     resetButton.setDisable(false);
                     resetButton.setText("Reset Password");
                 });
@@ -87,7 +88,9 @@ public class ForgotPasswordController {
         });
         forgotTask.setOnFailed(e -> {
             Platform.runLater(() -> {
-                showAlert("Error", forgotTask.getException().getMessage());
+                Throwable ex = forgotTask.getException();
+                String msg = (ex != null && ex.getMessage() != null) ? ex.getMessage() : "Request failed";
+                showAlert("Error", msg);
                 resetButton.setDisable(false);
                 resetButton.setText("Reset Password");
             });
