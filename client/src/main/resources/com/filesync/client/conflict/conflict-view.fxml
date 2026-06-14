@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
+
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
@@ -6,32 +7,55 @@
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
 <?import javafx.scene.text.TextFlow?>
 
-<VBox spacing="10" alignment="CENTER" stylesheets="/com/filesync/client/css/styles.css" xmlns="http://javafx.com/javafx/21"
-      xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.filesync.client.conflict.ConflictController">
-    <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
-    <Label fx:id="titleLabel" style="-fx-font-size: 16px; -fx-font-weight: bold;" />
-    <HBox spacing="20" VBox.vgrow="ALWAYS">
-        <VBox spacing="5" HBox.hgrow="ALWAYS">
-            <Label text="Server version (read‑only)" style="-fx-font-weight: bold;"/>
-            <ScrollPane prefHeight="400" fitToWidth="true">
-                <TextFlow fx:id="leftTextFlow" style="-fx-font-family: monospace; -fx-background-color: white; -fx-text-fill: black; -fx-border-color: gray;"/>
+
+<VBox alignment="CENTER" prefWidth="1100.0" spacing="10" styleClass="root-pane" stylesheets="@../css/styles.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.conflict.ConflictController">
+    <padding>
+      <Insets bottom="10" left="10" right="10" top="10" />
+   </padding>
+    <HBox maxHeight="422.0" prefHeight="422.0" prefWidth="1079.0" spacing="20" VBox.vgrow="ALWAYS">
+        <VBox HBox.hgrow="ALWAYS">
+            <Label style="-fx-font-weight: bold;" text="Server version (read‑only)">
+            <font>
+               <Font size="15.0" />
+            </font>
+         </Label>
+            <ScrollPane fitToWidth="true" prefHeight="374.0" prefWidth="331.0">
+                <TextFlow fx:id="leftTextFlow" style="-fx-font-family: monospace; -fx-background-color: white; -fx-text-fill: black; -fx-border-color: gray;" />
             </ScrollPane>
+            <Label alignment="CENTER_RIGHT" prefHeight="32.0" prefWidth="270.0" styleClass="hbox-button-container" text="Edit merged version:">
+            <font>
+               <Font name="System Bold" size="15.0" />
+            </font>
+         </Label>
         </VBox>
         <VBox spacing="5" HBox.hgrow="ALWAYS">
-            <Label text="Your version (diff highlights)" style="-fx-font-weight: bold;"/>
-            <ScrollPane prefHeight="300" fitToWidth="true">
-                <TextFlow fx:id="rightTextFlow" style="-fx-font-family: monospace; -fx-background-color: white; -fx-text-fill: black; -fx-border-color: gray;"/>
+            <Label style="-fx-font-weight: bold;" text="Your version (diff highlights)">
+            <font>
+               <Font size="15.0" />
+            </font>
+         </Label>
+            <ScrollPane fitToWidth="true" prefHeight="370.0" prefWidth="354.0">
+                <TextFlow fx:id="rightTextFlow" style="-fx-font-family: monospace; -fx-background-color: white; -fx-text-fill: black; -fx-border-color: gray;" />
             </ScrollPane>
-            <Label text="Edit merged version:"/>
-            <TextArea fx:id="mergedArea" prefHeight="100" style="-fx-font-family: monospace;"/>
         </VBox>
     </HBox>
-    <HBox spacing="10" alignment="CENTER">
-        <Button fx:id="useLeftButton" text="Use Server Version" />
-        <Button fx:id="useRightButton" text="Use My Version" />
-        <Button fx:id="saveButton" text="Save Merged" defaultButton="true" />
-    </HBox>
+   <HBox prefHeight="300.0" prefWidth="523.0">
+      <children>
+         <HBox prefHeight="300.0" prefWidth="89.0" />
+            <TextArea fx:id="mergedArea" prefHeight="250.0" prefWidth="750.0" style="-fx-font-family: monospace;" />
+         <HBox prefHeight="300.0" prefWidth="94.0" />
+         <VBox alignment="CENTER_LEFT" prefHeight="300.0" prefWidth="188.0">
+            <children>
+                 <Button fx:id="useLeftButton" text="Use Server Version" />
+               <HBox prefHeight="31.0" prefWidth="198.0" />
+                 <Button fx:id="useRightButton" text="Use My Version" />
+               <HBox layoutX="10.0" layoutY="124.0" prefHeight="31.0" prefWidth="198.0" />
+                 <Button fx:id="saveButton" defaultButton="true" text="Save Merged" />
+            </children>
+         </VBox>
+      </children>
+   </HBox>
 </VBox>

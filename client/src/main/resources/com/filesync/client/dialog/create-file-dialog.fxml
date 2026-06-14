@@ -7,25 +7,43 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
 
-<VBox spacing="10" alignment="CENTER" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.filesync.client.dialog.CreateFileDialogController">
-    <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
-
-    <Label text="New File" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
-
-    <HBox spacing="8" alignment="CENTER_LEFT">
-        <Label text="Name:"/>
-        <TextField fx:id="nameField" promptText="e.g., document" HBox.hgrow="ALWAYS"/>
-    </HBox>
-
-    <HBox spacing="8" alignment="CENTER_LEFT">
-        <Label text="Format:"/>
-        <ComboBox fx:id="extensionCombo" promptText="Select extension" editable="true" HBox.hgrow="ALWAYS"/>
-    </HBox>
-
-    <HBox spacing="10" alignment="CENTER">
-        <Button fx:id="createButton" text="Create" defaultButton="true"/>
-        <Button fx:id="cancelButton" text="Cancel" cancelButton="true"/>
-    </HBox>
+<VBox alignment="CENTER" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.dialog.CreateFileDialogController">
+   <children>
+      <VBox alignment="CENTER" maxHeight="-Infinity" maxWidth="-Infinity" prefHeight="230.0" prefWidth="298.0" spacing="10" styleClass="root-pane" stylesheets="@../css/styles.css">
+          <padding>
+            <Insets bottom="10" left="10" right="10" top="10" />
+         </padding>
+         <VBox alignment="TOP_CENTER" prefHeight="47.0" prefWidth="278.0">
+            <children>
+            
+                            <Label prefHeight="34.0" prefWidth="82.0" style="-fx-font-weight: bold; -fx-font-size: 20;" styleClass="app-title" text="New File" />
+            </children>
+         </VBox>
+      
+          <HBox alignment="CENTER_LEFT" spacing="8">
+              <Label text="Name:">
+               <font>
+                  <Font size="16.0" />
+               </font>
+            </Label>
+              <TextField fx:id="nameField" prefHeight="45.0" prefWidth="223.0" promptText="e.g., document" HBox.hgrow="ALWAYS" />
+          </HBox>
+      
+          <HBox alignment="CENTER_LEFT" spacing="8">
+              <Label text="Format:">
+               <font>
+                  <Font size="15.0" />
+               </font>
+            </Label>
+              <ComboBox fx:id="extensionCombo" editable="true" prefHeight="45.0" prefWidth="199.0" promptText="Select extension" HBox.hgrow="ALWAYS" />
+          </HBox>
+      
+          <HBox alignment="CENTER" prefHeight="73.0" prefWidth="278.0" spacing="10">
+              <Button fx:id="createButton" defaultButton="true" text="Create" />
+              <Button fx:id="cancelButton" cancelButton="true" text="Cancel" />
+          </HBox>
+      </VBox>
+   </children>
 </VBox>

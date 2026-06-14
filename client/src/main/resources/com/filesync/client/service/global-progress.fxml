@@ -4,7 +4,7 @@
 <?import javafx.scene.control.ProgressBar?>
 <?import javafx.scene.layout.HBox?>
 
-<HBox alignment="CENTER_RIGHT" prefHeight="34.0" prefWidth="229.0" spacing="10" stylesheets="/com/filesync/client/css/styles.css" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.service.GlobalProgressController">
-    <Label fx:id="progressLabel" text="" />
+<HBox alignment="CENTER_RIGHT" prefHeight="34.0" prefWidth="499.0" spacing="10" stylesheets="/com/filesync/client/css/styles.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.service.GlobalProgressController">
+    <Label fx:id="progressLabel" prefHeight="20.0" prefWidth="255.0" text="" />
     <ProgressBar fx:id="progressBar" prefHeight="28.0" prefWidth="212.0" progress="0.0" />
 </HBox>

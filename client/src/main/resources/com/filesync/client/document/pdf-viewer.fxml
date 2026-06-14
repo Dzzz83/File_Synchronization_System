@@ -9,29 +9,28 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox spacing="8" stylesheets="/com/filesync/client/css/styles.css" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.filesync.client.document.PdfViewerController">
+<VBox spacing="8" styleClass="root-pane" stylesheets="@../css/styles.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.document.PdfViewerController">
     <padding>
-        <Insets top="8" right="8" bottom="8" left="8" />
+        <Insets bottom="8" left="8" right="8" top="8" />
     </padding>
 
-    <HBox spacing="8" alignment="CENTER_LEFT">
-        <Button fx:id="previousButton" text="Previous" onAction="#previousPage" />
-        <Button fx:id="nextButton" text="Next" onAction="#nextPage" />
+    <HBox alignment="CENTER_LEFT" spacing="8">
+        <Button fx:id="previousButton" onAction="#previousPage" styleClass="main-vbox" text="Previous" />
+        <Button fx:id="nextButton" onAction="#nextPage" styleClass="main-vbox" text="Next" />
 
         <Label text="Page:" />
-        <TextField fx:id="pageField" prefWidth="60" onAction="#goToPage" />
+        <TextField fx:id="pageField" onAction="#goToPage" prefWidth="60" />
         <Label fx:id="totalPagesLabel" />
-        <Button text="Go" onAction="#goToPage" />
+        <Button onAction="#goToPage" styleClass="main-vbox" text="Go" />
 
-        <Button text="Zoom Out" onAction="#zoomOut" />
-        <Button text="Zoom In" onAction="#zoomIn" />
-        <Button text="Fit Width" onAction="#fitWidth" />
+        <Button onAction="#zoomOut" styleClass="main-vbox" text="Zoom Out" />
+        <Button onAction="#zoomIn" styleClass="main-vbox" text="Zoom In" />
+        <Button onAction="#fitWidth" styleClass="main-vbox" text="Fit Width" />
 
-        <Label fx:id="statusLabel" text="Ready" />
+        <Label fx:id="statusLabel" style="-fx-font-size: 17; -fx-font-weight: bold;" text="Ready" />
     </HBox>
 
-    <ScrollPane fitToWidth="true" fitToHeight="true" VBox.vgrow="ALWAYS">
+                <ScrollPane fitToHeight="true" fitToWidth="true" maxWidth="1400.0" VBox.vgrow="ALWAYS">
         <ImageView fx:id="pageImageView" preserveRatio="true" smooth="true" />
     </ScrollPane>
 </VBox>

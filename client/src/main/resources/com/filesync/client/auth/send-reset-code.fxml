@@ -14,7 +14,7 @@
 <?import javafx.scene.paint.Stop?>
 <?import javafx.scene.text.Font?>
 
-<VBox xmlns="http://javafx.com/javafx/21" styleClass="root-pane" stylesheets="/com/filesync/client/css/styles.css"
+<VBox xmlns="http://javafx.com/javafx/21" styleClass="root-pane" stylesheets="@../css/styles.css"
       xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.auth.RequestResetController"
       maxWidth="500" >
     <children>

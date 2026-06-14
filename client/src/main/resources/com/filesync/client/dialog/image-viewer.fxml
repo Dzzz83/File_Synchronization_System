@@ -3,22 +3,21 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.image.ImageView?>
 
-<VBox spacing="10" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.filesync.client.controller.ImageViewerController">
-    <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
+<VBox spacing="10" styleClass="main-vbox" stylesheets="@../css/styles.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.ImageViewerController">
+    <padding><Insets bottom="8" left="8" right="8" top="8" /></padding>
 
-    <ScrollPane fx:id="scrollPane" VBox.vgrow="ALWAYS" pannable="true" fitToWidth="true" fitToHeight="true">
-        <ImageView fx:id="imageView" preserveRatio="true" smooth="true" cache="true"/>
+    <ScrollPane fx:id="scrollPane" fitToHeight="true" fitToWidth="true" pannable="true" VBox.vgrow="ALWAYS">
+        <ImageView fx:id="imageView" cache="true" preserveRatio="true" smooth="true" />
     </ScrollPane>
 
-    <HBox spacing="10" alignment="CENTER">
-        <Button fx:id="zoomInButton" text="Zoom In"/>
-        <Button fx:id="zoomOutButton" text="Zoom Out"/>
-        <Button fx:id="fitButton" text="Fit to Window"/>
-        <Button fx:id="originalButton" text="Original Size"/>
+    <HBox alignment="CENTER" spacing="10">
+        <Button fx:id="zoomInButton" text="Zoom In" />
+        <Button fx:id="zoomOutButton" text="Zoom Out" />
+        <Button fx:id="fitButton" text="Fit to Window" />
+        <Button fx:id="originalButton" text="Original Size" />
     </HBox>
 </VBox>

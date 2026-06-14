@@ -12,20 +12,20 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox alignment="CENTER" stylesheets="/com/filesync/client/css/styles.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.shared.members.AddMemberController">
+<VBox alignment="CENTER" stylesheets="@../../css/styles.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.shared.members.AddMemberController">
     <children>
-        <VBox alignment="CENTER" maxWidth="300.0" spacing="10">
+        <VBox alignment="CENTER" maxWidth="300.0" spacing="10" styleClass="main-vbox">
             <padding>
                 <Insets bottom="10" left="10" right="10" top="10" />
             </padding>
 
             <Label text="Search user:">
                 <font>
-                    <Font size="16.0" />
+                    <Font name="System Bold" size="16.0" />
                 </font>
             </Label>
             <TextField fx:id="searchField" promptText="Search by username or email" />
-            <ListView fx:id="resultsList" prefHeight="200" />
+            <ListView fx:id="resultsList" prefHeight="164.0" prefWidth="279.0" />
             <GridPane alignment="CENTER">
                 <columnConstraints>
                     <ColumnConstraints hgrow="SOMETIMES" maxWidth="135.99998779296874" minWidth="10.0" prefWidth="135.99998779296874" />
@@ -35,7 +35,7 @@
                     <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                 </rowConstraints>
                 <children>
-                    <Label prefHeight="20.0" prefWidth="77.0" text="Permission:" GridPane.halignment="RIGHT">
+                    <Label prefHeight="22.0" prefWidth="85.0" text="Permission:" GridPane.halignment="RIGHT">
                         <font>
                             <Font size="15.0" />
                         </font>
@@ -43,7 +43,7 @@
                     <ComboBox fx:id="permissionBox" GridPane.columnIndex="1" />
                 </children>
             </GridPane>
-            <Button fx:id="addButton" text="Add" />
+            <Button fx:id="addButton" style="-fx-background-color: #328FDB; -fx-text-fill: white;" text="Add" />
             <Button fx:id="closeButton" text="Close" />
         </VBox>
     </children>

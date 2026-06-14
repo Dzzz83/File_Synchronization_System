@@ -8,20 +8,25 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox spacing="8.0" stylesheets="/com/filesync/client/css/styles.css" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.ChatController" VBox.vgrow="ALWAYS">
-    <padding>
-        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
-    </padding>
 
-    <Label text="Discussion &amp; Coordination" style="-fx-font-weight: bold; -fx-font-size: 14px;" />
-
-    <ListView fx:id="messageList" VBox.vgrow="ALWAYS" />
-
-    <Label text="Active Collaborators:" style="-fx-font-weight: bold;" />
-    <ListView fx:id="activeUsersList" prefHeight="70.0" minHeight="50.0" />
-
-    <HBox spacing="8.0">
-        <TextField fx:id="messageField" HBox.hgrow="ALWAYS" promptText="Type a message..." onAction="#sendMessage" />
-        <Button fx:id="sendButton" text="Send" onAction="#sendMessage" prefWidth="70.0" />
-    </HBox>
+<VBox alignment="CENTER" styleClass="root-pane" stylesheets="@../css/styles.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.ChatController">
+   <children>
+      <VBox alignment="CENTER_LEFT" maxHeight="800.0" maxWidth="800.0" prefHeight="617.0" prefWidth="414.0" spacing="8.0" stylesheets="@../css/styles.css" VBox.vgrow="ALWAYS">
+          <padding>
+              <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+          </padding>
+      
+          <Label style="-fx-font-weight: bold; -fx-font-size: 15;" styleClass="main-vbox" text="Discussion &amp; Coordination" />
+      
+          <ListView fx:id="messageList" maxWidth="650.0" prefHeight="357.0" prefWidth="393.0" VBox.vgrow="ALWAYS" />
+      
+          <Label style="-fx-font-weight: bold; -fx-font-size: 15;" styleClass="main-vbox" text="Active Collaborators:" />
+          <ListView fx:id="activeUsersList" maxWidth="500.0" minHeight="50.0" prefHeight="106.0" prefWidth="394.0" />
+      
+          <HBox spacing="8.0">
+              <TextField fx:id="messageField" maxWidth="500.0" onAction="#sendMessage" promptText="Type a message..." HBox.hgrow="ALWAYS" />
+              <Button fx:id="sendButton" minWidth="86.0" onAction="#sendMessage" prefHeight="40.0" prefWidth="86.0" style="-fx-background-color: #3B94DF; -fx-text-fill: white;" styleClass="tab-pane" text="Send" />
+          </HBox>
+      </VBox>
+   </children>
 </VBox>

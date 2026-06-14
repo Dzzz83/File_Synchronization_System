@@ -1,40 +1,70 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
 
-<BorderPane stylesheets="/com/filesync/client/css/styles.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.shared.create.CreateSharedFolderController">
-    <top>
-        <VBox spacing="10" BorderPane.alignment="CENTER">
-            <padding><Insets top="20" right="20" left="20"/></padding>
-            <Label text="Folder Name" style="-fx-font-weight: bold;"/>
-            <TextField fx:id="nameField" promptText="e.g., Team Documents"/>
-        </VBox>
-    </top>
-    <center>
-        <VBox spacing="10" BorderPane.alignment="CENTER">
-            <padding><Insets right="20" left="20"/></padding>
-            <Label text="Initial Members (optional)" style="-fx-font-weight: bold;"/>
-            <HBox spacing="10">
-                <TextField fx:id="searchField" promptText="Search by username or email" HBox.hgrow="ALWAYS"/>
-                <Button fx:id="searchButton" text="Search"/>
-            </HBox>
-            <ListView fx:id="searchResults" prefHeight="100"/>
-            <HBox spacing="10" alignment="CENTER_LEFT">
-                <Label text="Permission:"/>
-                <ComboBox fx:id="permissionCombo"/>
-                <Button fx:id="addMemberBtn" text="Add Member"/>
-            </HBox>
-            <Label text="Selected Members:"/>
-            <ListView fx:id="membersList" prefHeight="150"/>
-        </VBox>
-    </center>
-    <bottom>
-        <HBox spacing="10" alignment="CENTER_RIGHT" BorderPane.alignment="CENTER_RIGHT">
-            <padding><Insets bottom="15" right="15" top="10"/></padding>
-            <Button fx:id="createBtn" text="Create" style="-fx-background-color: #2ecc71; -fx-text-fill: white;"/>
-            <Button fx:id="cancelBtn" text="Cancel"/>
-        </HBox>
-    </bottom>
-</BorderPane>
+<VBox alignment="CENTER" styleClass="root-pane" stylesheets="@../../css/styles.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.shared.create.CreateSharedFolderController">
+   <children>
+      <BorderPane maxWidth="400.0" stylesheets="@../../css/styles.css">
+          <top>
+              <VBox spacing="10" BorderPane.alignment="CENTER">
+                  <padding>
+                  <Insets left="20" right="20" top="20" />
+               </padding>
+               <HBox alignment="TOP_CENTER" prefHeight="42.0" prefWidth="314.0">
+                  <children>
+                        <Label style="-fx-font-weight: bold; -fx-font-size: 20;" styleClass="app-icon" text="Create Shared Folder" />
+                  </children>
+               </HBox>
+              </VBox>
+          </top>
+          <center>
+              <VBox spacing="10" BorderPane.alignment="CENTER">
+                  <padding>
+                  <Insets left="20" right="20" />
+               </padding>
+                  <TextField fx:id="nameField" promptText="Folder name" />
+                  <Label prefHeight="30.0" prefWidth="180.0" text="Initial Members (optional)">
+                  <font>
+                     <Font size="15.0" />
+                  </font></Label>
+                  <HBox spacing="10">
+                      <TextField fx:id="searchField" prefHeight="38.0" prefWidth="202.0" promptText="Search by username or email" HBox.hgrow="ALWAYS" />
+                      <Button fx:id="searchButton" text="Search" />
+                  </HBox>
+                  <ListView fx:id="searchResults" prefHeight="137.0" prefWidth="314.0" />
+                  <HBox alignment="CENTER_LEFT" spacing="10">
+                      <Label text="Permission:">
+                     <font>
+                        <Font size="15.0" />
+                     </font></Label>
+                      <ComboBox fx:id="permissionCombo" />
+                      <Button fx:id="addMemberBtn" text="Add Member" />
+                  </HBox>
+                  <Label text="Selected Members:">
+                  <font>
+                     <Font size="15.0" />
+                  </font></Label>
+                  <ListView fx:id="membersList" prefHeight="150" />
+              </VBox>
+          </center>
+          <bottom>
+              <HBox alignment="CENTER_RIGHT" spacing="10" BorderPane.alignment="CENTER_RIGHT">
+                  <padding>
+                  <Insets bottom="15" right="15" top="10" />
+               </padding>
+                  <Button fx:id="createBtn" style="-fx-background-color: #328FDB; -fx-text-fill: white;" text="Create" />
+                  <Button fx:id="cancelBtn" text="Cancel" />
+              </HBox>
+          </bottom>
+      </BorderPane>
+   </children>
+</VBox>

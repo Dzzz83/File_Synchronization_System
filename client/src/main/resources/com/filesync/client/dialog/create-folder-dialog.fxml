@@ -10,15 +10,14 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-
 <VBox alignment="CENTER" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.shared.create.CreateSharedFolderController">
    <children>
-      <VBox alignment="CENTER" maxWidth="400.0" spacing="15" stylesheets="@General-design.css">
+      <VBox alignment="CENTER" maxWidth="400.0" spacing="15" stylesheets="@../css/styles.css">
           <padding>
               <Insets bottom="15" left="15" right="15" top="15" />
           </padding>
       
-          <Label styleClass="tab" text="Name:">
+          <Label style="-fx-font-size: 18; -fx-font-weight: bold;" styleClass="app-icon" text="Name:">
             <font>
                <Font name="System Bold" size="18.0" />
             </font>
@@ -39,7 +38,7 @@
          </Label>
           <HBox spacing="5">
               <TextField fx:id="searchField" prefHeight="37.0" prefWidth="198.0" promptText="Search by username or email" HBox.hgrow="ALWAYS" />
-              <Button fx:id="searchButton" minWidth="62.0" prefHeight="40.0" prefWidth="62.0" styleClass="password-field" text="Search" />
+              <Button fx:id="searchButton" minWidth="62.0" prefHeight="40.0" prefWidth="62.0" style="-fx-font-size: 14; -fx-background-color: white; -fx-font-style: system;" text="Search" />
           </HBox>
           <ListView fx:id="searchResults" prefHeight="100" />
       

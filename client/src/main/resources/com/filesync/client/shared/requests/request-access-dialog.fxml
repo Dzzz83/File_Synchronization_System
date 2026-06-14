@@ -7,21 +7,31 @@
 <?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
 
-<VBox spacing="10" alignment="CENTER" stylesheets="/com/filesync/client/css/styles.css" xmlns:fx="http://javafx.com/fxml" fx:controller="com.filesync.client.shared.requests.RequestAccessController">
+<VBox alignment="CENTER" spacing="10" styleClass="root-pane" stylesheets="@../../css/styles.css" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/26" fx:controller="com.filesync.client.shared.requests.RequestAccessController">
     <padding>
-        <Insets top="10" right="10" bottom="10" left="10"/>
+        <Insets bottom="10" left="10" right="10" top="10" />
     </padding>
 
-    <Label text="Enter folder name to search:"/>
-    <TextField fx:id="searchField"/>
-    <Button fx:id="searchButton" text="Search"/>
-    <Label text="Results:"/>
-    <ListView fx:id="resultsList" prefHeight="200"/>
+    <Label text="Enter folder name to search:">
+      <font>
+         <Font name="System Bold" size="16.0" />
+      </font></Label>
+    <TextField fx:id="searchField" maxWidth="248.0" />
+    <Button fx:id="searchButton" text="Search" />
+    <Label text="Results:">
+      <font>
+         <Font size="14.0" />
+      </font></Label>
+    <ListView fx:id="resultsList" maxWidth="248.0" prefHeight="200" />
 
-    <Label text="Requested Permission:"/>
-    <ComboBox fx:id="permissionCombo" promptText="Select permission"/>
+    <Label text="Requested Permission:">
+      <font>
+         <Font size="14.0" />
+      </font></Label>
+    <ComboBox fx:id="permissionCombo" promptText="Select permission" />
 
-    <Button fx:id="requestButton" text="Request Access" disable="true"/>
-    <Button fx:id="cancelButton" text="Cancel"/>
+    <Button fx:id="requestButton" disable="true" style="-fx-background-color: #328FDB; -fx-text-fill: white;" text="Request Access" />
+    <Button fx:id="cancelButton" text="Cancel" />
 </VBox>

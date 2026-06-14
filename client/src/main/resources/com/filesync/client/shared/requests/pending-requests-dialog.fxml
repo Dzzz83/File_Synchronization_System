@@ -5,14 +5,18 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ListView?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
 
-<VBox spacing="10" alignment="CENTER" stylesheets="/com/filesync/client/css/styles.css" xmlns:fx="http://javafx.com/fxml" fx:controller="com.filesync.client.shared.requests.ApproveRequestsController">
+<VBox alignment="CENTER" spacing="10" styleClass="root-pane" stylesheets="@../../css/styles.css" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/26" fx:controller="com.filesync.client.shared.requests.ApproveRequestsController">
     <padding>
-        <Insets top="10" right="10" bottom="10" left="10"/>
+        <Insets bottom="10" left="10" right="10" top="10" />
     </padding>
 
-    <Label text="Pending access requests:"/>
-    <ListView fx:id="requestsList" prefHeight="200"/>
-    <Button fx:id="approveButton" text="Approve Selected" disable="true"/>
-    <Button fx:id="closeButton" text="Close"/>
+    <Label text="Pending access requests:">
+      <font>
+         <Font name="System Bold" size="16.0" />
+      </font></Label>
+    <ListView fx:id="requestsList" maxWidth="350.0" prefHeight="200" />
+    <Button fx:id="approveButton" disable="true" style="-fx-background-color: #328FDB; -fx-text-fill: white;" text="Approve Selected" />
+    <Button fx:id="closeButton" text="Close" />
 </VBox>

@@ -6,13 +6,18 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox spacing="15" alignment="CENTER" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.dialog.ConfirmationDialogController">
-    <padding>
-        <Insets top="20" right="20" bottom="20" left="20"/>
-    </padding>
-    <Label fx:id="messageLabel" text="Are you sure?" wrapText="true" style="-fx-font-size: 13px;"/>
-    <HBox spacing="15" alignment="CENTER">
-        <Button fx:id="confirmButton" text="Confirm" prefWidth="80"/>
-        <Button fx:id="cancelButton" text="Cancel" prefWidth="80"/>
-    </HBox>
+
+<VBox alignment="CENTER" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.dialog.ConfirmationDialogController">
+   <children>
+      <VBox maxHeight="-Infinity" maxWidth="-Infinity" prefHeight="213.0" prefWidth="350.0" spacing="15.0" styleClass="error-field" stylesheets="@../css/styles.css">
+          <padding>
+              <Insets bottom="20" left="20" right="20" top="20" />
+          </padding>
+          <Label fx:id="messageLabel" alignment="TOP_LEFT" maxWidth="400.0" prefHeight="166.0" prefWidth="306.0" style="-fx-font-size: 16; -fx-font-weight: bold;" text="Are you sure?" wrapText="true" VBox.vgrow="ALWAYS" />
+      </VBox>
+       <HBox alignment="CENTER" prefHeight="54.0" prefWidth="306.0" spacing="15.0" stylesheets="@../css/styles.css">
+           <Button fx:id="confirmButton" prefHeight="42.0" prefWidth="119.0" styleClass="password-field" text="Confirm" />
+           <Button fx:id="cancelButton" prefWidth="80" styleClass="password-field" text="Cancel" />
+       </HBox>
+   </children>
 </VBox>

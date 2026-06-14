@@ -6,10 +6,9 @@
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.layout.VBox?>
 
-
 <VBox alignment="CENTER" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.files.edit.EditDialogController">
    <children>
-      <VBox alignment="CENTER" maxWidth="800.0" spacing="10" styleClass="root-pane" stylesheets="@General-design.css">
+      <VBox alignment="CENTER" maxWidth="800.0" spacing="10" styleClass="root-pane" stylesheets="@../../css/styles.css">
           <padding>
               <Insets bottom="10" left="10" right="10" top="10" />
           </padding>

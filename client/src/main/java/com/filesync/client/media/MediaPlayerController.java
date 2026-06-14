@@ -9,6 +9,7 @@ import javafx.scene.media.Media;
 import javafx.scene.media.MediaException;
 import javafx.scene.media.MediaPlayer;
 import javafx.scene.media.MediaView;
+import javafx.stage.Stage;
 import javafx.util.Duration;
 import java.awt.Desktop;
 import java.io.File;
@@ -54,6 +55,15 @@ public class MediaPlayerController {
             mediaPlayer.setOnReady(() -> {
                 Platform.runLater(() -> {
                     if (mediaPlayer == null) return;
+                    if (mediaView.getScene() != null && mediaView.getScene().getWindow() instanceof Stage) {
+                        Stage stage = (Stage) mediaView.getScene().getWindow();
+
+                        stage.setMaximized(true);
+                        // Keep video aspect ratio intact and bind it to fill the scene dynamically
+                        mediaView.setPreserveRatio(true);
+                        mediaView.fitWidthProperty().bind(mediaView.getScene().widthProperty());
+                        mediaView.fitHeightProperty().bind(mediaView.getScene().heightProperty().subtract(150));
+                    }
                     Duration total = mediaPlayer.getTotalDuration();
                     if (total != null && !total.isUnknown()) {
                         totalTimeLabel.setText(formatTime(total));
