@@ -30,10 +30,6 @@ public class SyncHttpClient {
         this.baseUrl = baseUrl;
         this.webClient = WebClient.builder()
                 .baseUrl(baseUrl)
-                .filter((request, next) -> {
-                    request.headers().forEach((k, v) -> System.out.println("  " + k + ": " + v));
-                    return next.exchange(request);
-                })
                 .build();
         this.chunkedUploader = new ChunkedUploader(webClient);
     }

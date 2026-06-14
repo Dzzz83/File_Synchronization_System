@@ -1,0 +1,12 @@
+<configuration>
+    <!-- Suppress verbose HTTP client logs -->
+    <logger name="org.springframework.web.reactive.function.client" level="WARN"/>
+    <logger name="reactor.netty.http.client" level="WARN"/>
+    <logger name="reactor.netty" level="WARN"/>
+
+    <!-- Optional: reduce noise from other libraries -->
+    <logger name="io.netty" level="WARN"/>
+    <logger name="org.springframework" level="INFO"/>
+
+    <root level="INFO"/>
+</configuration>
