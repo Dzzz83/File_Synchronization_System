@@ -6,6 +6,7 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.stage.Stage;
+
 import java.nio.file.Path;
 
 public class ImageViewerController {
@@ -19,7 +20,6 @@ public class ImageViewerController {
     private Stage stage;
     private Path tempFile;
     private Image image;
-    private double originalWidth, originalHeight;
     private double currentZoom = 1.0;
 
     public void init(Stage stage, Path tempFile, String fileName) {
@@ -28,9 +28,9 @@ public class ImageViewerController {
 
         image = new Image(tempFile.toUri().toString());
         imageView.setImage(image);
-        originalWidth = image.getWidth();
-        originalHeight = image.getHeight();
+        imageView.setPreserveRatio(true);
 
+        // Initial fit to window
         fitToWindow();
 
         zoomInButton.setOnAction(e -> zoom(1.25));
@@ -38,31 +38,44 @@ public class ImageViewerController {
         fitButton.setOnAction(e -> fitToWindow());
         originalButton.setOnAction(e -> resetToOriginal());
 
-        stage.widthProperty().addListener((obs, old, newVal) -> fitIfAuto());
-        stage.heightProperty().addListener((obs, old, newVal) -> fitIfAuto());
+        // Re‑fit when the stage is resized (optional: remove if you prefer to keep zoom)
+        stage.widthProperty().addListener((obs, old, newVal) -> refitOnResize());
+        stage.heightProperty().addListener((obs, old, newVal) -> refitOnResize());
     }
 
     private void zoom(double factor) {
         currentZoom *= factor;
+        // Clamp zoom to reasonable limits (e.g., 0.1x to 10x)
+        if (currentZoom < 0.1) currentZoom = 0.1;
+        if (currentZoom > 10.0) currentZoom = 10.0;
         applyZoom();
     }
 
     private void applyZoom() {
-        imageView.setFitWidth(originalWidth * currentZoom);
-        imageView.setFitHeight(originalHeight * currentZoom);
-        imageView.setPreserveRatio(true);
+        imageView.setScaleX(currentZoom);
+        imageView.setScaleY(currentZoom);
     }
 
     private void fitToWindow() {
         double viewportWidth = scrollPane.getViewportBounds().getWidth();
         double viewportHeight = scrollPane.getViewportBounds().getHeight();
+
+        // Fallback if viewport bounds not yet available
         if (viewportWidth <= 0 || viewportHeight <= 0) {
             viewportWidth = stage.getWidth() - 20;
             viewportHeight = stage.getHeight() - 20;
         }
-        double scaleX = viewportWidth / originalWidth;
-        double scaleY = viewportHeight / originalHeight;
-        currentZoom = Math.min(scaleX, scaleY);
+
+        double imageWidth = image.getWidth();
+        double imageHeight = image.getHeight();
+
+        if (imageWidth <= 0 || imageHeight <= 0) {
+            currentZoom = 1.0;
+        } else {
+            double scaleX = viewportWidth / imageWidth;
+            double scaleY = viewportHeight / imageHeight;
+            currentZoom = Math.min(scaleX, scaleY);
+        }
         applyZoom();
     }
 
@@ -71,13 +84,18 @@ public class ImageViewerController {
         applyZoom();
     }
 
-    private void fitIfAuto() {
+    private void refitOnResize() {
+         fitToWindow();
     }
 
     public void cleanup() {
         if (tempFile != null) {
-            try { java.nio.file.Files.deleteIfExists(tempFile); } catch (Exception ignored) {}
+            try {
+                java.nio.file.Files.deleteIfExists(tempFile);
+            } catch (Exception ignored) {}
         }
-        if (image != null) image.cancel();
+        if (image != null) {
+            image.cancel();
+        }
     }
 }

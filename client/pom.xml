@@ -65,11 +65,36 @@
             <version>2.1.0</version>
         </dependency>
 
-        <!-- Tyrus standalone client -->
+        <!-- Tyrus WebSocket client with Grizzly transport – exclude vulnerable grizzly-http-client -->
         <dependency>
-            <groupId>org.glassfish.tyrus.bundles</groupId>
-            <artifactId>tyrus-standalone-client</artifactId>
-            <version>1.20</version>
+            <groupId>org.glassfish.tyrus</groupId>
+            <artifactId>tyrus-client</artifactId>
+            <version>2.1.3</version>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.tyrus</groupId>
+            <artifactId>tyrus-container-grizzly-client</artifactId>
+            <version>2.1.3</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.glassfish.grizzly</groupId>
+                    <artifactId>grizzly-http-client</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- Force secure version of grizzly-http-client (1.16 fixes CVE-2024-45687) -->
+        <dependency>
+            <groupId>org.glassfish.grizzly</groupId>
+            <artifactId>grizzly-http-client</artifactId>
+            <version>1.16</version>
+        </dependency>
+
+        <!-- Force Netty to secure version -->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+            <version>${netty.version}</version>
         </dependency>
 
         <!-- JavaFX -->
@@ -94,7 +119,6 @@
             <version>1.2</version>
         </dependency>
 
-        <!-- PDF/DOCX -->
         <dependency>
             <groupId>org.apache.pdfbox</groupId>
             <artifactId>pdfbox</artifactId>
@@ -106,7 +130,6 @@
             <version>5.5.0</version>
         </dependency>
 
-        <!-- Override transitive commons-lang3 -->
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
