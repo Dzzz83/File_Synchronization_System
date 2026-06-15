@@ -1,4 +1,4 @@
-package com.filesync.server.websocket.controller;
+package com.filesync.server.controller;
 
 import com.filesync.common.dto.ChatMessage;
 import com.filesync.server.domain.ChatMessageEntity;

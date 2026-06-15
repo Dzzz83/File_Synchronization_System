@@ -8,7 +8,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.media.MediaView?>
 
-<VBox alignment="TOP_CENTER" prefHeight="600" prefWidth="800" spacing="0" styleClass="root-pane" stylesheets="@../css/styles.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.media.MediaPlayerController">
+<VBox alignment="TOP_CENTER" prefHeight="600" prefWidth="800" spacing="0" styleClass="root-pane" stylesheets="@../css/styles.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.viewer.MediaPlayerController">
     <VBox alignment="CENTER" style="-fx-background-color: rgba(0,0,0,0.7);">
         <padding><Insets bottom="10" top="10" /></padding>
         <Label fx:id="titleLabel" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: white;" />

@@ -1,4 +1,4 @@
-package com.filesync.client;
+package com.filesync.client.auth;
 
 public class SessionManager
 {

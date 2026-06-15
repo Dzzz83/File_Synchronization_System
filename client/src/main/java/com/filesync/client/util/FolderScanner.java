@@ -1,6 +1,6 @@
-package com.filesync.client.file;
+package com.filesync.client.util;
 
-import com.filesync.client.db.LocalMetadataRepository;
+import com.filesync.client.repository.LocalMetadataRepository;
 import com.filesync.common.dto.FileMetadataDto;
 import com.filesync.common.enums.SyncStatus;
 import java.io.IOException;

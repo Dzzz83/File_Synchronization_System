@@ -1,6 +1,5 @@
-package com.filesync.client.dialog;
+package com.filesync.client.viewer;
 
-import com.filesync.client.controller.ImageViewerController;
 import com.filesync.client.files.ServerFileItem;
 import com.filesync.client.http.SyncHttpClient;
 import com.filesync.client.service.ProgressService;

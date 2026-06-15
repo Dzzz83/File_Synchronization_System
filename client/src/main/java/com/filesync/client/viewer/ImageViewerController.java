@@ -1,4 +1,4 @@
-package com.filesync.client.controller;
+package com.filesync.client.viewer;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;

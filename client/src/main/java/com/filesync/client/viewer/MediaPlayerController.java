@@ -1,4 +1,4 @@
-package com.filesync.client.media;
+package com.filesync.client.viewer;
 
 import javafx.application.Platform;
 import javafx.fxml.FXML;

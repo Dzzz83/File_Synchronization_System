@@ -1,4 +1,4 @@
-package com.filesync.client.controller.helper;
+package com.filesync.client.files.helper;
 
 import com.filesync.client.files.ServerFileItem;
 import com.filesync.client.http.SyncHttpClient;

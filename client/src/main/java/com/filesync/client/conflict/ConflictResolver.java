@@ -1,7 +1,7 @@
 package com.filesync.client.conflict;
 
-import com.filesync.client.db.LocalMetadataRepository;
-import com.filesync.client.file.FileHasher;
+import com.filesync.client.repository.LocalMetadataRepository;
+import com.filesync.client.util.FileHasher;
 import com.filesync.client.http.SyncHttpClient;
 import com.filesync.common.dto.FileMetadataDto;
 import com.filesync.common.enums.SyncStatus;

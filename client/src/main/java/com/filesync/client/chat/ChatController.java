@@ -1,6 +1,5 @@
-package com.filesync.client.controller;
+package com.filesync.client.chat;
 
-import com.filesync.client.websocket.ChatClient;
 import com.filesync.common.dto.ChatMessage;
 import javafx.application.Platform;
 import javafx.fxml.FXML;

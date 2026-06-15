@@ -1,4 +1,4 @@
-package com.filesync.client.files;
+package com.filesync.client.dialog;
 
 import com.filesync.client.http.SyncHttpClient;
 import javafx.application.Platform;

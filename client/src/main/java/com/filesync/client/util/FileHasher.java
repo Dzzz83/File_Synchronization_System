@@ -1,4 +1,4 @@
-package com.filesync.client.file;
+package com.filesync.client.util;
 
 import java.io.IOException;
 import java.nio.file.Files;

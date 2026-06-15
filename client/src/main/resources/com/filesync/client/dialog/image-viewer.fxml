@@ -8,7 +8,7 @@
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox prefHeight="700.0" prefWidth="1000.0" spacing="10" styleClass="main-vbox" stylesheets="@../css/styles.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.controller.ImageViewerController">
+<VBox prefHeight="700.0" prefWidth="1000.0" spacing="10" styleClass="main-vbox" stylesheets="@../css/styles.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.viewer.ImageViewerController">
     <padding><Insets bottom="8" left="8" right="8" top="8" /></padding>
 
     <ScrollPane fx:id="scrollPane" fitToHeight="true" fitToWidth="true" pannable="true" VBox.vgrow="ALWAYS">

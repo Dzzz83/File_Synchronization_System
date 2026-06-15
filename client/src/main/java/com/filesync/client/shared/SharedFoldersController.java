@@ -1,10 +1,10 @@
 package com.filesync.client.shared;
 
-import com.filesync.client.controller.ChatController;
+import com.filesync.client.chat.ChatController;
 import com.filesync.client.dialog.*;
 import com.filesync.client.files.FileExplorerController;
 import com.filesync.client.http.SyncHttpClient;
-import com.filesync.client.websocket.ChatClient;
+import com.filesync.client.chat.ChatClient;
 import com.filesync.common.dto.CreateFolderDto;
 import com.filesync.common.dto.SharedFolderDto;
 import javafx.application.Platform;

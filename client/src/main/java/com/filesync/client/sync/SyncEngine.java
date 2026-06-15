@@ -1,8 +1,8 @@
 package com.filesync.client.sync;
 
 import com.filesync.client.conflict.ConflictResolver;
-import com.filesync.client.db.LocalMetadataRepository;
-import com.filesync.client.file.FolderScanner;
+import com.filesync.client.repository.LocalMetadataRepository;
+import com.filesync.client.util.FolderScanner;
 import com.filesync.client.http.SyncHttpClient;
 import com.filesync.common.dto.FileMetadataDto;
 import com.filesync.common.dto.SyncActionDto;

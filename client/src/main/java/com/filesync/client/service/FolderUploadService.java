@@ -1,9 +1,8 @@
 package com.filesync.client.service;
 
-import com.filesync.client.file.FileHasher;
+import com.filesync.client.util.FileHasher;
 import com.filesync.client.http.SyncHttpClient;
 import com.filesync.common.dto.FileMetadataDto;
-import com.filesync.common.enums.SyncStatus;
 import javafx.application.Platform;
 
 import java.io.IOException;

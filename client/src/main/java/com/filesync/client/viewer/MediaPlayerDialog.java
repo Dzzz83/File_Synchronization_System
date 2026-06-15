@@ -1,6 +1,5 @@
-package com.filesync.client.dialog;
+package com.filesync.client.viewer;
 
-import com.filesync.client.media.MediaPlayerController;
 import com.filesync.client.http.SyncHttpClient;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;

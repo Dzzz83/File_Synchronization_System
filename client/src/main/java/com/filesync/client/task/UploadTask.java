@@ -2,13 +2,13 @@ package com.filesync.client.task;
 
 import com.filesync.client.http.SyncHttpClient;
 import com.filesync.client.service.ProgressService;
+import com.filesync.client.util.FileHasher;
 import com.filesync.common.dto.FileMetadataDto;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Instant;
 import java.util.UUID;
 
 public class UploadTask extends Task<Void> {
@@ -82,6 +82,6 @@ public class UploadTask extends Task<Void> {
     }
 
     private String computeHash(Path file) throws IOException {
-        return com.filesync.client.file.FileHasher.computeHash(file);
+        return FileHasher.computeHash(file);
     }
 }

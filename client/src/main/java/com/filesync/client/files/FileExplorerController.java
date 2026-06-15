@@ -1,10 +1,10 @@
 package com.filesync.client.files;
 
 import com.filesync.client.controller.ServerAdminApp;
-import com.filesync.client.controller.helper.BulkOperationHandler;
-import com.filesync.client.controller.helper.ButtonPermissionManager;
-import com.filesync.client.controller.helper.DragDropHandler;
-import com.filesync.client.controller.helper.BreadcrumbManager;
+import com.filesync.client.files.helper.BulkOperationHandler;
+import com.filesync.client.files.helper.ButtonPermissionManager;
+import com.filesync.client.files.helper.DragDropHandler;
+import com.filesync.client.files.helper.BreadcrumbManager;
 import com.filesync.client.dialog.*;
 import com.filesync.client.document.DocumentViewerDialog;
 import com.filesync.client.files.edit.EditDialogController;
@@ -12,8 +12,9 @@ import com.filesync.client.http.SyncHttpClient;
 import com.filesync.client.service.FileOperationService;
 import com.filesync.client.service.FolderUploadService;
 import com.filesync.client.service.ProgressService;
-import com.filesync.client.dialog.MediaPlayerDialog;
+import com.filesync.client.viewer.MediaPlayerDialog;
 import com.filesync.client.task.*;
+import com.filesync.client.viewer.ImageViewerDialog;
 import com.filesync.common.dto.FileMetadataDto;
 import com.filesync.common.enums.Permission;
 import javafx.application.Platform;

@@ -1,6 +1,6 @@
 package com.filesync.client.document;
 
-import com.filesync.client.file.FileHasher;
+import com.filesync.client.util.FileHasher;
 import com.filesync.client.http.SyncHttpClient;
 import com.filesync.client.service.ProgressService;
 import com.filesync.common.dto.FileMetadataDto;
