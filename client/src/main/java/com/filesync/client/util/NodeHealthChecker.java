@@ -30,6 +30,12 @@ public final class NodeHealthChecker {
             nodes.add(new NodeEndpoint(laptop3Ip, port));
         }
 
+        // Laptop 4: <replace with actual IP>
+        String laptop4Ip = "100.73.241.75";
+        for (int port = 8080; port <= 8083; port++) {
+            nodes.add(new NodeEndpoint(laptop4Ip, port));
+        }
+
         System.out.println("Checking health of " + nodes.size() + " server nodes...\n");
         int healthyCount = 0;
         for (NodeEndpoint node : nodes) {
