@@ -17,7 +17,8 @@ import java.util.Collections;
 import java.util.List;
 
 @Component
-public class JwtAuthenticationFilter extends OncePerRequestFilter {
+public class JwtAuthenticationFilter extends OncePerRequestFilter
+{
     private final JwtService jwtService;
     private final List<String> publicPaths = List.of(
             "/api/auth/login",
@@ -25,31 +26,35 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/api/users/forgot-password",
             "/api/users/reset-password",
             "/health",
-            "/actuator/prometheus",
             "/monitoring",
             "/debug/"
     );
 
-    public JwtAuthenticationFilter(JwtService jwtService) {
+    public JwtAuthenticationFilter(JwtService jwtService)
+    {
         this.jwtService = jwtService;
     }
 
     @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
+    protected boolean shouldNotFilter(HttpServletRequest request)
+    {
         String path = request.getRequestURI();
         return publicPaths.stream().anyMatch(path::startsWith);
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws ServletException, IOException {
+            throws ServletException, IOException
+    {
         final String authHeader = request.getHeader("Authorization");
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        if (authHeader == null || !authHeader.startsWith("Bearer "))
+        {
             filterChain.doFilter(request, response);
             return;
         }
         final String token = authHeader.substring(7);
-        if (!jwtService.validateToken(token)) {
+        if (!jwtService.validateToken(token))
+        {
             filterChain.doFilter(request, response);
             return;
         }

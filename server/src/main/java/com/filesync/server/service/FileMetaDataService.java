@@ -1,70 +1,105 @@
 package com.filesync.server.service;
 
-import com.filesync.common.enums.SyncStatus;
 import com.filesync.server.domain.FileMetadataEntity;
 import com.filesync.server.repository.FileMetadataRepository;
-import com.filesync.server.storage.FileStorage;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
 @Service
 public class FileMetaDataService {
-    @Autowired
-    private FileMetadataRepository fileMetadataRepository;
+    private final FileMetadataRepository fileMetadataRepository;
 
-    @Autowired
-    private FileStorage fileStorage;
-
-    // ==================== Basic CRUD ====================
-
-    public FileMetadataEntity saveFileMetaData(FileMetadataEntity entity) {
-        return fileMetadataRepository.save(entity);
-    }
-
-    public List<FileMetadataEntity> getFilesByOwner(String ownerId) {
-        return fileMetadataRepository.findByOwnerId(ownerId);
-    }
-
-    public FileMetadataEntity getFileById(String fileId) {
-        return fileMetadataRepository.findById(fileId)
-                .orElseThrow(() -> new RuntimeException("File not found: " + fileId));
-    }
-
-    public void deleteFile(String fileId) {
-        fileMetadataRepository.deleteById(fileId);
+    public FileMetaDataService(FileMetadataRepository fileMetadataRepository) {
+        this.fileMetadataRepository = fileMetadataRepository;
     }
 
     public boolean existsById(String fileId) {
         return fileMetadataRepository.existsById(fileId);
     }
 
-    // ==================== Queries ====================
-
-    public List<FileMetadataEntity> getFilesByFolder(UUID folderId) {
-        return fileMetadataRepository.findByFolderId(folderId);
+    public FileMetadataEntity getFileById(String fileId) {
+        return fileMetadataRepository.findById(fileId).orElse(null);
     }
 
-    public List<FileMetadataEntity> getPersonalFilesByOwner(String ownerId) {
-        return fileMetadataRepository.findByOwnerIdAndFolderIdIsNull(ownerId);
+    @Transactional
+    public FileMetadataEntity saveFileMetaData(FileMetadataEntity entity) {
+        return fileMetadataRepository.save(entity);
     }
 
+    @Transactional
+    public void deleteFileAndUpdateAncestors(String fileId) {
+        FileMetadataEntity file = getFileById(fileId);
+        if (file == null) return;
+        long size = file.getSize();
+        UUID parentId = file.getParentId();
+        fileMetadataRepository.deleteById(fileId);
+        if (parentId != null && size > 0) {
+            removeFromAncestors(parentId, size);
+        }
+    }
+
+    @Transactional
+    public void deleteFolderRecursively(String folderId) {
+        FileMetadataEntity folder = getFileById(folderId);
+        if (folder == null) return;
+        List<FileMetadataEntity> children = fileMetadataRepository.findByParentId(UUID.fromString(folderId));
+        for (FileMetadataEntity child : children) {
+            if (child.isDirectory()) {
+                deleteFolderRecursively(child.getId());
+            } else {
+                fileMetadataRepository.deleteById(child.getId());
+            }
+        }
+        fileMetadataRepository.deleteById(folderId);
+    }
+
+    @Transactional
+    public void addToAncestors(UUID parentId, long delta) {
+        if (parentId == null || delta == 0) return;
+        FileMetadataEntity parent = fileMetadataRepository.findById(parentId.toString()).orElse(null);
+        while (parent != null) {
+            parent.setSize(parent.getSize() + delta);
+            fileMetadataRepository.save(parent);
+            if (parent.getParentId() == null) break;
+            parent = fileMetadataRepository.findById(parent.getParentId().toString()).orElse(null);
+        }
+    }
+
+    @Transactional
+    public void removeFromAncestors(UUID parentId, long delta) {
+        addToAncestors(parentId, -delta);
+    }
+
+    @Transactional
+    public void moveFolder(String folderId, UUID newParentId, UUID newFolderId) {
+        FileMetadataEntity folder = getFileById(folderId);
+        if (folder == null) return;
+        long folderSize = getTotalSizeOfFolder(folderId);
+        if (folder.getParentId() != null && folderSize > 0) {
+            removeFromAncestors(folder.getParentId(), folderSize);
+        }
+        folder.setParentId(newParentId);
+        folder.setFolderId(newFolderId);
+        fileMetadataRepository.save(folder);
+        if (newParentId != null && folderSize > 0) {
+            addToAncestors(newParentId, folderSize);
+        }
+    }
+
+    @Transactional
     public FileMetadataEntity createFolder(String name, String ownerId, UUID parentId, UUID sharedFolderId) {
         FileMetadataEntity folder = new FileMetadataEntity();
         folder.setId(UUID.randomUUID().toString());
         folder.setRelativePath(name);
         folder.setDirectory(true);
-        folder.setSize(0L);
-        folder.setLastModified(Instant.now());
         folder.setOwnerId(ownerId);
         folder.setParentId(parentId);
         folder.setFolderId(sharedFolderId);
-        folder.setStatus(SyncStatus.SYNCED);
-        return saveFileMetaData(folder);
+        folder.setSize(0L);
+        return fileMetadataRepository.save(folder);
     }
 
     public List<FileMetadataEntity> getFilesByParent(UUID parentId) {
@@ -79,86 +114,39 @@ public class FileMetaDataService {
         return fileMetadataRepository.findByOwnerIdAndParentIdIsNull(ownerId);
     }
 
-    // ==================== Folder Size Management ====================
+    // ========== QUOTA HELPER METHODS ==========
 
-    /**
-     * Adds delta to the size of the folder and all its ancestors.
-     * @param parentId the folder to start from (may be null)
-     * @param delta the size change (positive or negative)
-     */
-    public void addToAncestors(UUID parentId, long delta) {
-        if (parentId == null || delta == 0) return;
-        FileMetadataEntity folder = getFileById(parentId.toString());
-        if (folder != null && folder.isDirectory()) {
-            folder.setSize(folder.getSize() + delta);
-            saveFileMetaData(folder);
-            addToAncestors(folder.getParentId(), delta);
-        }
-    }
-
-    public void removeFromAncestors(UUID parentId, long delta) {
-        addToAncestors(parentId, -delta);
-    }
-
-    @Transactional
-    public void moveFolder(String folderId, UUID newParentId, UUID newFolderId) {
+    public long getTotalSizeOfFolder(String folderId) {
         FileMetadataEntity folder = getFileById(folderId);
-        long folderSize = folder.getSize();
-
-        if (folder.getParentId() != null) {
-            removeFromAncestors(folder.getParentId(), folderSize);
+        if (folder == null || !folder.isDirectory()) {
+            return 0;
         }
-
-        folder.setParentId(newParentId);
-        folder.setFolderId(newFolderId);
-        saveFileMetaData(folder);
-
-        if (newParentId != null) {
-            addToAncestors(newParentId, folderSize);
-        }
-    }
-
-    @Transactional
-    public void deleteFolderRecursively(String folderId) {
-        FileMetadataEntity folder = getFileById(folderId);
-        List<FileMetadataEntity> children = getFilesByParent(UUID.fromString(folderId));
+        List<FileMetadataEntity> children = fileMetadataRepository.findByParentId(UUID.fromString(folderId));
+        long total = 0;
         for (FileMetadataEntity child : children) {
             if (child.isDirectory()) {
-                deleteFolderRecursively(child.getId());
+                total += getTotalSizeOfFolder(child.getId());
             } else {
-                fileStorage.delete(child.getId());
-                fileMetadataRepository.deleteById(child.getId());
+                total += child.getSize();
             }
         }
-        long folderSize = folder.getSize();
-        if (folder.getParentId() != null) {
-            removeFromAncestors(folder.getParentId(), folderSize);
-        }
-        fileMetadataRepository.deleteById(folderId);
+        return total;
     }
 
-    @Transactional
-    public void deleteFileAndUpdateAncestors(String fileId) {
-        FileMetadataEntity entity = getFileById(fileId);
-        long size = entity.getSize();
-        UUID parentId = entity.getParentId();
-        fileMetadataRepository.deleteById(fileId);
-        fileStorage.delete(fileId);
-        if (parentId != null && size > 0) {
-            removeFromAncestors(parentId, size);
+    public int getFileCountInFolder(String folderId) {
+        FileMetadataEntity folder = getFileById(folderId);
+        if (folder == null || !folder.isDirectory()) {
+            return 0;
         }
-    }
-
-    @Transactional
-    public void updateFileSize(String fileId, long newSize) {
-        FileMetadataEntity entity = getFileById(fileId);
-        long oldSize = entity.getSize();
-        if (oldSize == newSize) return;
-        entity.setSize(newSize);
-        saveFileMetaData(entity);
-        long delta = newSize - oldSize;
-        if (entity.getParentId() != null && delta != 0) {
-            addToAncestors(entity.getParentId(), delta);
+        List<FileMetadataEntity> children = fileMetadataRepository.findByParentId(UUID.fromString(folderId));
+        int count = 0;
+        for (FileMetadataEntity child : children) {
+            if (child.isDirectory()) {
+                count += getFileCountInFolder(child.getId());
+            } else {
+                count++;
+            }
         }
+        return count;
     }
 }

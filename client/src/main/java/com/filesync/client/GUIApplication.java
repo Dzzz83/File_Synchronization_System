@@ -1,4 +1,4 @@
-package com.filesync.client.controller;
+package com.filesync.client;
 
 import com.filesync.client.auth.StartupController;
 import com.filesync.client.files.FileExplorerController;
@@ -18,13 +18,13 @@ import java.net.URL;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class ServerAdminApp extends Application {
+public class GUIApplication extends Application {
 
-    private static ServerAdminApp instance;
+    private static GUIApplication instance;
     private static Stage mainStage;
     private ExecutorService executorService;
 
-    public static ServerAdminApp getInstance() {
+    public static GUIApplication getInstance() {
         return instance;
     }
 
@@ -58,34 +58,34 @@ public class ServerAdminApp extends Application {
             TabPane tabPane = new TabPane();
 
             // Personal files tab
-            URL personalFxml = ServerAdminApp.class.getResource("/com/filesync/client/files/server-file-list.fxml");
+            URL personalFxml = GUIApplication.class.getResource("/com/filesync/client/files/server-file-list.fxml");
             if (personalFxml == null) {
                 throw new IllegalStateException("Missing FXML: /com/filesync/client/files/server-file-list.fxml");
             }
             FXMLLoader personalLoader = new FXMLLoader(personalFxml);
             VBox personalRoot = personalLoader.load();
             FileExplorerController personalController = personalLoader.getController();
-            personalController.setExecutorService(ServerAdminApp.getInstance().getExecutor());
+            personalController.setExecutorService(GUIApplication.getInstance().getExecutor());
             personalController.initialize(httpClient, username, null, null, "My Files");
             Tab personalTab = new Tab("My Files", personalRoot);
             personalTab.setClosable(false);
 
             // Shared folders tab
-            URL sharedFxml = ServerAdminApp.class.getResource("/com/filesync/client/shared/shared-folders-view.fxml");
+            URL sharedFxml = GUIApplication.class.getResource("/com/filesync/client/shared/shared-folders-view.fxml");
             if (sharedFxml == null) {
                 throw new IllegalStateException("Missing FXML: /com/filesync/client/shared/shared-folders-view.fxml");
             }
             FXMLLoader sharedLoader = new FXMLLoader(sharedFxml);
             VBox sharedRoot = sharedLoader.load();
             SharedFoldersController sharedController = sharedLoader.getController();
-            sharedController.initialize(httpClient, username, ServerAdminApp.getInstance().getExecutor());
+            sharedController.initialize(httpClient, username, GUIApplication.getInstance().getExecutor());
             Tab sharedTab = new Tab("Shared Folders", sharedRoot);
             sharedTab.setClosable(false);
 
             tabPane.getTabs().addAll(personalTab, sharedTab);
 
             // Global progress bar
-            URL progressFxml = ServerAdminApp.class.getResource("/com/filesync/client/service/global-progress.fxml");
+            URL progressFxml = GUIApplication.class.getResource("/com/filesync/client/service/global-progress.fxml");
             if (progressFxml == null) {
                 throw new IllegalStateException("Missing FXML: /com/filesync/client/service/global-progress.fxml");
             }

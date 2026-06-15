@@ -1,6 +1,6 @@
 package com.filesync.client.auth;
 
-import com.filesync.client.controller.ServerAdminApp;
+import com.filesync.client.GUIApplication;
 import com.filesync.client.http.SyncHttpClient;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
@@ -29,7 +29,7 @@ public class StartupController {
 
     public void setPrimaryStage(Stage stage) {
         this.primaryStage = stage;
-        ServerAdminApp.setMainStage(stage);
+        GUIApplication.setMainStage(stage);
     }
 
     private void showAlert(String title, String message) {
@@ -55,7 +55,7 @@ public class StartupController {
         loginButton.setText("Logging in...");
         ForgetpassButton.setDisable(true);
 
-        ExecutorService executor = ServerAdminApp.getInstance().getExecutor();
+        ExecutorService executor = GUIApplication.getInstance().getExecutor();
         Task<String[]> loginTask = new Task<>() {
             @Override
             protected String[] call() throws Exception {
@@ -68,7 +68,7 @@ public class StartupController {
         loginTask.setOnSucceeded(e -> {
             String[] result = loginTask.getValue();
             Platform.runLater(() -> {
-                ServerAdminApp.showMainWindow(serverUrl, result[1], result[0]);
+                GUIApplication.showMainWindow(serverUrl, result[1], result[0]);
                 primaryStage.close();
             });
         });
@@ -99,7 +99,7 @@ public class StartupController {
         registerButton.setText("Registering...");
         ForgetpassButton.setDisable(true);
 
-        ExecutorService executor = ServerAdminApp.getInstance().getExecutor();
+        ExecutorService executor = GUIApplication.getInstance().getExecutor();
         Task<Boolean> registerTask = new Task<>() {
             @Override
             protected Boolean call() throws Exception {
@@ -151,7 +151,7 @@ public class StartupController {
             dialogStage.initOwner(primaryStage);
             dialogStage.setScene(new Scene(root));
             dialogStage.setResizable(false);
-            controller.setData(serverUrl, dialogStage, ServerAdminApp.getInstance().getExecutor());
+            controller.setData(serverUrl, dialogStage, GUIApplication.getInstance().getExecutor());
             dialogStage.showAndWait();
         } catch (Exception e) {
             e.printStackTrace();

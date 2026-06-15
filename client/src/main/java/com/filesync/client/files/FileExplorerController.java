@@ -1,6 +1,6 @@
 package com.filesync.client.files;
 
-import com.filesync.client.controller.ServerAdminApp;
+import com.filesync.client.GUIApplication;
 import com.filesync.client.files.helper.BulkOperationHandler;
 import com.filesync.client.files.helper.ButtonPermissionManager;
 import com.filesync.client.files.helper.DragDropHandler;
@@ -546,7 +546,7 @@ public class FileExplorerController {
         Stage stage = (Stage) fileTable.getScene().getWindow();
         stage.close();
         try {
-            new ServerAdminApp().start(new Stage());
+            new GUIApplication().start(new Stage());
         } catch (Exception e) {
             e.printStackTrace();
         }

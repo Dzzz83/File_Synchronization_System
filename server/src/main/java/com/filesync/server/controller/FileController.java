@@ -6,10 +6,12 @@ import com.filesync.common.enums.Permission;
 import com.filesync.server.domain.FileMetadataEntity;
 import com.filesync.server.service.FileMetaDataService;
 import com.filesync.server.service.PermissionService;
+import com.filesync.server.service.QuotaService;
 import com.filesync.server.storage.FileStorage;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.Authentication;
+
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -21,22 +23,22 @@ public class FileController {
     private final FileMetaDataService fileMetaDataService;
     private final FileStorage fileStorage;
     private final PermissionService permissionService;
+    private final QuotaService quotaService;
 
     public FileController(FileMetaDataService fileMetaDataService, FileStorage fileStorage,
-                          PermissionService permissionService) {
+                          PermissionService permissionService, QuotaService quotaService) {
         this.fileMetaDataService = fileMetaDataService;
         this.fileStorage = fileStorage;
         this.permissionService = permissionService;
+        this.quotaService = quotaService;
     }
 
     @PostMapping("/metadata")
     public ResponseEntity<?> saveMetaData(@RequestBody FileMetadataDto fileMetadataDto, Authentication authentication) {
-        System.out.println("saveMetaData: user=" + authentication.getName() + ", dto.fileId=" + fileMetadataDto.getFileId() + ", dto.ownerId=" + fileMetadataDto.getOwnerId());
         String userId = authentication.getName();
         boolean exists = fileMetaDataService.existsById(fileMetadataDto.getFileId());
 
         if (exists) {
-            // Update existing file
             if (!permissionService.canWrite(userId, fileMetadataDto.getFileId())) {
                 return ResponseEntity.status(403).body("No write permission");
             }
@@ -50,10 +52,17 @@ public class FileController {
                 if (delta != 0 && saved.getParentId() != null) {
                     fileMetaDataService.addToAncestors(saved.getParentId(), delta);
                 }
+                if (delta != 0) {
+                    if (delta > 0) {
+                        quotaService.checkUploadQuota(userId, delta, false);
+                        quotaService.updateUserQuota(userId, delta);
+                    } else {
+                        quotaService.decrementUserQuota(userId, -delta);
+                    }
+                }
             }
             return ResponseEntity.ok(convertToDto(saved));
         } else {
-            // New file or folder
             if (fileMetadataDto.getFolderId() != null) {
                 if (!permissionService.canWriteToFolder(userId, fileMetadataDto.getFolderId())) {
                     return ResponseEntity.status(403).body("No write permission on folder");
@@ -63,11 +72,19 @@ public class FileController {
                     return ResponseEntity.status(403).body("Not owner of personal file");
                 }
             }
+
+            if (!fileMetadataDto.isDirectory()) {
+                quotaService.checkUploadQuota(userId, fileMetadataDto.getSize(), true);
+            }
+
             FileMetadataEntity entity = convertToEntity(fileMetadataDto);
             FileMetadataEntity saved = fileMetaDataService.saveFileMetaData(entity);
-            // For a new file (not folder), add its size to ancestors
             if (!saved.isDirectory() && saved.getSize() > 0 && saved.getParentId() != null) {
                 fileMetaDataService.addToAncestors(saved.getParentId(), saved.getSize());
+            }
+            if (!saved.isDirectory()) {
+                quotaService.updateUserQuota(userId, saved.getSize());
+                quotaService.incrementFileCount(userId);
             }
             return ResponseEntity.ok(convertToDto(saved));
         }
@@ -93,11 +110,21 @@ public class FileController {
         if (!permissionService.canWrite(userId, fileId)) {
             return ResponseEntity.status(403).build();
         }
+
+        long deletedSize = 0;
+        int deletedFileCount = 0;
         if (entity.isDirectory()) {
+            deletedSize = fileMetaDataService.getTotalSizeOfFolder(fileId);
+            deletedFileCount = fileMetaDataService.getFileCountInFolder(fileId);
             fileMetaDataService.deleteFolderRecursively(fileId);
         } else {
+            deletedSize = entity.getSize();
+            deletedFileCount = 1;
             fileMetaDataService.deleteFileAndUpdateAncestors(fileId);
         }
+
+        quotaService.decrementUserQuota(userId, deletedSize);
+        quotaService.decrementFileCount(userId, deletedFileCount);
         return ResponseEntity.ok().build();
     }
 
@@ -156,8 +183,6 @@ public class FileController {
                     return ResponseEntity.status(403).body("No write permission on target shared folder");
                 }
             }
-        } else {
-            newFolderId = null; // move to personal root
         }
 
         if (entity.isDirectory()) {
@@ -208,7 +233,6 @@ public class FileController {
         List<FileMetadataDto> dtos = entities.stream()
                 .map(entity -> {
                     FileMetadataDto dto = convertToDto(entity);
-                    // Compute user's permission for this file
                     Permission perm = computeUserPermission(userId, entity);
                     dto.setUserPermission(perm);
                     return dto;
@@ -220,10 +244,8 @@ public class FileController {
 
     private Permission computeUserPermission(String userId, FileMetadataEntity file) {
         if (file.getFolderId() == null) {
-            // Personal file – owner has WRITE, others (should not happen) have NONE
             return file.getOwnerId().equals(userId) ? Permission.WRITE : Permission.NONE;
         } else {
-            // Shared folder – check membership
             UUID folderId = file.getFolderId();
             if (permissionService.canWriteToFolder(userId, folderId)) {
                 return Permission.WRITE;
@@ -234,8 +256,6 @@ public class FileController {
             }
         }
     }
-
-    // ==================== Conversion Helpers ====================
 
     private FileMetadataEntity convertToEntity(FileMetadataDto dto) {
         FileMetadataEntity entity = new FileMetadataEntity();
