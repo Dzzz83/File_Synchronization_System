@@ -44,4 +44,20 @@ public class ServerFileItem {
     public boolean isDirectory() { return isDirectory; }
     public Node getIcon() { return icon; }
     public Permission getUserPermission() { return userPermission; }
+
+    // New method for file type column
+    public String getFileType() {
+        if (isDirectory) {
+            return "Folder";
+        }
+        String path = relativePath;
+        if (path == null || path.isEmpty()) {
+            return "";
+        }
+        int lastDot = path.lastIndexOf('.');
+        if (lastDot == -1 || lastDot == path.length() - 1) {
+            return "";
+        }
+        return path.substring(lastDot + 1).toLowerCase();
+    }
 }

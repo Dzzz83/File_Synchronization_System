@@ -16,6 +16,7 @@
         <columns>
             <TableColumn fx:id="iconColumn" maxWidth="80.0" minWidth="40.0" prefWidth="40.0" />
             <TableColumn fx:id="pathColumn" maxWidth="400.0" minWidth="200.0" prefWidth="350.0" text="Name" />
+            <TableColumn fx:id="fileTypeColumn" maxWidth="150.0" minWidth="80.0" prefWidth="100.0" text="File Type" />
             <TableColumn fx:id="sizeColumn" maxWidth="300.0" minWidth="150.0" prefWidth="150.0" text="Size" />
             <TableColumn fx:id="lastModifiedColumn" maxWidth="400.0" minWidth="200.0" prefWidth="300.0" text="Last Modified" />
         </columns>

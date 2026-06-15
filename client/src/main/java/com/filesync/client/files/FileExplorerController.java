@@ -52,6 +52,7 @@ public class FileExplorerController {
     @FXML private TableColumn<ServerFileItem, Long> sizeColumn;
     // FIX: column now holds Instant, not String
     @FXML private TableColumn<ServerFileItem, Instant> lastModifiedColumn;
+    @FXML private TableColumn<ServerFileItem, String> fileTypeColumn;
     @FXML private TableColumn<ServerFileItem, Node> iconColumn;
     @FXML private Label pathLabel;
 
@@ -105,17 +106,6 @@ public class FileExplorerController {
         refreshWindow();
     }
 
-    public void setExecutorService(ExecutorService executorService) {
-        this.executorService = executorService;
-    }
-
-    public void setOnExitSharedFolder(Runnable callback) {
-        breadcrumbManager.setOnExitSharedFolder(() -> {
-            breadcrumbManager.reset();
-            callback.run();
-        });
-    }
-
     private void configureTableColumns() {
         iconColumn.setCellFactory(column -> new TableCell<>() {
             @Override protected void updateItem(Node item, boolean empty) {
@@ -126,6 +116,20 @@ public class FileExplorerController {
         iconColumn.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().getIcon()));
 
         pathColumn.setCellValueFactory(new PropertyValueFactory<>("relativePath"));
+
+        // New File Type column
+        fileTypeColumn.setCellValueFactory(new PropertyValueFactory<>("fileType"));
+        fileTypeColumn.setCellFactory(column -> new TableCell<>() {
+            @Override protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(item);
+                }
+            }
+        });
+
         sizeColumn.setCellValueFactory(new PropertyValueFactory<>("size"));
         sizeColumn.setCellFactory(column -> new TableCell<>() {
             @Override protected void updateItem(Long item, boolean empty) {
@@ -134,14 +138,11 @@ public class FileExplorerController {
             }
         });
 
-        // Corrected: column type is Instant, cell factory formats to readable string
         lastModifiedColumn.setCellValueFactory(new PropertyValueFactory<>("lastModified"));
         lastModifiedColumn.setCellFactory(column -> new TableCell<>() {
             private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
                     .withZone(ZoneId.systemDefault());
-
-            @Override
-            protected void updateItem(Instant instant, boolean empty) {
+            @Override protected void updateItem(Instant instant, boolean empty) {
                 super.updateItem(instant, empty);
                 if (empty || instant == null) {
                     setText(null);
@@ -152,6 +153,17 @@ public class FileExplorerController {
         });
 
         fileTable.setItems(fileItems);
+    }
+
+    public void setExecutorService(ExecutorService executorService) {
+        this.executorService = executorService;
+    }
+
+    public void setOnExitSharedFolder(Runnable callback) {
+        breadcrumbManager.setOnExitSharedFolder(() -> {
+            breadcrumbManager.reset();
+            callback.run();
+        });
     }
 
     private void configureTableSelection() {

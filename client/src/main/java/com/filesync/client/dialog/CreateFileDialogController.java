@@ -17,10 +17,9 @@ public class CreateFileDialogController {
 
     @FXML
     private void initialize() {
-        extensionCombo.getItems().addAll(
-                ".txt", ".json", ".xml", ".html", ".css", ".js", ".md", ".csv", ".yml", ".properties", ".docx"
-        );
-        extensionCombo.setEditable(true);
+        // Restrict to only .txt and .docx as required
+        extensionCombo.getItems().addAll(".txt", ".docx");
+        extensionCombo.setEditable(false);   // Prevent user from typing arbitrary extensions
         extensionCombo.setValue(".txt");
         nameField.requestFocus();
     }
