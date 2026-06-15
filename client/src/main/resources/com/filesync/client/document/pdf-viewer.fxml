@@ -7,9 +7,10 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox spacing="8" styleClass="root-pane" stylesheets="@../css/styles.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.document.PdfViewerController">
+<VBox prefHeight="800.0" prefWidth="1000.0" spacing="8" styleClass="root-pane" stylesheets="@../css/styles.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.filesync.client.document.PdfViewerController">
     <padding>
         <Insets bottom="8" left="8" right="8" top="8" />
     </padding>
@@ -30,7 +31,11 @@
         <Label fx:id="statusLabel" style="-fx-font-size: 17; -fx-font-weight: bold;" text="Ready" />
     </HBox>
 
-                <ScrollPane fitToHeight="true" fitToWidth="true" maxWidth="1400.0" VBox.vgrow="ALWAYS">
-        <ImageView fx:id="pageImageView" preserveRatio="true" smooth="true" />
+                <ScrollPane fitToHeight="true" fitToWidth="true" maxWidth="1400.0" prefHeight="600.0" VBox.vgrow="ALWAYS">
+      <StackPane>
+         <children>
+              <ImageView fx:id="pageImageView" preserveRatio="true" smooth="true" />
+         </children>
+      </StackPane>
     </ScrollPane>
 </VBox>
