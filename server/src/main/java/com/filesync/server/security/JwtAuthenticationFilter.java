@@ -74,21 +74,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
         }
 
         // Case 3: Token valid -> extract username and set authentication
+        // get username
         final String username = jwtService.extractUsername(token);
+        // get entire token payload
         Claims claims = jwtService.extractAllClaims(token);
+        // get the list of roles in strings
         List<String> roles = claims.get("roles", List.class);
+        // add ROLE_ prefix
         List<GrantedAuthority> authorities = roles.stream()
                 .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
                 .collect(Collectors.toList());
+        // create a user object
         UserDetails userDetails = new User(username, "", Collections.emptyList());
-        // Create authenticated token with principal (user) and no credentials
+        // create authenticated token
         UsernamePasswordAuthenticationToken authenticationToken =
                 new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
-        // Attach request metadata (IP, session) for auditing
+        // attach request metadata (IP, etc) for auditing
         authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-        // Store authentication in security context for this request thread
+        // store authentication for this request thread
         SecurityContextHolder.getContext().setAuthentication(authenticationToken);
 
         // Continue the filter chain with authenticated user

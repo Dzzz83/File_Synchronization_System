@@ -13,12 +13,56 @@ public class QuotaService {
         this.userRepository = userRepository;
     }
 
+    // ========== Main Quota Operations ==========
+
+    @Transactional
+    public void checkAndReserveQuota(String username, long fileSize) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found: " + username));
+
+        if (user.getIsAdmin()) return;
+
+        if (user.getIsDemo()) {
+            long newTotal = user.getTotalStorageBytes() + fileSize;
+            if (newTotal > user.getMaxStorageBytes()) {
+                throw new QuotaExceededException("Storage quota exceeded. Maximum " +
+                        user.getMaxStorageBytes() / (1024 * 1024) + " MB.");
+            }
+            int newFileCount = user.getFileCount() + 1;
+            if (newFileCount > user.getMaxFileCount()) {
+                throw new QuotaExceededException("File count quota exceeded. Maximum " +
+                        user.getMaxFileCount() + " files.");
+            }
+        }
+
+        user.setTotalStorageBytes(user.getTotalStorageBytes() + fileSize);
+        user.setFileCount(user.getFileCount() + 1);
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public void releaseQuota(String username, long fileSize) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found: " + username));
+
+        long newTotal = user.getTotalStorageBytes() - fileSize;
+        if (newTotal < 0) newTotal = 0;
+        user.setTotalStorageBytes(newTotal);
+
+        int newCount = user.getFileCount() - 1;
+        if (newCount < 0) newCount = 0;
+        user.setFileCount(newCount);
+
+        userRepository.save(user);
+    }
+
+    // ========== Legacy Methods ==========
+
     @Transactional
     public void updateUserQuota(String username, long addedSize) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found: " + username));
-        long newTotal = user.getTotalStorageBytes() + addedSize;
-        user.setTotalStorageBytes(newTotal);
+        user.setTotalStorageBytes(user.getTotalStorageBytes() + addedSize);
         userRepository.save(user);
     }
 
@@ -50,16 +94,14 @@ public class QuotaService {
         userRepository.save(user);
     }
 
+    @Deprecated
     public void checkUploadQuota(String username, long fileSize, boolean isNewFile) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found: " + username));
 
-        // Admin users have no limits
         if (user.getIsAdmin()) return;
+        if (!user.getIsDemo()) return;
 
-        if (!user.getIsDemo()) return; // non‑demo, non‑admin – no limits
-
-        // Demo user limits (100 MB, 500 files)
         long newTotal = user.getTotalStorageBytes() + fileSize;
         if (newTotal > user.getMaxStorageBytes()) {
             throw new QuotaExceededException("Storage quota exceeded. Maximum " +
@@ -73,6 +115,8 @@ public class QuotaService {
             }
         }
     }
+
+    // ========== Exception ==========
 
     public static class QuotaExceededException extends RuntimeException {
         public QuotaExceededException(String message) { super(message); }

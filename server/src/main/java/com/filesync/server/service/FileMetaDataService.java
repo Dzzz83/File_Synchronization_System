@@ -2,19 +2,37 @@ package com.filesync.server.service;
 
 import com.filesync.server.domain.FileMetadataEntity;
 import com.filesync.server.repository.FileMetadataRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
 public class FileMetaDataService {
     private final FileMetadataRepository fileMetadataRepository;
+    private final QuotaService quotaService;
+    private final PermissionService permissionService;
+    private final ApplicationEventPublisher eventPublisher;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public FileMetaDataService(FileMetadataRepository fileMetadataRepository) {
+    public FileMetaDataService(FileMetadataRepository fileMetadataRepository,
+                               QuotaService quotaService,
+                               PermissionService permissionService,
+                               ApplicationEventPublisher eventPublisher) {
         this.fileMetadataRepository = fileMetadataRepository;
+        this.quotaService = quotaService;
+        this.permissionService = permissionService;
+        this.eventPublisher = eventPublisher;
     }
+
+    // ========== Basic CRUD ==========
 
     public boolean existsById(String fileId) {
         return fileMetadataRepository.existsById(fileId);
@@ -26,35 +44,54 @@ public class FileMetaDataService {
 
     @Transactional
     public FileMetadataEntity saveFileMetaData(FileMetadataEntity entity) {
-        return fileMetadataRepository.save(entity);
+        if (!entity.isDirectory() && entity.getId() == null) {
+            quotaService.checkAndReserveQuota(entity.getOwnerId(), entity.getSize());
+        }
+        FileMetadataEntity saved = fileMetadataRepository.save(entity);
+        eventPublisher.publishEvent(new SyncEvent(this, saved, SyncEvent.Type.CREATED_OR_UPDATED));
+        return saved;
     }
 
     @Transactional
     public void deleteFileAndUpdateAncestors(String fileId) {
         FileMetadataEntity file = getFileById(fileId);
         if (file == null) return;
+        if (file.isDirectory()) {
+            throw new IllegalArgumentException("Cannot delete the item.");
+        }
         long size = file.getSize();
         UUID parentId = file.getParentId();
         fileMetadataRepository.deleteById(fileId);
         if (parentId != null && size > 0) {
             removeFromAncestors(parentId, size);
         }
+        eventPublisher.publishEvent(new SyncEvent(this, file, SyncEvent.Type.DELETED));
+        quotaService.releaseQuota(file.getOwnerId(), size);
     }
 
     @Transactional
     public void deleteFolderRecursively(String folderId) {
         FileMetadataEntity folder = getFileById(folderId);
         if (folder == null) return;
+        if (!folder.isDirectory()) {
+            deleteFileAndUpdateAncestors(folderId);
+            return;
+        }
         List<FileMetadataEntity> children = fileMetadataRepository.findByParentId(UUID.fromString(folderId));
         for (FileMetadataEntity child : children) {
             if (child.isDirectory()) {
                 deleteFolderRecursively(child.getId());
             } else {
                 fileMetadataRepository.deleteById(child.getId());
+                quotaService.releaseQuota(child.getOwnerId(), child.getSize());
+                eventPublisher.publishEvent(new SyncEvent(this, child, SyncEvent.Type.DELETED));
             }
         }
         fileMetadataRepository.deleteById(folderId);
+        eventPublisher.publishEvent(new SyncEvent(this, folder, SyncEvent.Type.DELETED));
     }
+
+    // ========== Ancestor Size Management ==========
 
     @Transactional
     public void addToAncestors(UUID parentId, long delta) {
@@ -73,11 +110,16 @@ public class FileMetaDataService {
         addToAncestors(parentId, -delta);
     }
 
+    // ========== Move Operations ==========
+
     @Transactional
     public void moveFolder(String folderId, UUID newParentId, UUID newFolderId) {
         FileMetadataEntity folder = getFileById(folderId);
         if (folder == null) return;
-        long folderSize = getTotalSizeOfFolder(folderId);
+        if (!folder.isDirectory()) {
+            throw new IllegalArgumentException("moveFolder can only be used on directories");
+        }
+        long folderSize = folder.getSize();
         if (folder.getParentId() != null && folderSize > 0) {
             removeFromAncestors(folder.getParentId(), folderSize);
         }
@@ -87,10 +129,17 @@ public class FileMetaDataService {
         if (newParentId != null && folderSize > 0) {
             addToAncestors(newParentId, folderSize);
         }
+        eventPublisher.publishEvent(new SyncEvent(this, folder, SyncEvent.Type.MOVED));
     }
+
+    // ========== Folder Creation ==========
 
     @Transactional
     public FileMetadataEntity createFolder(String name, String ownerId, UUID parentId, UUID sharedFolderId) {
+        boolean exists = fileMetadataRepository.existsByParentIdAndRelativePath(parentId, name);
+        if (exists) {
+            throw new IllegalArgumentException("A folder or file with the same name already exists at this location");
+        }
         FileMetadataEntity folder = new FileMetadataEntity();
         folder.setId(UUID.randomUUID().toString());
         folder.setRelativePath(name);
@@ -99,8 +148,12 @@ public class FileMetaDataService {
         folder.setParentId(parentId);
         folder.setFolderId(sharedFolderId);
         folder.setSize(0L);
-        return fileMetadataRepository.save(folder);
+        FileMetadataEntity saved = fileMetadataRepository.save(folder);
+        eventPublisher.publishEvent(new SyncEvent(this, saved, SyncEvent.Type.CREATED_OR_UPDATED));
+        return saved;
     }
+
+    // ========== Query Methods ==========
 
     public List<FileMetadataEntity> getFilesByParent(UUID parentId) {
         return fileMetadataRepository.findByParentId(parentId);
@@ -114,23 +167,14 @@ public class FileMetaDataService {
         return fileMetadataRepository.findByOwnerIdAndParentIdIsNull(ownerId);
     }
 
-    // ========== QUOTA HELPER METHODS ==========
+    // ========== Quota Helpers ==========
 
     public long getTotalSizeOfFolder(String folderId) {
         FileMetadataEntity folder = getFileById(folderId);
         if (folder == null || !folder.isDirectory()) {
             return 0;
         }
-        List<FileMetadataEntity> children = fileMetadataRepository.findByParentId(UUID.fromString(folderId));
-        long total = 0;
-        for (FileMetadataEntity child : children) {
-            if (child.isDirectory()) {
-                total += getTotalSizeOfFolder(child.getId());
-            } else {
-                total += child.getSize();
-            }
-        }
-        return total;
+        return folder.getSize();
     }
 
     public int getFileCountInFolder(String folderId) {
@@ -148,5 +192,84 @@ public class FileMetaDataService {
             }
         }
         return count;
+    }
+
+    // ========== Version Vector Handling ==========
+
+    @Transactional
+    public void updateVersionVector(String fileId, String clientId, long newVersion) throws JsonProcessingException {
+        FileMetadataEntity file = getFileById(fileId);
+        if (file == null) return;
+        Map<String, Long> versionMap = parseVersionVector(file.getVersionVectorJson());
+        versionMap.put(clientId, newVersion);
+        file.setVersionVectorJson(objectMapper.writeValueAsString(versionMap));
+        fileMetadataRepository.save(file);
+    }
+
+    public boolean hasConflict(String fileId, Map<String, Long> localVector) throws JsonProcessingException {
+        FileMetadataEntity file = getFileById(fileId);
+        if (file == null) return false;
+        Map<String, Long> serverVector = parseVersionVector(file.getVersionVectorJson());
+        for (Map.Entry<String, Long> entry : serverVector.entrySet()) {
+            String client = entry.getKey();
+            long serverVer = entry.getValue();
+            long localVer = localVector.getOrDefault(client, 0L);
+            if (serverVer > localVer) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Map<String, Long> parseVersionVector(String json) throws JsonProcessingException {
+        if (json == null || json.isBlank()) return new HashMap<>();
+        return objectMapper.readValue(json, new TypeReference<Map<String, Long>>() {});
+    }
+
+    // ========== Permission Checks ==========
+
+    public boolean hasPermission(String fileId, String username, String requiredPermission) {
+        FileMetadataEntity file = getFileById(fileId);
+        if (file == null) return false;
+        return permissionService.hasPermission(file, username, requiredPermission);
+    }
+
+    // ========== Conflict Resolution ==========
+
+    @Transactional
+    public FileMetadataEntity resolveConflict(String fileId, FileMetadataEntity localVersion, ResolutionStrategy strategy) {
+        FileMetadataEntity serverVersion = getFileById(fileId);
+        if (serverVersion == null) return localVersion;
+        if (strategy == ResolutionStrategy.KEEP_LOCAL) {
+            serverVersion.setSha256Hash(localVersion.getSha256Hash());
+            serverVersion.setSize(localVersion.getSize());
+            serverVersion.setLastModified(localVersion.getLastModified());
+            serverVersion.setVersionVectorJson(localVersion.getVersionVectorJson());
+            return fileMetadataRepository.save(serverVersion);
+        }
+        return serverVersion;
+    }
+
+    public enum ResolutionStrategy {
+        KEEP_LOCAL, KEEP_REMOTE, MERGE
+    }
+
+    // ========== Event Class ==========
+
+    public static class SyncEvent {
+        private final Object source;
+        private final FileMetadataEntity entity;
+        private final Type type;
+
+        public enum Type { CREATED_OR_UPDATED, DELETED, MOVED }
+
+        public SyncEvent(Object source, FileMetadataEntity entity, Type type) {
+            this.source = source;
+            this.entity = entity;
+            this.type = type;
+        }
+
+        public FileMetadataEntity getEntity() { return entity; }
+        public Type getType() { return type; }
     }
 }
