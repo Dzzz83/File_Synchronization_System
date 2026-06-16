@@ -1,10 +1,15 @@
 package com.filesync.server.security;
 
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -15,11 +20,13 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter
 {
     private final JwtService jwtService;
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
     private final List<String> publicPaths = List.of(
             "/api/auth/login",
             "/api/users/register",
@@ -47,23 +54,44 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
             throws ServletException, IOException
     {
         final String authHeader = request.getHeader("Authorization");
+
+        // Case 1: No Authorization header or not Bearer scheme
         if (authHeader == null || !authHeader.startsWith("Bearer "))
         {
-            filterChain.doFilter(request, response);
+            log.warn("Missing or invalid Authorization header for protected endpoint: {}", request.getRequestURI());
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Missing or invalid Authorization header");
             return;
         }
+
         final String token = authHeader.substring(7);
+
+        // Case 2: Token is invalid (expired, tampered, etc.)
         if (!jwtService.validateToken(token))
         {
-            filterChain.doFilter(request, response);
+            log.warn("Invalid JWT token for protected endpoint: {}", request.getRequestURI());
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired token");
             return;
         }
+
+        // Case 3: Token valid -> extract username and set authentication
         final String username = jwtService.extractUsername(token);
+        Claims claims = jwtService.extractAllClaims(token);
+        List<String> roles = claims.get("roles", List.class);
+        List<GrantedAuthority> authorities = roles.stream()
+                .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
+                .collect(Collectors.toList());
         UserDetails userDetails = new User(username, "", Collections.emptyList());
+        // Create authenticated token with principal (user) and no credentials
         UsernamePasswordAuthenticationToken authenticationToken =
                 new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+
+        // Attach request metadata (IP, session) for auditing
         authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+        // Store authentication in security context for this request thread
         SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+
+        // Continue the filter chain with authenticated user
         filterChain.doFilter(request, response);
     }
 }

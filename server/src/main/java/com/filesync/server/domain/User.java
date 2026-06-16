@@ -2,6 +2,8 @@ package com.filesync.server.domain;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "users")
@@ -40,12 +42,23 @@ public class User {
     private String resetToken;
     private LocalDateTime tokenExpiry;
 
-    public User() {}
+    // Collection of roles for stateless JWT
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "role")
+    private Set<String> roles = new HashSet<>();
+
+    public User() {
+        // Default role for all users
+        this.roles.add("USER");
+    }
 
     public User(String username, String password, String email) {
         this.username = username;
         this.password = password;
         this.email = email;
+        this.roles = new HashSet<>();
+        this.roles.add("USER");
     }
 
     // Standard getters/setters
@@ -61,7 +74,6 @@ public class User {
     public void setResetToken(String resetToken) { this.resetToken = resetToken; }
     public LocalDateTime getTokenExpiry() { return tokenExpiry; }
     public void setTokenExpiry(LocalDateTime tokenExpiry) { this.tokenExpiry = tokenExpiry; }
-    public void setIsAdmin(Boolean isAdmin) { this.isAdmin = isAdmin; }
 
     // Quota getters/setters
     public Long getTotalStorageBytes() { return totalStorageBytes; }
@@ -74,5 +86,32 @@ public class User {
     public void setMaxFileCount(Integer maxFileCount) { this.maxFileCount = maxFileCount; }
     public Boolean getIsDemo() { return isDemo; }
     public void setIsDemo(Boolean isDemo) { this.isDemo = isDemo; }
-    public Boolean getIsAdmin() { return isAdmin; }
+
+    // Roles management
+    public Set<String> getRoles() { return roles; }
+    public void setRoles(Set<String> roles) { this.roles = roles; }
+
+    // Sync isAdmin with roles
+    public Boolean getIsAdmin() {
+        return roles.contains("ADMIN");
+    }
+
+    public void setIsAdmin(Boolean isAdmin) {
+        if (isAdmin) {
+            roles.add("ADMIN");
+        } else {
+            roles.remove("ADMIN");
+        }
+        this.isAdmin = isAdmin;
+    }
+
+    // Helper method to add a role
+    public void addRole(String role) {
+        roles.add(role);
+    }
+
+    // Helper method to remove a role
+    public void removeRole(String role) {
+        roles.remove(role);
+    }
 }

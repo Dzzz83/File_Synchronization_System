@@ -7,7 +7,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -28,27 +31,31 @@ public class AuthController
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> credentials)
     {
-        // get username and password
         String username = credentials.get("username");
         String password = credentials.get("password");
 
-        // return error if 1 of 2 fields missing
         if (username == null || password == null)
         {
             return ResponseEntity.badRequest()
                     .body(Map.of("error", "Missing username or password"));
         }
 
-        // get the user from userRepo
         User user = userFindService.findByLogin(username);
-        // if no user found or wrong password
         if (user == null || !passwordEncoder.matches(password, user.getPassword()))
         {
             return ResponseEntity.status(401)
                     .body(Map.of("error", "Invalid credentials"));
         }
-        // generate token for that login session
-        String token = jwtService.generateToken(user.getUsername());
-        return ResponseEntity.ok(Map.of("token", token, "username", user.getUsername()));
+
+        // Extract roles from user entity – roles are already strings
+        List<String> roles = new ArrayList<>(user.getRoles());
+
+        // Generate token with embedded roles (fully stateless)
+        String token = jwtService.generateToken(user.getUsername(), roles);
+
+        return ResponseEntity.ok(Map.of(
+                "token", token,
+                "username", user.getUsername()
+        ));
     }
 }
