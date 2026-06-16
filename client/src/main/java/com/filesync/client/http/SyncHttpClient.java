@@ -16,9 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class SyncHttpClient {
     private final WebClient webClient;
@@ -48,7 +46,8 @@ public class SyncHttpClient {
                     .bodyToMono(Map.class)
                     .block();
             if (response != null && response.containsKey("token")) {
-                this.authToken = (String) response.get("token");
+                String token = (String) response.get("token");
+                setAuthToken(token);
                 return (String) response.get("username");
             }
             throw new RuntimeException("Login failed: no token in response");
@@ -58,6 +57,16 @@ public class SyncHttpClient {
             }
             throw new RuntimeException("Login error: " + e.getMessage());
         }
+    }
+
+    public void setAuthToken(String token) {
+        this.authToken = token;
+        this.chunkedUploader.setAuthToken(token);
+    }
+
+    public void logout() {
+        this.authToken = null;
+        this.chunkedUploader.setAuthToken(null);
     }
 
     public void moveFile(String fileId, String newParentId) {
@@ -124,12 +133,12 @@ public class SyncHttpClient {
         }
         Files.createDirectories(destination.getParent());
 
-        // Get total size for progress reporting
         long totalBytes = -1;
         try {
             FileMetadataDto meta = getFileMetadata(fileId);
             totalBytes = meta.getSize();
         } catch (Exception e) {
+            // Non-critical, continue without progress tracking
         }
 
         Flux<DataBuffer> flux = addAuth(webClient.get().uri("/api/files/download/{fileId}", fileId))
@@ -137,12 +146,10 @@ public class SyncHttpClient {
                 .bodyToFlux(DataBuffer.class)
                 .timeout(Duration.ofMinutes(5));
 
-        // Write manually with progress tracking
         try (java.io.OutputStream os = Files.newOutputStream(destination)) {
             final long finalTotal = totalBytes;
             final AtomicLong bytesWritten = new AtomicLong(0);
 
-            // Blocking collect: iterate over each DataBuffer
             flux.toIterable().forEach(buffer -> {
                 byte[] bytes = new byte[buffer.readableByteCount()];
                 buffer.read(bytes);
@@ -217,11 +224,6 @@ public class SyncHttpClient {
                 .block();
     }
 
-    public void setAuthToken(String token) {
-        this.authToken = token;
-        this.chunkedUploader.setAuthToken(token);
-    }
-
     public boolean registerUser(String userName, String password, String email) {
         try {
             Map<String, String> body = Map.of("username", userName, "password", password, "email", email);
@@ -291,7 +293,6 @@ public class SyncHttpClient {
             return false;
         }
     }
-
 
     public List<SharedFolderDto> getUserSharedFolders(String userId) {
         SharedFolderDto[] folders = addAuth(webClient.get()
@@ -400,16 +401,18 @@ public class SyncHttpClient {
                 .bodyToMono(FileMetadataDto.class)
                 .block();
 
-        if (response == null || response.getFileId() == null) {
+        if (response == null) {
             throw new RuntimeException("Failed to create folder: server returned null response");
+        }
+        if (response.getFileId() == null) {
+            throw new RuntimeException("Failed to create folder: server response missing fileId");
         }
         try {
             return UUID.fromString(response.getFileId());
         } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Invalid UUID returned from server: " + response.getFileId(), e);
+            throw new RuntimeException("Server returned invalid folder ID: " + response.getFileId(), e);
         }
     }
-
 
     public String getAuthToken() {
         return authToken;
@@ -417,9 +420,5 @@ public class SyncHttpClient {
 
     public void close() {
         chunkedUploader.close();
-    }
-
-    public void logout() {
-        this.authToken = null;
     }
 }

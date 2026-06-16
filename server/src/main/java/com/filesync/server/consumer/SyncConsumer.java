@@ -20,17 +20,17 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 @Component
-public class SyncConsumer
-{
+public class SyncConsumer {
     private static final Logger log = LoggerFactory.getLogger(SyncConsumer.class);
     private final FileMetadataRepository fileMetadataRepository;
     private final SyncTaskRepository syncTaskRepository;
     private final ObjectMapper objectMapper;
     private final SyncTaskStatusService syncTaskStatusService;
 
-    public SyncConsumer(FileMetadataRepository fileMetadataRepository, SyncTaskRepository syncTaskRepository,
-                        ObjectMapper objectMapper, SyncTaskStatusService syncTaskStatusService)
-    {
+    public SyncConsumer(FileMetadataRepository fileMetadataRepository,
+                        SyncTaskRepository syncTaskRepository,
+                        ObjectMapper objectMapper,
+                        SyncTaskStatusService syncTaskStatusService) {
         this.fileMetadataRepository = fileMetadataRepository;
         this.syncTaskRepository = syncTaskRepository;
         this.objectMapper = objectMapper;
@@ -38,99 +38,95 @@ public class SyncConsumer
     }
 
     @RabbitListener(queues = "${sync.queue.name:sync.queue}")
-    public void processSync(SyncMessage syncMessage)
-    {
+    public void processSync(SyncMessage syncMessage) {
         String taskId = syncMessage.getTaskId();
         SyncRequestDto syncRequestDto = syncMessage.getSyncRequestDto();
         log.info("Consumer received sync task {}", taskId);
         UUID folderId = syncRequestDto.getFolderId();
+        String ownerId = syncRequestDto.getOwnerId();
 
-        try
-        {
-            // mark as processing
+        try {
+            // Mark task as processing
             SyncTask syncTask = syncTaskRepository.findById(taskId).orElseThrow();
             syncTask.setStatus("PROCESSING");
             syncTask.setUpdatedAt(LocalDateTime.now());
             syncTaskRepository.save(syncTask);
             syncTaskRepository.flush();
 
-            // get the list of files
-            List<FileMetadataEntity> serverFiles = fileMetadataRepository.findByOwnerId(syncRequestDto.getOwnerId());
-
+            // Fetch server files (ALL files for this user/folder)
+            List<FileMetadataEntity> serverFiles;
             if (folderId != null) {
-                // shared folder files
+                // Shared folder sync – all files under that folderId
                 serverFiles = fileMetadataRepository.findByFolderId(folderId);
             } else {
-                // personal files
-                serverFiles = fileMetadataRepository.findByOwnerIdAndFolderIdIsNull(syncRequestDto.getOwnerId());
+                // Personal sync – ALL files owned by the user (including subfolders)
+                serverFiles = fileMetadataRepository.findByOwnerId(ownerId);
             }
 
-            // create a map to store the server files
+            // Build map: relativePath → FileMetadataDto
             Map<String, FileMetadataDto> serverFileMap = new HashMap<>();
-            for (FileMetadataEntity entity : serverFiles)
-            {
+            for (FileMetadataEntity entity : serverFiles) {
                 serverFileMap.put(entity.getRelativePath(), convertToDto(entity));
             }
 
             List<SyncActionDto> actionDtos = new ArrayList<>();
-            for (FileMetadataDto clientFile : syncRequestDto.getClientFiles())
-            {
+
+            // Process client files
+            for (FileMetadataDto clientFile : syncRequestDto.getClientFiles()) {
                 String path = clientFile.getRelativePath();
                 FileMetadataDto serverFile = serverFileMap.get(path);
 
-                if (serverFile == null)
-                {
+                if (serverFile == null) {
+                    // File exists locally but not on server → upload
                     actionDtos.add(new SyncActionDto(SyncActionType.UPLOAD, clientFile, "Client's new file"));
-                }
-                else
-                {
-                    if (clientFile.getSha256Hash().equals(serverFile.getSha256Hash()))
-                    {
-                        actionDtos.add(new SyncActionDto(SyncActionType.NO_ACTION, clientFile, "In Sync"));
-                    }
-                    else
-                    {
+                } else {
+                    // File exists on both sides – compare hashes
+                    if (Objects.equals(clientFile.getSha256Hash(), serverFile.getSha256Hash())) {
+                        actionDtos.add(new SyncActionDto(SyncActionType.NO_ACTION, clientFile, "In sync"));
+                    } else {
+                        // Different content → conflict (both sides modified)
                         actionDtos.add(new SyncActionDto(SyncActionType.CONFLICT, clientFile, "Both modified"));
                     }
                     serverFileMap.remove(path);
                 }
             }
-            for (FileMetadataDto serverFile : serverFileMap.values())
-            {
+
+            // Remaining server files → client must download them
+            for (FileMetadataDto serverFile : serverFileMap.values()) {
                 actionDtos.add(new SyncActionDto(SyncActionType.DOWNLOAD, serverFile, "Server new file"));
             }
 
             log.info("Sync comparison complete for taskId={}, actions count: {}", taskId, actionDtos.size());
 
-            // store results as json
+            // Serialize and store actions
             String actionJson = objectMapper.writeValueAsString(actionDtos);
             syncTask.setActionsJson(actionJson);
             syncTask.setStatus("COMPLETED");
             syncTask.setUpdatedAt(LocalDateTime.now());
             syncTaskRepository.save(syncTask);
             syncTaskRepository.flush();
-            log.info("=== ASYNC SYNC COMPLETED for taskId={}", taskId);
+            log.info("Async sync COMPLETED for taskId={}", taskId);
 
         } catch (Throwable e) {
-            log.error("Async sync FAILED for taskId=" + taskId, e);
+            log.error("Async sync FAILED for taskId={}", taskId, e);
             syncTaskStatusService.markFailed(taskId, e.getMessage());
         }
     }
 
     private FileMetadataDto convertToDto(FileMetadataEntity entity) {
-        System.out.println("[DEBUG] convertToDto for path: " + entity.getRelativePath()); // debug
-        Set<String> sharedCopy = new HashSet<>(entity.getSharedWith());
-        System.out.println("[DEBUG] sharedWith size: " + sharedCopy.size()); // debug
-        return new FileMetadataDto(
-                entity.getId(),
-                entity.getRelativePath(),
-                entity.getSha256Hash(),
-                entity.getSize(),
-                entity.getLastModified(),
-                entity.getVersionVectorJson(),
-                entity.getOwnerId(),
-                sharedCopy,
-                entity.getStatus()
-        );
+        FileMetadataDto dto = new FileMetadataDto();
+        dto.setFileId(entity.getId());
+        dto.setRelativePath(entity.getRelativePath());
+        dto.setSha256Hash(entity.getSha256Hash());
+        dto.setSize(entity.getSize());
+        dto.setLastModified(entity.getLastModified());
+        dto.setVersionVectorJson(entity.getVersionVectorJson());
+        dto.setOwnerId(entity.getOwnerId());
+        dto.setSharedWith(new HashSet<>(entity.getSharedWith()));
+        dto.setStatus(entity.getStatus());
+        dto.setFolderId(entity.getFolderId());
+        dto.setDirectory(entity.isDirectory());
+        dto.setParentId(entity.getParentId());
+        return dto;
     }
 }

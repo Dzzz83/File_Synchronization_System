@@ -24,7 +24,7 @@ public class ChunkedUploader {
     private final WebClient webClient;
     private static final int CHUNK_SIZE = 5 * 1024 * 1024;
     private static final int MAX_CONCURRENT_CHUNKS = 5;
-    private String authToken;
+    private volatile String authToken;
     private final ExecutorService executor = Executors.newFixedThreadPool(MAX_CONCURRENT_CHUNKS);
 
     public ChunkedUploader(WebClient webClient) {

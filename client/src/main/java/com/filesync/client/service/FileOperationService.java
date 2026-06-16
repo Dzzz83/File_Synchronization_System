@@ -36,7 +36,6 @@ public class FileOperationService {
         httpClient.downloadFile(fileId, destination);
     }
 
-    // FIXED: Added ProgressService integration
     public void uploadFile(Path localFilePath, UUID parentId) throws IOException {
         ProgressService ps = ProgressService.getInstance();
         String fileName = localFilePath.getFileName().toString();
@@ -47,7 +46,6 @@ public class FileOperationService {
             long fileSize = Files.size(localFilePath);
             long threshold = 5 * 1024 * 1024;
 
-            // Inside uploadFile method
             FileMetadataDto dto = FileMetadataDto.forUpload(
                     fileId, fileName, fileSize,
                     FileHasher.computeHash(localFilePath),
@@ -73,7 +71,6 @@ public class FileOperationService {
         }
     }
 
-    // FIXED: Added ProgressService integration
     public void editFile(FileMetadataDto fileDto, String newContent) throws IOException {
         ProgressService ps = ProgressService.getInstance();
         String fileName = fileDto.getRelativePath();
@@ -116,7 +113,7 @@ public class FileOperationService {
     }
 
     public void resolveConflict(FileMetadataDto currentMeta, Path localPath) throws IOException {
-        ConflictResolver.resolve(currentMeta, localPath, httpClient, null);
+        ConflictResolver.resolve(currentMeta, localPath, httpClient);
     }
 
     public FileMetadataDto getMetadata(String fileId) {

@@ -48,8 +48,27 @@ public class BulkOperationHandler {
     }
 
     public void bulkDelete(ObservableList<ServerFileItem> items) {
-        List<String> fileIds = items.stream().map(ServerFileItem::getFileId).collect(Collectors.toList());
-        List<String> fileNames = items.stream().map(ServerFileItem::getRelativePath).collect(Collectors.toList());
+        // Debug logging
+        System.out.println("[BulkOperationHandler] bulkDelete called with " + items.size() + " items");
+
+        List<String> fileIds = items.stream()
+                .map(ServerFileItem::getFileId)
+                .filter(id -> id != null && !id.isEmpty())
+                .collect(Collectors.toList());
+
+        List<String> fileNames = items.stream()
+                .map(ServerFileItem::getRelativePath)
+                .collect(Collectors.toList());
+
+        System.out.println("[BulkOperationHandler] Extracted fileIds: " + fileIds);
+        System.out.println("[BulkOperationHandler] Extracted fileNames: " + fileNames);
+
+        // If no valid file IDs, show alert and return
+        if (fileIds.isEmpty()) {
+            System.out.println("[BulkOperationHandler] No valid file IDs found, aborting delete");
+            showInfo("No items to delete", "The selected items do not have valid file IDs.");
+            return;
+        }
 
         ProgressService ps = ProgressService.getInstance();
         ps.startOperation("Deleting " + fileIds.size() + " item(s)");
@@ -61,7 +80,7 @@ public class BulkOperationHandler {
         task.setOnSucceeded(e -> {
             ps.finishOperation();
             refreshCallback.run();
-            showInfo("Success", "Deleted " + items.size() + " item(s)");
+            showInfo("Success", "Deleted " + fileIds.size() + " item(s)");
         });
         task.setOnFailed(e -> {
             ps.finishOperation();

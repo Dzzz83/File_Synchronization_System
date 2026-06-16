@@ -5,6 +5,8 @@ import com.filesync.server.repository.FileMetadataRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,20 +18,25 @@ import java.util.UUID;
 
 @Service
 public class FileMetaDataService {
+    private static final Logger log = LoggerFactory.getLogger(FileMetaDataService.class);
+
     private final FileMetadataRepository fileMetadataRepository;
     private final QuotaService quotaService;
     private final PermissionService permissionService;
     private final ApplicationEventPublisher eventPublisher;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final FileEventPublisher fileEventPublisher;
 
     public FileMetaDataService(FileMetadataRepository fileMetadataRepository,
                                QuotaService quotaService,
+                               FileEventPublisher fileEventPublisher,
                                PermissionService permissionService,
                                ApplicationEventPublisher eventPublisher) {
         this.fileMetadataRepository = fileMetadataRepository;
         this.quotaService = quotaService;
         this.permissionService = permissionService;
         this.eventPublisher = eventPublisher;
+        this.fileEventPublisher = fileEventPublisher;
     }
 
     // ========== Basic CRUD ==========
@@ -49,6 +56,8 @@ public class FileMetaDataService {
         }
         FileMetadataEntity saved = fileMetadataRepository.save(entity);
         eventPublisher.publishEvent(new SyncEvent(this, saved, SyncEvent.Type.CREATED_OR_UPDATED));
+        log.debug("Publishing WebSocket event for saved file: {} (folder: {})", saved.getId(), saved.getFolderId());
+        fileEventPublisher.publishFileEvent(saved, "CREATED_OR_UPDATED");
         return saved;
     }
 
@@ -57,8 +66,11 @@ public class FileMetaDataService {
         FileMetadataEntity file = getFileById(fileId);
         if (file == null) return;
         if (file.isDirectory()) {
-            throw new IllegalArgumentException("Cannot delete the item.");
+            throw new IllegalArgumentException("Cannot delete a folder using deleteFileAndUpdateAncestors");
         }
+        log.info("🗑️ Deleting file: {} with folderId: {}", fileId, file.getFolderId());
+        // Publish WebSocket event once
+        fileEventPublisher.publishFileEvent(file, "DELETED");
         long size = file.getSize();
         UUID parentId = file.getParentId();
         fileMetadataRepository.deleteById(fileId);
@@ -82,11 +94,15 @@ public class FileMetaDataService {
             if (child.isDirectory()) {
                 deleteFolderRecursively(child.getId());
             } else {
+                log.debug("Publishing WebSocket delete event for child file: {} (folder: {})", child.getId(), child.getFolderId());
+                fileEventPublisher.publishFileEvent(child, "DELETED");
                 fileMetadataRepository.deleteById(child.getId());
                 quotaService.releaseQuota(child.getOwnerId(), child.getSize());
                 eventPublisher.publishEvent(new SyncEvent(this, child, SyncEvent.Type.DELETED));
             }
         }
+        log.debug("Publishing WebSocket delete event for folder: {} (folder: {})", folderId, folder.getFolderId());
+        fileEventPublisher.publishFileEvent(folder, "DELETED");
         fileMetadataRepository.deleteById(folderId);
         eventPublisher.publishEvent(new SyncEvent(this, folder, SyncEvent.Type.DELETED));
     }
@@ -130,6 +146,8 @@ public class FileMetaDataService {
             addToAncestors(newParentId, folderSize);
         }
         eventPublisher.publishEvent(new SyncEvent(this, folder, SyncEvent.Type.MOVED));
+        log.debug("Publishing WebSocket update event for moved folder: {} (new folder: {})", folderId, newFolderId);
+        fileEventPublisher.publishFileEvent(folder, "UPDATED");
     }
 
     // ========== Folder Creation ==========
@@ -150,6 +168,8 @@ public class FileMetaDataService {
         folder.setSize(0L);
         FileMetadataEntity saved = fileMetadataRepository.save(folder);
         eventPublisher.publishEvent(new SyncEvent(this, saved, SyncEvent.Type.CREATED_OR_UPDATED));
+        log.debug("Publishing WebSocket event for created folder: {} (folder: {})", saved.getId(), saved.getFolderId());
+        fileEventPublisher.publishFileEvent(saved, "CREATED_OR_UPDATED");
         return saved;
     }
 

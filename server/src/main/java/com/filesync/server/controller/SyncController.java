@@ -45,7 +45,6 @@ public class SyncController {
     public Map<String, String> startSync(@RequestBody SyncRequestDto requestDto, Authentication authentication)
     {
         String authenticatedUsername = authentication.getName();
-        requestDto.setOwnerId(authenticatedUsername);
 
         if (requestDto.getFolderId() != null) {
             if (!permissionService.canReadFolder(authenticatedUsername, requestDto.getFolderId())) {
@@ -55,7 +54,7 @@ public class SyncController {
 
         // override the ownerId
         requestDto.setOwnerId(authenticatedUsername);
-        // create random task id
+        // create task id
         String taskId = UUID.randomUUID().toString();
         log.info("Received sync start request for owner={}, creating taskId={}", requestDto.getOwnerId(), taskId);
         // create new SyncTask obj

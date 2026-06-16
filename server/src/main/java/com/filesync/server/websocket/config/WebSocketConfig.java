@@ -20,13 +20,20 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        config.enableSimpleBroker("/topic", "/queue");
+        // Keep existing broker destinations; add "/topic/file" for file updates
+        config.enableSimpleBroker("/topic", "/queue", "/topic/file");
         config.setApplicationDestinationPrefixes("/app");
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        // Chat endpoint (existing)
         registry.addEndpoint("/ws/chat")
+                .setAllowedOriginPatterns("*")
+                .withSockJS();
+
+        // New file update endpoint
+        registry.addEndpoint("/ws/files")
                 .setAllowedOriginPatterns("*")
                 .withSockJS();
     }

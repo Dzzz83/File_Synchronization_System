@@ -66,7 +66,7 @@ public class SecurityConfig {
                                 "/health",
                                 "/monitoring",
                                 "/monitoring/**",
-                                "/ws/chat/**"
+                                "/ws/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

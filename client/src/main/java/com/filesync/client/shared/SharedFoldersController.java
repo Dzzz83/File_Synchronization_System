@@ -5,6 +5,7 @@ import com.filesync.client.dialog.*;
 import com.filesync.client.files.FileExplorerController;
 import com.filesync.client.http.SyncHttpClient;
 import com.filesync.client.chat.ChatClient;
+import com.filesync.client.websocket.FileUpdateClient;
 import com.filesync.common.dto.CreateFolderDto;
 import com.filesync.common.dto.SharedFolderDto;
 import javafx.application.Platform;
@@ -19,12 +20,20 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class SharedFoldersController {
+
+    private static final Logger log = LoggerFactory.getLogger(SharedFoldersController.class);
+
     @FXML private TableView<SharedFolderItem> foldersTable;
     @FXML private TableColumn<SharedFolderItem, String> nameColumn;
     @FXML private TableColumn<SharedFolderItem, String> ownerColumn;
@@ -41,8 +50,16 @@ public class SharedFoldersController {
     private FileExplorerController currentExplorer;
     private ChatController currentChatController;
     private boolean showingFoldersList = true;
+    private FileUpdateClient fileUpdateClient;
+    private UUID currentFolderId;
+    private ScheduledExecutorService fallbackScheduler = Executors.newSingleThreadScheduledExecutor();
+
+    public SharedFoldersController() {
+        // no debug
+    }
 
     public void initialize(SyncHttpClient httpClient, String ownerId, ExecutorService executorService) {
+        log.info("SharedFoldersController initialized");
         this.httpClient = httpClient;
         this.ownerId = ownerId;
         this.executorService = executorService;
@@ -56,6 +73,7 @@ public class SharedFoldersController {
             TableRow<SharedFolderItem> row = new TableRow<>();
             row.setOnMouseClicked(event -> {
                 if (event.getClickCount() == 2 && !row.isEmpty()) {
+                    log.info("Double-click on shared folder: {}", row.getItem().getName());
                     onFolderDoubleClick(row.getItem());
                 }
             });
@@ -77,48 +95,104 @@ public class SharedFoldersController {
 
         showSharedFoldersList();
         refreshFolders();
+        log.info("SharedFoldersController initialization complete");
+    }
+
+    private void stopCurrentExplorerSync() {
+        if (currentExplorer != null) {
+            log.debug("Stopping auto-sync for current explorer");
+            currentExplorer.stopAutoSync();
+        }
     }
 
     private void showSharedFoldersList() {
+        log.info("Showing shared folders list");
+        if (fileUpdateClient != null) {
+            log.info("Disconnecting file update WebSocket");
+            fileUpdateClient.disconnect();
+            fileUpdateClient = null;
+        }
+        stopCurrentExplorerSync();
+        if (fallbackScheduler != null) {
+            fallbackScheduler.shutdownNow();
+            fallbackScheduler = Executors.newSingleThreadScheduledExecutor();
+        }
+
         showingFoldersList = true;
         actionButtons.setVisible(true);
         actionButtons.setManaged(true);
-        // Dispose chat before clearing container
         if (currentChatController != null) {
             currentChatController.dispose();
             currentChatController = null;
         }
         container.getChildren().clear();
         container.getChildren().add(foldersTable);
+        log.info("Shared folders list displayed");
     }
 
     private void showFolderExplorer(SharedFolderItem item) {
+        log.info("Opening folder explorer for folder: {} ({})", item.getName(), item.getId());
+        stopCurrentExplorerSync();
+
         showingFoldersList = false;
         actionButtons.setVisible(false);
         actionButtons.setManaged(false);
         try {
-            // Dispose previous chat if any (important when switching folders without returning to list)
             if (currentChatController != null) {
                 currentChatController.dispose();
                 currentChatController = null;
             }
 
-            // Load file explorer
             FXMLLoader fileLoader = new FXMLLoader(getClass().getResource("/com/filesync/client/files/server-file-list.fxml"));
             VBox explorerRoot = fileLoader.load();
             currentExplorer = fileLoader.getController();
             currentExplorer.setExecutorService(executorService);
             currentExplorer.initialize(httpClient, ownerId, item.getId(), null, item.getName());
-            currentExplorer.setOnExitSharedFolder(this::showSharedFoldersList);
+            log.info("FileExplorerController initialized for folder {}", item.getId());
 
-            // Load chat view
+            currentExplorer.setOnExitSharedFolder(() -> {
+                log.info("Exit shared folder callback triggered");
+                if (fileUpdateClient != null) {
+                    fileUpdateClient.disconnect();
+                    fileUpdateClient = null;
+                }
+                stopCurrentExplorerSync();
+                showSharedFoldersList();
+            });
+
             FXMLLoader chatLoader = new FXMLLoader(getClass().getResource("/com/filesync/client/shared/chat-view.fxml"));
             VBox chatRoot = chatLoader.load();
             currentChatController = chatLoader.getController();
             ChatClient chatClient = new ChatClient(httpClient.getBaseUrl(), httpClient.getAuthToken());
             currentChatController.setData(chatClient, item.getId(), ownerId);
 
-            // Combine in TabPane
+            currentFolderId = item.getId();
+            log.info("Creating FileUpdateClient for folder {}", currentFolderId);
+            fileUpdateClient = new FileUpdateClient(httpClient.getBaseUrl(), httpClient.getAuthToken());
+            try {
+                fileUpdateClient.connect(currentFolderId, msg -> {
+                    log.info("Received file update event: {} for file {}", msg.getEventType(), msg.getRelativePath());
+                    Platform.runLater(() -> {
+                        if (currentExplorer != null) {
+                            log.info("Forwarding file update to FileExplorerController");
+                            currentExplorer.handleFileUpdate(msg);
+                        } else {
+                            log.warn("currentExplorer is null, cannot process update");
+                        }
+                    });
+                });
+            } catch (Exception e) {
+                log.error("Failed to connect/subscribe to file update WebSocket", e);
+                fallbackScheduler.scheduleAtFixedRate(() -> {
+                    Platform.runLater(() -> {
+                        if (currentExplorer != null) {
+                            log.info("Fallback refresh triggered");
+                            currentExplorer.refreshWindowSilent();
+                        }
+                    });
+                }, 5, 10, TimeUnit.SECONDS);
+            }
+
             TabPane tabPane = new TabPane();
             Tab filesTab = new Tab("Files", explorerRoot);
             filesTab.setClosable(false);
@@ -126,13 +200,14 @@ public class SharedFoldersController {
             chatTab.setClosable(false);
             tabPane.getTabs().addAll(filesTab, chatTab);
 
-            // Replace container content
             container.getChildren().clear();
             container.getChildren().add(tabPane);
             VBox.setVgrow(tabPane, Priority.ALWAYS);
             tabPane.setMaxHeight(Double.MAX_VALUE);
+            log.info("Folder explorer displayed for {}", item.getName());
+
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error opening folder explorer", e);
             showAlert("Error", "Could not open folder: " + e.getMessage());
             actionButtons.setVisible(true);
             actionButtons.setManaged(true);
@@ -141,6 +216,7 @@ public class SharedFoldersController {
     }
 
     private void onFolderDoubleClick(SharedFolderItem item) {
+        log.info("onFolderDoubleClick called for folder: {}", item.getName());
         showFolderExplorer(item);
     }
 
@@ -322,9 +398,14 @@ public class SharedFoldersController {
         private final String name;
         private final String ownerId;
         private final String permission;
+
         public SharedFolderItem(UUID id, String name, String ownerId, String permission) {
-            this.id = id; this.name = name; this.ownerId = ownerId; this.permission = permission;
+            this.id = id;
+            this.name = name;
+            this.ownerId = ownerId;
+            this.permission = permission;
         }
+
         public UUID getId() { return id; }
         public String getName() { return name; }
         public String getOwnerId() { return ownerId; }

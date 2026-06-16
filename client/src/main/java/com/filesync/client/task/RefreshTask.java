@@ -51,16 +51,22 @@ public class RefreshTask extends Task<Void> {
     @Override
     protected Void call() throws Exception {
         List<FileMetadataDto> files = httpClient.getFiles(ownerId, folderId, currentParentId);
+        if (files == null) {
+            files = List.of();
+        }
 
+        final List<FileMetadataDto> finalFiles = files;
         Platform.runLater(() -> {
             fileItems.clear();
+
             if (showParentEntry) {
                 fileItems.add(new ServerFileItem(
                         "parent", "..", 0, null, null, folderId, true, null, new Label("◀--"),
                         Permission.NONE
                 ));
             }
-            for (FileMetadataDto dto : files) {
+
+            for (FileMetadataDto dto : finalFiles) {
                 Node icon = FileIconResolver.getIconForFile(dto.getRelativePath());
                 fileItems.add(new ServerFileItem(
                         dto.getFileId(),
@@ -75,8 +81,9 @@ public class RefreshTask extends Task<Void> {
                         dto.getUserPermission()
                 ));
             }
+
             if (onSuccess != null) {
-                onSuccess.accept(files);
+                onSuccess.accept(finalFiles);
             }
             ProgressService.getInstance().finishOperation();
         });

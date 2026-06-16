@@ -1,6 +1,9 @@
 package com.filesync.server.websocket;
 
 import com.filesync.server.security.JwtService;
+import io.jsonwebtoken.Claims;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
@@ -8,15 +11,19 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
-import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class AuthChannelInterceptor implements ChannelInterceptor {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthChannelInterceptor.class);
     private final JwtService jwtService;
 
     public AuthChannelInterceptor(JwtService jwtService) {
@@ -27,32 +34,40 @@ public class AuthChannelInterceptor implements ChannelInterceptor {
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
         if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
-            String authHeader = accessor.getFirstNativeHeader("Authorization");
-            System.out.println("AuthChannelInterceptor: CONNECT frame received, Authorization header: " + authHeader);
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                String token = authHeader.substring(7);
+            String token = extractToken(accessor);
+            if (token != null && jwtService.validateToken(token)) {
                 try {
-                    if (jwtService.validateToken(token)) {
-                        String username = jwtService.extractUsername(token);
-                        System.out.println("AuthChannelInterceptor: Token valid for user: " + username);
-                        UserDetails userDetails = User.withUsername(username)
-                                .password("")
-                                .authorities(Collections.emptyList())
-                                .build();
-                        UsernamePasswordAuthenticationToken authentication =
-                                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                        accessor.setUser(authentication);
-                        System.out.println("AuthChannelInterceptor: Principal set for session: " + accessor.getSessionId());
-                    } else {
-                        System.err.println("AuthChannelInterceptor: Token validation failed");
-                    }
+                    Claims claims = jwtService.extractAllClaims(token);
+                    String username = claims.getSubject();
+                    List<String> roles = claims.get("roles", List.class);
+                    List<GrantedAuthority> authorities = roles.stream()
+                            .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
+                            .collect(Collectors.toList());
+                    UserDetails userDetails = new User(username, "", authorities);
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
+                    accessor.setUser(authentication);
+                    log.info("WebSocket authenticated user: {}", username);
                 } catch (Exception e) {
-                    System.err.println("AuthChannelInterceptor: Exception while validating token: " + e.getMessage());
+                    log.warn("Error processing token for WebSocket: {}", e.getMessage());
+                    throw new SecurityException("Invalid token");
                 }
             } else {
-                System.err.println("AuthChannelInterceptor: Missing or invalid Authorization header");
+                log.warn("WebSocket CONNECT without valid token");
+                throw new SecurityException("Missing or invalid token");
             }
         }
         return message;
+    }
+
+    private String extractToken(StompHeaderAccessor accessor) {
+        String token = accessor.getFirstNativeHeader("token");
+        if (token == null) {
+            String authHeader = accessor.getFirstNativeHeader("Authorization");
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                token = authHeader.substring(7);
+            }
+        }
+        return token;
     }
 }

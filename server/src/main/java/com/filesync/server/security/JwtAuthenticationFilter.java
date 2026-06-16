@@ -18,7 +18,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -34,7 +33,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
             "/api/users/reset-password",
             "/health",
             "/monitoring",
-            "/debug/"
+            "/debug/",
+            "/ws/chat",
+            "/ws/files"
     );
 
     public JwtAuthenticationFilter(JwtService jwtService)
@@ -74,29 +75,29 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
         }
 
         // Case 3: Token valid -> extract username and set authentication
-        // get username
         final String username = jwtService.extractUsername(token);
-        // get entire token payload
         Claims claims = jwtService.extractAllClaims(token);
-        // get the list of roles in strings
+
+        // Extract roles and convert to GrantedAuthority
         List<String> roles = claims.get("roles", List.class);
-        // add ROLE_ prefix
         List<GrantedAuthority> authorities = roles.stream()
                 .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
                 .collect(Collectors.toList());
-        // create a user object
-        UserDetails userDetails = new User(username, "", Collections.emptyList());
-        // create authenticated token
-        UsernamePasswordAuthenticationToken authenticationToken =
-                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
-        // attach request metadata (IP, etc) for auditing
+        // Create UserDetails with the correct authorities
+        UserDetails userDetails = new User(username, "", authorities);
+
+        // Create authenticated token with the correct authorities
+        UsernamePasswordAuthenticationToken authenticationToken =
+                new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
+
         authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-        // store authentication for this request thread
+        // Store authentication in SecurityContext
         SecurityContextHolder.getContext().setAuthentication(authenticationToken);
 
-        // Continue the filter chain with authenticated user
+        log.info("Successfully authenticated user: {} with roles: {}", username, roles);
+
         filterChain.doFilter(request, response);
     }
 }

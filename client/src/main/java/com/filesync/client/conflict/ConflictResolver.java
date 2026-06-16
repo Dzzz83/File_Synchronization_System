@@ -1,6 +1,5 @@
 package com.filesync.client.conflict;
 
-import com.filesync.client.repository.LocalMetadataRepository;
 import com.filesync.client.util.FileHasher;
 import com.filesync.client.http.SyncHttpClient;
 import com.filesync.common.dto.FileMetadataDto;
@@ -19,8 +18,7 @@ import java.util.concurrent.ConcurrentMap;
 public class ConflictResolver {
     private static final ConcurrentMap<String, Boolean> resolvingFiles = new ConcurrentHashMap<>();
 
-    public static void resolve(FileMetadataDto file, Path localPath, SyncHttpClient httpClient,
-                               LocalMetadataRepository localRepo) throws IOException {
+    public static void resolve(FileMetadataDto file, Path localPath, SyncHttpClient httpClient) throws IOException {
         String filePath = file.getRelativePath();
         if (resolvingFiles.putIfAbsent(filePath, true) != null) {
             return;
@@ -59,17 +57,11 @@ public class ConflictResolver {
                                     .parentId(file.getParentId())
                                     .build();
 
-                            // Preserve optional fields
                             updatedDto.setVersionVectorJson(file.getVersionVectorJson());
                             updatedDto.setSharedWith(file.getSharedWith());
                             updatedDto.setDirectory(file.isDirectory());
 
-                            System.out.println("=== ConflictResolver updatedDto ===");
-                            System.out.println("ownerId: " + updatedDto.getOwnerId());
-                            System.out.println("folderId: " + updatedDto.getFolderId());
-                            System.out.println("parentId: " + updatedDto.getParentId());
                             httpClient.createMetadata(updatedDto);
-                            // ========================================================
 
                             long fileSize = Files.size(localPath);
                             if (fileSize > 5 * 1024 * 1024) {
@@ -77,9 +69,7 @@ public class ConflictResolver {
                             } else {
                                 httpClient.uploadFile(file.getFileId(), localPath, file.getFolderId());
                             }
-                            if (localRepo != null) {
-                                localRepo.saveFile(file.getRelativePath(), file.getFileId(), newHash);
-                            }
+
                         } catch (Exception ex) {
                             ex.printStackTrace();
                         } finally {
