@@ -46,6 +46,7 @@ public class FileController {
             FileMetadataEntity oldEntity = fileMetaDataService.getFileById(fileMetadataDto.getFileId());
             long oldSize = getSizeOfEntity(oldEntity);
             FileMetadataEntity entity = convertToEntity(fileMetadataDto);
+            entity.setOwnerId(oldEntity.getOwnerId());
             FileMetadataEntity saved = fileMetaDataService.saveFileMetaData(entity);
             if (!saved.isDirectory()) {
                 long newSize = saved.getSize();

@@ -184,13 +184,10 @@ public class SharedFoldersController {
             } catch (Exception e) {
                 log.error("Failed to connect/subscribe to file update WebSocket", e);
                 fallbackScheduler.scheduleAtFixedRate(() -> {
-                    Platform.runLater(() -> {
-                        if (currentExplorer != null) {
-                            log.info("Fallback refresh triggered");
-                            currentExplorer.refreshWindowSilent();
-                        }
-                    });
-                }, 5, 10, TimeUnit.SECONDS);
+                    if (currentExplorer != null) {
+                        currentExplorer.refreshWindowSilent();
+                    }
+                }, 5, 300, TimeUnit.SECONDS);  // 5 minutes initial delay, 5 minutes between runs
             }
 
             TabPane tabPane = new TabPane();

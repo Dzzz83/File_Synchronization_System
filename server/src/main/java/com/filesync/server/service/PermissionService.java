@@ -39,50 +39,39 @@ public class PermissionService {
     }
 
     public boolean canRead(String userId, String fileId) {
-        log.debug("canRead called: userId={}, fileId={}", userId, fileId);
         FileMetadataEntity file = fileMetadataRepository.findById(fileId).orElse(null);
-        if (file == null) {
-            log.warn("canRead: file not found for fileId={}", fileId);
-            return false;
-        }
+        if (file == null) return false;
 
         UUID folderId = file.getFolderId();
         String ownerId = file.getOwnerId();
-        log.info("canRead: userId={}, fileId={}, ownerId={}, folderId={}, isDirectory={}",
-                userId, fileId, ownerId, folderId, file.isDirectory());
+
+        // If ownerId is null, fall back to shared‑folder permissions or deny access
+        if (ownerId == null) {
+            return folderId != null && hasReadAccess(folderId, userId);
+        }
 
         if (folderId == null) {
-            boolean result = ownerId.equals(userId);
-            log.info("  Personal file: ownerId={} equals userId={} => {}", ownerId, userId, result);
-            return result;
+            return ownerId.equals(userId);
         } else {
-            boolean hasRead = hasReadAccess(folderId, userId);
-            log.info("  Shared folder file: hasReadAccess for folderId={} = {}", folderId, hasRead);
-            return hasRead;
+            return hasReadAccess(folderId, userId);
         }
     }
 
     public boolean canWrite(String userId, String fileId) {
-        log.debug("canWrite called: userId={}, fileId={}", userId, fileId);
         FileMetadataEntity file = fileMetadataRepository.findById(fileId).orElse(null);
-        if (file == null) {
-            log.warn("canWrite: file not found for fileId={}", fileId);
-            return false;
-        }
+        if (file == null) return false;
 
         UUID folderId = file.getFolderId();
         String ownerId = file.getOwnerId();
-        log.info("canWrite: userId={}, fileId={}, ownerId={}, folderId={}",
-                userId, fileId, ownerId, folderId);
+
+        if (ownerId == null) {
+            return folderId != null && hasWriteAccess(folderId, userId);
+        }
 
         if (folderId == null) {
-            boolean result = ownerId.equals(userId);
-            log.info("  Personal file: ownerId={} equals userId={} => {}", ownerId, userId, result);
-            return result;
+            return ownerId.equals(userId);
         } else {
-            boolean hasWrite = hasWriteAccess(folderId, userId);
-            log.info("  Shared folder file: hasWriteAccess for folderId={} = {}", folderId, hasWrite);
-            return hasWrite;
+            return hasWriteAccess(folderId, userId);
         }
     }
 
