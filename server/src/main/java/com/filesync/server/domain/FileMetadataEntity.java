@@ -27,9 +27,6 @@ public class FileMetadataEntity {
 
     private Instant lastModified;
 
-    @Column(columnDefinition = "TEXT")
-    private String versionVectorJson;
-
     @Column(name = "owner_id", nullable = false)
     private String ownerId;
 
@@ -68,9 +65,6 @@ public class FileMetadataEntity {
 
     public Instant getLastModified() { return lastModified; }
     public void setLastModified(Instant lastModified) { this.lastModified = lastModified; }
-
-    public String getVersionVectorJson() { return versionVectorJson; }
-    public void setVersionVectorJson(String versionVectorJson) { this.versionVectorJson = versionVectorJson; }
 
     public String getOwnerId() { return ownerId; }
     public void setOwnerId(String ownerId) { this.ownerId = ownerId; }

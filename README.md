@@ -30,7 +30,7 @@ All code follows SOLID principles. The server is stateless, making it suitable f
 ## Project Structure
 The project is split into three Maven modules:
 
-- **common** – shared DTOs, enums, and utility classes (e.g., VersionVector).
+- **common** – shared DTOs, enums, and utility classes
 - **server** – Spring Boot application with REST APIs, JPA entities, storage backends, JWT authentication, WebSocket chat, and Redis active user tracking.
 - **client** – JavaFX application containing both the sync client and the admin GUI, with all viewer/editor features, chat, and dialogs.
 

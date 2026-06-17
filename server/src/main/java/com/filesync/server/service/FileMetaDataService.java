@@ -2,8 +2,6 @@ package com.filesync.server.service;
 
 import com.filesync.server.domain.FileMetadataEntity;
 import com.filesync.server.repository.FileMetadataRepository;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,9 +9,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -214,60 +210,12 @@ public class FileMetaDataService {
         return count;
     }
 
-    // ========== Version Vector Handling ==========
-
-    @Transactional
-    public void updateVersionVector(String fileId, String clientId, long newVersion) throws JsonProcessingException {
-        FileMetadataEntity file = getFileById(fileId);
-        if (file == null) return;
-        Map<String, Long> versionMap = parseVersionVector(file.getVersionVectorJson());
-        versionMap.put(clientId, newVersion);
-        file.setVersionVectorJson(objectMapper.writeValueAsString(versionMap));
-        fileMetadataRepository.save(file);
-    }
-
-    public boolean hasConflict(String fileId, Map<String, Long> localVector) throws JsonProcessingException {
-        FileMetadataEntity file = getFileById(fileId);
-        if (file == null) return false;
-        Map<String, Long> serverVector = parseVersionVector(file.getVersionVectorJson());
-        for (Map.Entry<String, Long> entry : serverVector.entrySet()) {
-            String client = entry.getKey();
-            long serverVer = entry.getValue();
-            long localVer = localVector.getOrDefault(client, 0L);
-            if (serverVer > localVer) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private Map<String, Long> parseVersionVector(String json) throws JsonProcessingException {
-        if (json == null || json.isBlank()) return new HashMap<>();
-        return objectMapper.readValue(json, new TypeReference<Map<String, Long>>() {});
-    }
-
     // ========== Permission Checks ==========
 
     public boolean hasPermission(String fileId, String username, String requiredPermission) {
         FileMetadataEntity file = getFileById(fileId);
         if (file == null) return false;
         return permissionService.hasPermission(file, username, requiredPermission);
-    }
-
-    // ========== Conflict Resolution ==========
-
-    @Transactional
-    public FileMetadataEntity resolveConflict(String fileId, FileMetadataEntity localVersion, ResolutionStrategy strategy) {
-        FileMetadataEntity serverVersion = getFileById(fileId);
-        if (serverVersion == null) return localVersion;
-        if (strategy == ResolutionStrategy.KEEP_LOCAL) {
-            serverVersion.setSha256Hash(localVersion.getSha256Hash());
-            serverVersion.setSize(localVersion.getSize());
-            serverVersion.setLastModified(localVersion.getLastModified());
-            serverVersion.setVersionVectorJson(localVersion.getVersionVectorJson());
-            return fileMetadataRepository.save(serverVersion);
-        }
-        return serverVersion;
     }
 
     public enum ResolutionStrategy {

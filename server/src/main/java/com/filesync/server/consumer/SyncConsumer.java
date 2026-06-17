@@ -120,7 +120,6 @@ public class SyncConsumer {
         dto.setSha256Hash(entity.getSha256Hash());
         dto.setSize(entity.getSize());
         dto.setLastModified(entity.getLastModified());
-        dto.setVersionVectorJson(entity.getVersionVectorJson());
         dto.setOwnerId(entity.getOwnerId());
         dto.setSharedWith(new HashSet<>(entity.getSharedWith()));
         dto.setStatus(entity.getStatus());

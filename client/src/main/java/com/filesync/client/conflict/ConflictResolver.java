@@ -70,7 +70,6 @@ public class ConflictResolver {
                                     .userPermission(file.getUserPermission())
                                     .build();
 
-                            updatedDto.setVersionVectorJson(file.getVersionVectorJson());
                             updatedDto.setSharedWith(file.getSharedWith());
                             updatedDto.setDirectory(file.isDirectory());
 

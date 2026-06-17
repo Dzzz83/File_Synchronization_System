@@ -12,7 +12,6 @@ public class FileMetadataDto {
     private String sha256Hash;
     private long size;
     private Instant lastModified;
-    private String versionVectorJson;
     private String ownerId;
     private Set<String> sharedWith;
     private SyncStatus status;
@@ -24,14 +23,13 @@ public class FileMetadataDto {
     public FileMetadataDto() {}
 
     public FileMetadataDto(String fileId, String relativePath, String sha256Hash, long size,
-                           Instant lastModified, String versionVectorJson, String ownerId,
+                           Instant lastModified, String ownerId,
                            Set<String> sharedWith, SyncStatus status) {
         this.fileId = fileId;
         this.relativePath = relativePath;
         this.sha256Hash = sha256Hash;
         this.size = size;
         this.lastModified = lastModified;
-        this.versionVectorJson = versionVectorJson;
         this.ownerId = ownerId;
         this.sharedWith = sharedWith;
         this.status = status;
@@ -48,8 +46,6 @@ public class FileMetadataDto {
     public void setSize(long size) { this.size = size; }
     public Instant getLastModified() { return lastModified; }
     public void setLastModified(Instant lastModified) { this.lastModified = lastModified; }
-    public String getVersionVectorJson() { return versionVectorJson; }
-    public void setVersionVectorJson(String versionVectorJson) { this.versionVectorJson = versionVectorJson; }
     public String getOwnerId() { return ownerId; }
     public void setOwnerId(String ownerId) { this.ownerId = ownerId; }
     public Set<String> getSharedWith() { return sharedWith; }

@@ -267,7 +267,6 @@ public class FileController {
         entity.setSha256Hash(dto.getSha256Hash());
         entity.setSize(dto.getSize());
         entity.setLastModified(dto.getLastModified());
-        entity.setVersionVectorJson(dto.getVersionVectorJson());
         entity.setOwnerId(dto.getOwnerId());
         entity.setSharedWith(dto.getSharedWith());
         entity.setStatus(dto.getStatus());
@@ -284,7 +283,6 @@ public class FileController {
         dto.setSha256Hash(entity.getSha256Hash());
         dto.setSize(entity.getSize());
         dto.setLastModified(entity.getLastModified());
-        dto.setVersionVectorJson(entity.getVersionVectorJson());
         dto.setOwnerId(entity.getOwnerId());
         dto.setSharedWith(entity.getSharedWith());
         dto.setStatus(entity.getStatus());
