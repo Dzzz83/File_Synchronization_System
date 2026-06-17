@@ -36,41 +36,6 @@ public class FileOperationService {
         httpClient.downloadFile(fileId, destination);
     }
 
-    public void uploadFile(Path localFilePath, UUID parentId) throws IOException {
-        ProgressService ps = ProgressService.getInstance();
-        String fileName = localFilePath.getFileName().toString();
-        Platform.runLater(() -> ps.startOperation("Uploading " + fileName));
-
-        try {
-            String fileId = UUID.randomUUID().toString();
-            long fileSize = Files.size(localFilePath);
-            long threshold = 5 * 1024 * 1024;
-
-            FileMetadataDto dto = FileMetadataDto.forUpload(
-                    fileId, fileName, fileSize,
-                    FileHasher.computeHash(localFilePath),
-                    Files.getLastModifiedTime(localFilePath).toInstant(),
-                    ownerId, folderId, parentId
-            );
-            httpClient.createMetadata(dto);
-
-            if (fileSize > threshold) {
-                httpClient.uploadLargeFile(fileId, localFilePath, folderId, (bytesUploaded, totalBytes) -> {
-                    Platform.runLater(() -> {
-                        ps.updateProgress(bytesUploaded, totalBytes);
-                        ps.updateMessage(String.format("Uploading %s: %d / %d KB",
-                                fileName, bytesUploaded / 1024, totalBytes / 1024));
-                    });
-                });
-            } else {
-                httpClient.uploadFile(fileId, localFilePath, folderId);
-                Platform.runLater(() -> ps.updateProgress(fileSize, fileSize));
-            }
-        } finally {
-            Platform.runLater(ps::finishOperation);
-        }
-    }
-
     public void editFile(FileMetadataDto fileDto, String newContent) throws IOException {
         ProgressService ps = ProgressService.getInstance();
         String fileName = fileDto.getRelativePath();

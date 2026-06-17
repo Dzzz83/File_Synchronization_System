@@ -138,7 +138,6 @@ public class SyncHttpClient {
             FileMetadataDto meta = getFileMetadata(fileId);
             totalBytes = meta.getSize();
         } catch (Exception e) {
-            // Non-critical, continue without progress tracking
         }
 
         Flux<DataBuffer> flux = addAuth(webClient.get().uri("/api/files/download/{fileId}", fileId))
