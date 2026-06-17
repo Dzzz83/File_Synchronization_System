@@ -1,22 +1,22 @@
 package com.filesync.client.files;
 
 import com.filesync.client.GUIApplication;
-import com.filesync.client.files.helper.BulkOperationHandler;
-import com.filesync.client.files.helper.ButtonPermissionManager;
-import com.filesync.client.files.helper.DragDropHandler;
-import com.filesync.client.files.helper.BreadcrumbManager;
 import com.filesync.client.dialog.*;
-import com.filesync.client.document.DocumentViewerDialog;
 import com.filesync.client.files.edit.EditDialogController;
+import com.filesync.client.files.util.BreadcrumbManager;
+import com.filesync.client.files.util.BulkOperationHandler;
+import com.filesync.client.files.util.ButtonPermissionManager;
+import com.filesync.client.files.util.DragDropHandler;
 import com.filesync.client.http.SyncHttpClient;
 import com.filesync.client.icon.FileIconResolver;
 import com.filesync.client.service.FileOperationService;
 import com.filesync.client.service.FolderUploadService;
 import com.filesync.client.service.ProgressService;
-import com.filesync.client.viewer.MediaPlayerDialog;
-import com.filesync.client.task.*;
-import com.filesync.client.viewer.ImageViewerDialog;
-import com.filesync.client.sync.SyncEngine;
+import com.filesync.client.sync.SyncScheduler;
+import com.filesync.client.task.DownloadTask;
+import com.filesync.client.task.EditTask;
+import com.filesync.client.task.RefreshTask;
+import com.filesync.client.task.UploadTask;
 import com.filesync.common.dto.FileMetadataDto;
 import com.filesync.common.dto.FileUpdateMessage;
 import com.filesync.common.enums.Permission;
@@ -27,37 +27,37 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
-import javafx.stage.*;
-import javafx.scene.Node;
+import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
+
+import static com.filesync.client.util.FileTypeHelper.isTextFile;
 
 public class FileExplorerController {
+
     @FXML private TableView<ServerFileItem> fileTable;
     @FXML private TableColumn<ServerFileItem, String> pathColumn;
     @FXML private TableColumn<ServerFileItem, Long> sizeColumn;
@@ -77,18 +77,19 @@ public class FileExplorerController {
     private String ownerId;
     private UUID folderId;
     private ExecutorService executorService;
-    private FileOperationService fileService;
+    private FileOperationService fileOpService;
 
     private static final Logger log = LoggerFactory.getLogger(FileExplorerController.class);
 
-    private ScheduledExecutorService syncScheduler = Executors.newSingleThreadScheduledExecutor();
-    private ScheduledFuture<?> syncFuture;
-    private volatile boolean autoSyncEnabled = false;
-
+    private SyncScheduler syncScheduler;
     private BreadcrumbManager breadcrumbManager;
     private BulkOperationHandler bulkOperationHandler;
     private DragDropHandler dragDropHandler;
+    private FileOpenHandler fileOpenHandler;
+
     private ObservableList<ServerFileItem> fileItems = FXCollections.observableArrayList();
+
+    // ==================== Initialization ====================
 
     public void initialize(SyncHttpClient httpClient, String ownerId, UUID folderId, UUID parentId, String rootDisplayName) {
         if (executorService == null) {
@@ -97,7 +98,7 @@ public class FileExplorerController {
         this.httpClient = httpClient;
         this.ownerId = ownerId;
         this.folderId = folderId;
-        this.fileService = new FileOperationService(httpClient, ownerId, folderId);
+        this.fileOpService = new FileOperationService(httpClient, ownerId, folderId);
 
         configureTableColumns();
         configureTableSelection();
@@ -107,11 +108,12 @@ public class FileExplorerController {
         breadcrumbManager.setCurrentParentId(parentId);
         breadcrumbManager.setOnExitSharedFolder(this::showSharedFoldersList);
 
-        bulkOperationHandler = new BulkOperationHandler(httpClient, fileService, this::refreshWindow, executorService);
+        bulkOperationHandler = new BulkOperationHandler(httpClient, fileOpService, this::refreshWindow, executorService);
         dragDropHandler = new DragDropHandler(fileTable, (fileIds, targetId) -> {
             List<String> names = fileIds.stream().map(id -> "item").collect(Collectors.toList());
             bulkOperationHandler.bulkMove(fileIds, names, targetId);
         });
+        fileOpenHandler = new FileOpenHandler(httpClient, executorService);
 
         new ButtonPermissionManager(fileTable, ProgressService.getInstance(), deleteButton, downloadButton);
 
@@ -119,60 +121,12 @@ public class FileExplorerController {
         newFileButton.disableProperty().bind(ps.busyProperty());
         newFolderButton.disableProperty().bind(ps.busyProperty());
 
-        refreshWindow();
-
+        syncScheduler = new SyncScheduler(httpClient, ownerId, folderId);
         if (httpClient != null && httpClient.getAuthToken() != null) {
-            startAutoSync();
+            syncScheduler.start();
         }
-    }
 
-    // ==================== Auto‑Sync Methods ====================
-
-    public void startAutoSync() {
-        if (autoSyncEnabled) return;
-        autoSyncEnabled = true;
-        syncFuture = syncScheduler.scheduleAtFixedRate(() -> {
-            if (!autoSyncEnabled) return;
-            try {
-                String basePath = System.getProperty("user.home") + "/FileSync";
-                String folderName = (folderId != null) ? "shared_" + folderId.toString() : "personal_" + ownerId;
-                Path syncPath = Paths.get(basePath, ownerId, folderName);
-                if (!Files.exists(syncPath)) Files.createDirectories(syncPath);
-
-                SyncEngine engine = new SyncEngine(httpClient, ownerId, syncPath.toString(), folderId);
-                engine.sync();
-            } catch (Exception e) {
-                log.error("Auto-sync failed", e);
-            }
-        }, 30, 300, TimeUnit.SECONDS);
-    }
-
-    public void stopAutoSync() {
-        autoSyncEnabled = false;
-        if (syncFuture != null) {
-            syncFuture.cancel(false);
-            syncFuture = null;
-        }
-    }
-
-    // ==================== UI Configuration ====================
-
-    private void configureTableColumns() {
-        iconColumn.setCellFactory(column -> new TableCell<>() {
-            @Override protected void updateItem(Node item, boolean empty) {
-                super.updateItem(item, empty);
-                setGraphic(empty || item == null ? null : item);
-            }
-        });
-        iconColumn.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().getIcon()));
-
-        // Lambda-based cell factories (more reliable than PropertyValueFactory)
-        pathColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getRelativePath()));
-        fileTypeColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getFileType()));
-        sizeColumn.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().getSize()));
-        lastModifiedColumn.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().getLastModified()));
-
-        fileTable.setItems(fileItems);
+        refreshWindow();
     }
 
     public void setExecutorService(ExecutorService executorService) {
@@ -181,10 +135,30 @@ public class FileExplorerController {
 
     public void setOnExitSharedFolder(Runnable callback) {
         breadcrumbManager.setOnExitSharedFolder(() -> {
-            stopAutoSync();
+            if (syncScheduler != null) syncScheduler.stop();
             breadcrumbManager.reset();
             callback.run();
         });
+    }
+
+    // ==================== UI Configuration ====================
+
+    private void configureTableColumns() {
+        iconColumn.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(Node item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty || item == null ? null : item);
+            }
+        });
+        iconColumn.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().getIcon()));
+
+        pathColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getRelativePath()));
+        fileTypeColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getFileType()));
+        sizeColumn.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().getSize()));
+        lastModifiedColumn.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().getLastModified()));
+
+        fileTable.setItems(fileItems);
     }
 
     private void configureTableSelection() {
@@ -200,120 +174,54 @@ public class FileExplorerController {
         });
     }
 
+    // ==================== Navigation (exposed to FileOpenHandler) ====================
+
+    public boolean canGoUp() {
+        return breadcrumbManager.canGoUp();
+    }
+
+    public boolean isSharedFolder() {
+        return folderId != null;
+    }
+
+    public void navigateUp() {
+        breadcrumbManager.navigateUp();
+        refreshWindow();
+    }
+
+    public void exitSharedFolder() {
+        breadcrumbManager.exitSharedFolder();
+    }
+
+    public void navigateInto(ServerFileItem item) {
+        breadcrumbManager.navigateInto(UUID.fromString(item.getFileId()), item.getRelativePath());
+        refreshWindow();
+    }
+
+    public void editFile(ServerFileItem item) {
+        fileTable.getSelectionModel().select(item);
+        handleEdit();
+    }
+
+    // ==================== UI Events ====================
+
     private void onRowDoubleClick(MouseEvent event) {
         if (event.getClickCount() == 2) {
             TableRow<ServerFileItem> row = (TableRow<ServerFileItem>) event.getSource();
             if (!row.isEmpty()) {
-                onItemDoubleClick(row.getItem());
+                Stage ownerStage = (Stage) fileTable.getScene().getWindow();
+                fileOpenHandler.openItem(row.getItem(), ownerStage, this);
             }
         }
     }
 
-    private void onItemDoubleClick(ServerFileItem item) {
-        if (item.isDirectory()) {
-            if ("..".equals(item.getRelativePath())) {
-                if (breadcrumbManager.canGoUp()) {
-                    breadcrumbManager.navigateUp();
-                    refreshWindow();
-                } else if (folderId != null) {
-                    breadcrumbManager.exitSharedFolder();
-                }
-            } else {
-                breadcrumbManager.navigateInto(UUID.fromString(item.getFileId()), item.getRelativePath());
-                refreshWindow();
-            }
-        } else if (isMediaFile(item.getRelativePath())) {
-            if (item.getUserPermission() == Permission.READ || item.getUserPermission() == Permission.WRITE) {
-                MediaPlayerDialog.show(item.getFileId(), item.getRelativePath(), httpClient);
-            } else {
-                showAlert("Permission Denied", "You don't have permission to play this file.");
-            }
-        } else if (isTextFile(item)) {
-            if (item.getUserPermission() != Permission.WRITE) {
-                showAlert("Permission Denied", "You don't have write permission to edit this file.");
-                return;
-            }
-            fileTable.getSelectionModel().select(item);
-            handleEdit();
-        } else if (isPdfOrDocx(item)) {
-            if (isDocx(item) && item.getUserPermission() != Permission.WRITE) {
-                showAlert("Permission Denied", "You need write permission to edit a DOCX file.");
-                return;
-            }
-            if (isPdf(item) && (item.getUserPermission() != Permission.READ && item.getUserPermission() != Permission.WRITE)) {
-                showAlert("Permission Denied", "You need read permission to view this PDF.");
-                return;
-            }
-            Stage stage = (Stage) fileTable.getScene().getWindow();
-            DocumentViewerDialog.show(stage, item, httpClient, executorService);
-        } else if (isImageFile(item)) {
-            Stage stage = (Stage) fileTable.getScene().getWindow();
-            ImageViewerDialog.show(stage, item, httpClient, executorService);
-        } else {
-            showAlert("Unsupported File Type", "This file type cannot be opened directly.");
-        }
+    @FXML
+    private void handleRefresh() {
+        refreshWindow();
     }
 
-    private boolean isTextFile(ServerFileItem item) {
-        if (item.isDirectory()) return false;
-        String path = item.getRelativePath();
-        return path != null && path.toLowerCase().endsWith(".txt");
-    }
-
-    private boolean isMediaFile(String fileName) {
-        int dot = fileName.lastIndexOf('.');
-        if (dot == -1) return false;
-        String ext = fileName.substring(dot + 1).toLowerCase();
-        return List.of("mp3", "wav", "mp4", "avi", "mov", "mkv").contains(ext);
-    }
-
-    private boolean isPdfOrDocx(ServerFileItem item) {
-        if (item.isDirectory()) return false;
-        String name = item.getRelativePath();
-        if (name == null) return false;
-        String lower = name.toLowerCase();
-        return lower.endsWith(".pdf") || lower.endsWith(".docx");
-    }
-
-    private boolean isPdf(ServerFileItem item) {
-        return item.getRelativePath().toLowerCase(Locale.ROOT).endsWith(".pdf");
-    }
-
-    private boolean isDocx(ServerFileItem item) {
-        return item.getRelativePath().toLowerCase(Locale.ROOT).endsWith(".docx");
-    }
-
-    private boolean isImageFile(ServerFileItem item) {
-        if (item.isDirectory()) return false;
-        String name = item.getRelativePath();
-        if (name == null) return false;
-        String lower = name.toLowerCase();
-        return lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") ||
-                lower.endsWith(".gif") || lower.endsWith(".bmp");
-    }
-
-    private void refreshWindow() {
-        ProgressService ps = ProgressService.getInstance();
-        ps.startOperation("Refreshing...");
-        boolean showParent = (breadcrumbManager.getCurrentParentId() != null || !breadcrumbManager.getPathStack().isEmpty() || folderId != null);
-        RefreshTask task = new RefreshTask(httpClient, ownerId, folderId, breadcrumbManager.getCurrentParentId(), fileItems, showParent);
-        task.setOnFailed(e -> {
-            ps.finishOperation();
-            showAlert("Error", "Failed to load files: " + task.getException().getMessage());
-        });
-        task.setOnSucceeded(e -> ps.finishOperation());
-        executorService.submit(task);
-    }
-
-    private void showSharedFoldersList() {
-        if (breadcrumbManager != null) breadcrumbManager.reset();
-    }
-
-    // ==================== File Operations ====================
-
-    @FXML private void handleRefresh() { refreshWindow(); }
-
-    @FXML private void handleDelete() {
+    @FXML
+    private void handleDelete() {
         ObservableList<ServerFileItem> selected = fileTable.getSelectionModel().getSelectedItems();
         if (selected.isEmpty()) {
             showAlert("No selection", "Please select at least one item to delete");
@@ -332,7 +240,8 @@ public class FileExplorerController {
         }
     }
 
-    @FXML private void handleDownload() {
+    @FXML
+    private void handleDownload() {
         ServerFileItem selected = fileTable.getSelectionModel().getSelectedItem();
         if (selected == null) {
             showAlert("No selection", "Please select a file to download");
@@ -352,12 +261,19 @@ public class FileExplorerController {
         ps.startOperation("Downloading " + selected.getRelativePath());
         DownloadTask task = new DownloadTask(httpClient, selected.getFileId(), saveFile.toPath(), selected.getRelativePath());
         task.messageProperty().addListener((obs, old, msg) -> ps.updateMessage(msg));
-        task.setOnSucceeded(e -> { ps.finishOperation(); showAlert("Download completed", "File saved to " + saveFile.getPath()); });
-        task.setOnFailed(e -> { ps.finishOperation(); showAlert("Download failed", task.getException().getMessage()); });
+        task.setOnSucceeded(e -> {
+            ps.finishOperation();
+            showAlert("Download completed", "File saved to " + saveFile.getPath());
+        });
+        task.setOnFailed(e -> {
+            ps.finishOperation();
+            showAlert("Download failed", task.getException().getMessage());
+        });
         executorService.submit(task);
     }
 
-    @FXML private void handleUpload() {
+    @FXML
+    private void handleUpload() {
         UploadChoiceDialog.show((Stage) fileTable.getScene().getWindow(), this::uploadFile, this::uploadFolder);
     }
 
@@ -372,8 +288,15 @@ public class FileExplorerController {
         UploadTask task = new UploadTask(httpClient, ownerId, folderId, breadcrumbManager.getCurrentParentId(), selectedFile.toPath());
         task.messageProperty().addListener((obs, old, msg) -> ps.updateMessage(msg));
         task.progressProperty().addListener((obs, old, val) -> ps.updateProgress(val.doubleValue(), 1.0));
-        task.setOnSucceeded(e -> { ps.finishOperation(); refreshWindow(); showAlert("Success", "Uploaded: " + selectedFile.getName()); });
-        task.setOnFailed(e -> { ps.finishOperation(); showAlert("Error", "Upload failed: " + task.getException().getMessage()); });
+        task.setOnSucceeded(e -> {
+            ps.finishOperation();
+            refreshWindow();
+            showAlert("Success", "Uploaded: " + selectedFile.getName());
+        });
+        task.setOnFailed(e -> {
+            ps.finishOperation();
+            showAlert("Error", "Upload failed: " + task.getException().getMessage());
+        });
         executorService.submit(task);
     }
 
@@ -384,7 +307,7 @@ public class FileExplorerController {
         if (selectedDir == null) return;
 
         int totalFiles;
-        try (Stream<Path> walk = Files.walk(selectedDir.toPath())) {
+        try (var walk = Files.walk(selectedDir.toPath())) {
             totalFiles = (int) walk.filter(Files::isRegularFile).count();
         } catch (IOException e) {
             showAlert("Error", "Failed to count files: " + e.getMessage());
@@ -402,14 +325,22 @@ public class FileExplorerController {
                         selectedDir.toPath(), msg -> {}, ps, finalTotalFiles
                 );
                 service.upload();
-                Platform.runLater(() -> { ps.finishOperation(); refreshWindow(); showAlert("Success", "Folder uploaded successfully."); });
+                Platform.runLater(() -> {
+                    ps.finishOperation();
+                    refreshWindow();
+                    showAlert("Success", "Folder uploaded successfully.");
+                });
             } catch (Exception e) {
-                Platform.runLater(() -> { ps.finishOperation(); showAlert("Folder Upload Error", e.getMessage()); });
+                Platform.runLater(() -> {
+                    ps.finishOperation();
+                    showAlert("Folder Upload Error", e.getMessage());
+                });
             }
         });
     }
 
-    @FXML private void handleEdit() {
+    @FXML
+    private void handleEdit() {
         ServerFileItem selected = fileTable.getSelectionModel().getSelectedItem();
         if (selected == null) {
             showAlert("No selection", "Please select a file to edit.");
@@ -421,6 +352,11 @@ public class FileExplorerController {
         }
         if (selected.getFileId() == null || selected.getFileId().trim().isEmpty()) {
             showAlert("Error", "Selected file has an invalid ID. Please refresh the list.");
+            return;
+        }
+
+        if (!isTextFile(selected)) {
+            showAlert("Unsupported", "Only .txt files can be edited with this tool.");
             return;
         }
 
@@ -439,7 +375,10 @@ public class FileExplorerController {
                 showAlert("Edit failed", "Could not open file: " + ex.getMessage());
             }
         });
-        editTask.setOnFailed(e -> { ps.finishOperation(); showAlert("Edit failed", editTask.getException().getMessage()); });
+        editTask.setOnFailed(e -> {
+            ps.finishOperation();
+            showAlert("Edit failed", editTask.getException().getMessage());
+        });
         executorService.submit(editTask);
     }
 
@@ -462,18 +401,18 @@ public class FileExplorerController {
             dialogStage.showAndWait();
 
             if (newContent[0] != null) {
-                FileMetadataDto currentMeta = fileService.getMetadata(selected.getFileId());
+                FileMetadataDto currentMeta = fileOpService.getMetadata(selected.getFileId());
                 if (!currentMeta.getSha256Hash().equals(selected.getSha256Hash())) {
                     handleConflict(selected, currentMeta, newContent[0]);
                 } else {
-                    fileService.editFile(currentMeta, newContent[0]);
+                    fileOpService.editFile(currentMeta, newContent[0]);
                     refreshWindow();
                     showAlert("Success", "File updated: " + selected.getRelativePath());
                 }
             }
             Files.deleteIfExists(tempFile);
         } catch (Exception ex) {
-            ex.printStackTrace();
+            log.error("Edit dialog error", ex);
             showAlert("Edit failed", ex.getMessage());
         }
     }
@@ -482,7 +421,7 @@ public class FileExplorerController {
         Path userTemp = Files.createTempFile("user_", ".tmp");
         Files.writeString(userTemp, newContent);
         try {
-            fileService.resolveConflict(currentMeta, userTemp);
+            fileOpService.resolveConflict(currentMeta, userTemp);
             refreshWindow();
             showAlert("Success", "Conflict resolved and file updated: " + selected.getRelativePath());
         } catch (Exception e) {
@@ -492,19 +431,10 @@ public class FileExplorerController {
         }
     }
 
-    @FXML private void handleNewFolder() {
+    @FXML
+    private void handleNewFolder() {
         Stage owner = (Stage) fileTable.getScene().getWindow();
         CreateFolderDialog.show(owner, httpClient, ownerId, folderId, breadcrumbManager.getCurrentParentId(), this::refreshWindow, executorService);
-    }
-
-    private void createMinimalDocx(Path targetFile) throws Exception {
-        try (XWPFDocument document = new XWPFDocument();
-             FileOutputStream out = new FileOutputStream(targetFile.toFile())) {
-            XWPFParagraph paragraph = document.createParagraph();
-            XWPFRun run = paragraph.createRun();
-            run.setText("");
-            document.write(out);
-        }
     }
 
     @FXML
@@ -534,17 +464,31 @@ public class FileExplorerController {
                 ps.finishOperation();
                 refreshWindow();
                 showAlert("Success", "File created: " + fullName);
-                try { Files.deleteIfExists(tempFile); } catch (IOException ignored) {}
+                try {
+                    Files.deleteIfExists(tempFile);
+                } catch (IOException ignored) {}
             });
             task.setOnFailed(e -> {
                 ps.finishOperation();
                 showAlert("Error", "Failed to create file: " + task.getException().getMessage());
-                try { Files.deleteIfExists(tempFile); } catch (IOException ignored) {}
+                try {
+                    Files.deleteIfExists(tempFile);
+                } catch (IOException ignored) {}
             });
             executorService.submit(task);
         } catch (Exception e) {
             ps.finishOperation();
             showAlert("Error", "Could not create temporary file: " + e.getMessage());
+        }
+    }
+
+    private void createMinimalDocx(Path targetFile) throws Exception {
+        try (XWPFDocument document = new XWPFDocument();
+             FileOutputStream out = new FileOutputStream(targetFile.toFile())) {
+            XWPFParagraph paragraph = document.createParagraph();
+            XWPFRun run = paragraph.createRun();
+            run.setText("");
+            document.write(out);
         }
     }
 
@@ -560,17 +504,46 @@ public class FileExplorerController {
         }
     }
 
-    @FXML private void handleLogout() {
-        stopAutoSync();
-        fileService.logout();
-        fileService.close();
+    @FXML
+    private void handleLogout() {
+        if (syncScheduler != null) syncScheduler.shutdown();
+        fileOpService.logout();
+        fileOpService.close();
         Stage stage = (Stage) fileTable.getScene().getWindow();
         stage.close();
         try {
             new GUIApplication().start(new Stage());
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to restart application", e);
         }
+    }
+
+    // ==================== Utility Methods ====================
+
+    private void refreshWindow() {
+        ProgressService ps = ProgressService.getInstance();
+        ps.startOperation("Refreshing...");
+        boolean showParent = (breadcrumbManager.getCurrentParentId() != null || !breadcrumbManager.getPathStack().isEmpty() || folderId != null);
+        RefreshTask task = new RefreshTask(httpClient, ownerId, folderId, breadcrumbManager.getCurrentParentId(), fileItems, showParent);
+        task.setOnFailed(e -> {
+            ps.finishOperation();
+            showAlert("Error", "Failed to load files: " + task.getException().getMessage());
+        });
+        task.setOnSucceeded(e -> ps.finishOperation());
+        executorService.submit(task);
+    }
+
+    public void refreshWindowSilent() {
+        boolean showParent = (breadcrumbManager.getCurrentParentId() != null ||
+                !breadcrumbManager.getPathStack().isEmpty() || folderId != null);
+        RefreshTask task = new RefreshTask(httpClient, ownerId, folderId,
+                breadcrumbManager.getCurrentParentId(), fileItems, showParent);
+        task.setOnFailed(e -> log.warn("Silent refresh failed", task.getException()));
+        executorService.submit(task);
+    }
+
+    private void showSharedFoldersList() {
+        if (breadcrumbManager != null) breadcrumbManager.reset();
     }
 
     private void showAlert(String title, String message) {
@@ -593,17 +566,6 @@ public class FileExplorerController {
         return String.format("%.1f %s", converted, units[unitIndex]);
     }
 
-    // ==================== Background Refresh ====================
-
-    public void refreshWindowSilent() {
-        boolean showParent = (breadcrumbManager.getCurrentParentId() != null ||
-                !breadcrumbManager.getPathStack().isEmpty() || folderId != null);
-        RefreshTask task = new RefreshTask(httpClient, ownerId, folderId,
-                breadcrumbManager.getCurrentParentId(), fileItems, showParent);
-        task.setOnFailed(e -> log.warn("Silent refresh failed", task.getException()));
-        executorService.submit(task);
-    }
-
     // ==================== WebSocket Update Handler ====================
 
     public void handleFileUpdate(FileUpdateMessage msg) {
@@ -614,8 +576,7 @@ public class FileExplorerController {
 
                 if ("DELETED".equals(eventType)) {
                     fileItems.removeIf(item -> item.getRelativePath().equals(relativePath));
-
-                    // Delete local file if it exists
+                    // Delete local file if exists
                     try {
                         String basePath = System.getProperty("user.home") + "/FileSync";
                         String folderName = (folderId != null) ? "shared_" + folderId.toString() : "personal_" + ownerId;
@@ -628,10 +589,7 @@ public class FileExplorerController {
                     }
 
                 } else if ("CREATED_OR_UPDATED".equals(eventType)) {
-                    // Remove any existing item with same path
                     fileItems.removeIf(item -> item.getRelativePath().equals(relativePath));
-
-                    // Create placeholder item (will be corrected by background refresh)
                     ServerFileItem newItem = new ServerFileItem(
                             msg.getFileId(),
                             relativePath,
@@ -647,12 +605,11 @@ public class FileExplorerController {
                     fileItems.add(newItem);
                 }
 
-                // Force UI update by replacing the entire list
+                // Force UI update
                 ObservableList<ServerFileItem> freshList = FXCollections.observableArrayList(fileItems);
                 fileTable.setItems(freshList);
                 fileItems = freshList;
 
-                // Extra force redraw
                 if (!fileTable.getColumns().isEmpty()) {
                     TableColumn<ServerFileItem, ?> col = fileTable.getColumns().get(0);
                     col.setVisible(false);
@@ -661,7 +618,7 @@ public class FileExplorerController {
                 fileTable.refresh();
                 fileTable.requestLayout();
 
-                // Only refresh for CREATED_OR_UPDATED – for DELETED the local removal is enough
+                // Background refresh only for CREATED_OR_UPDATED
                 if ("CREATED_OR_UPDATED".equals(eventType)) {
                     refreshWindowSilent();
                 }
@@ -670,5 +627,11 @@ public class FileExplorerController {
                 log.error("Error processing file update", e);
             }
         });
+    }
+
+    public void stopAutoSync() {
+        if (syncScheduler != null) {
+            syncScheduler.stop();
+        }
     }
 }

@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.filesync.client.conflict.ConflictResolver;
 import com.filesync.client.http.SyncHttpClient;
-import com.filesync.client.util.FolderScanner;
 import com.filesync.common.dto.FileMetadataDto;
 import com.filesync.common.dto.SyncActionDto;
 import com.filesync.common.dto.SyncRequestDto;
@@ -14,7 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;

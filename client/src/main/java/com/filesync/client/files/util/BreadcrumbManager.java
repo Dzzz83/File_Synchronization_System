@@ -1,4 +1,4 @@
-package com.filesync.client.files.helper;
+package com.filesync.client.files.util;
 
 import javafx.scene.control.Label;
 

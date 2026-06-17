@@ -1,4 +1,4 @@
-package com.filesync.client.files.helper;
+package com.filesync.client.files.util;
 
 import com.filesync.client.files.ServerFileItem;
 import com.filesync.client.service.ProgressService;
