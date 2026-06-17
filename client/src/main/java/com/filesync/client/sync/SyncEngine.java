@@ -72,18 +72,29 @@ public class SyncEngine {
 
             switch (actionDto.getAction()) {
                 case UPLOAD:
-                    file.setOwnerId(ownerId);
-                    file.setFolderId(folderId);
-                    httpClient.createMetadata(file);
-                    long fileSize = Files.size(localPath);
-                    long THRESHOLD = 5 * 1024 * 1024;
-                    if (fileSize > THRESHOLD) {
-                        log.info("Large file detected, using chunked upload for: {}", file.getRelativePath());
-                        httpClient.uploadLargeFile(file.getFileId(), localPath, folderId, null);
-                    } else {
-                        httpClient.uploadFile(file.getFileId(), localPath, folderId);
+                    try {
+                        file.setOwnerId(ownerId);
+                        file.setFolderId(folderId);
+                        httpClient.createMetadata(file);
+
+                        long fileSize = Files.size(localPath);
+                        long THRESHOLD = 5 * 1024 * 1024;
+                        if (fileSize > THRESHOLD) {
+                            httpClient.uploadLargeFile(file.getFileId(), localPath, folderId, null);
+                        } else {
+                            httpClient.uploadFile(file.getFileId(), localPath, folderId);
+                        }
+                        log.info("Uploaded {}", file.getRelativePath());
+                    } catch (Exception e) {
+                        // Compensating transaction: roll back the metadata
+                        log.error("Upload failed for {}, deleting metadata to restore consistency", file.getRelativePath(), e);
+                        try {
+                            httpClient.deleteFile(file.getFileId(), folderId);
+                        } catch (Exception deleteEx) {
+                            log.error("Failed to delete orphaned metadata for fileId {}: {}", file.getFileId(), deleteEx.getMessage());
+                        }
+                        throw e;
                     }
-                    log.info("Uploaded {}", file.getRelativePath());
                     break;
 
                 case DOWNLOAD:
