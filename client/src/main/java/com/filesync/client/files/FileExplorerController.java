@@ -156,8 +156,38 @@ public class FileExplorerController {
 
         pathColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getRelativePath()));
         fileTypeColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getFileType()));
+
+        // Size column – format to human‑readable
         sizeColumn.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().getSize()));
+        sizeColumn.setCellFactory(column -> new TableCell<ServerFileItem, Long>() {
+            @Override
+            protected void updateItem(Long size, boolean empty) {
+                super.updateItem(size, empty);
+                if (empty || size == null) {
+                    setText(null);
+                } else {
+                    setText(formatFileSize(size));
+                }
+            }
+        });
+
+        // Last modified column – format to readable date/time
         lastModifiedColumn.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().getLastModified()));
+        lastModifiedColumn.setCellFactory(column -> new TableCell<ServerFileItem, Instant>() {
+            @Override
+            protected void updateItem(Instant instant, boolean empty) {
+                super.updateItem(instant, empty);
+                if (empty || instant == null) {
+                    setText(null);
+                } else {
+                    // Format with system default time zone and pattern
+                    java.time.format.DateTimeFormatter formatter =
+                            java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                                    .withZone(java.time.ZoneId.systemDefault());
+                    setText(formatter.format(instant));
+                }
+            }
+        });
 
         fileTable.setItems(fileItems);
     }
