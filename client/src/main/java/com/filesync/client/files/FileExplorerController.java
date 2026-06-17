@@ -87,7 +87,8 @@ public class FileExplorerController {
     private DragDropHandler dragDropHandler;
     private FileOpenHandler fileOpenHandler;
 
-    private ObservableList<ServerFileItem> fileItems = FXCollections.observableArrayList();
+    // Single, never reassigned list – fixes the earlier race condition
+    private final ObservableList<ServerFileItem> fileItems = FXCollections.observableArrayList();
 
     // ==================== Initialization ====================
 
@@ -518,29 +519,89 @@ public class FileExplorerController {
         }
     }
 
-    // ==================== Utility Methods ====================
+    // ==================== Refresh Logic ====================
 
     private void refreshWindow() {
-        ProgressService ps = ProgressService.getInstance();
-        ps.startOperation("Refreshing...");
-        boolean showParent = (breadcrumbManager.getCurrentParentId() != null || !breadcrumbManager.getPathStack().isEmpty() || folderId != null);
-        RefreshTask task = new RefreshTask(httpClient, ownerId, folderId, breadcrumbManager.getCurrentParentId(), fileItems, showParent);
-        task.setOnFailed(e -> {
-            ps.finishOperation();
-            showAlert("Error", "Failed to load files: " + task.getException().getMessage());
-        });
-        task.setOnSucceeded(e -> ps.finishOperation());
-        executorService.submit(task);
+        doRefresh(true);
     }
 
     public void refreshWindowSilent() {
+        doRefresh(false);
+    }
+
+    private void doRefresh(boolean showUserFeedback) {
+        ProgressService ps = ProgressService.getInstance();
+        if (showUserFeedback) {
+            ps.startOperation("Refreshing...");
+        }
+
         boolean showParent = (breadcrumbManager.getCurrentParentId() != null ||
                 !breadcrumbManager.getPathStack().isEmpty() || folderId != null);
-        RefreshTask task = new RefreshTask(httpClient, ownerId, folderId,
-                breadcrumbManager.getCurrentParentId(), fileItems, showParent);
-        task.setOnFailed(e -> log.warn("Silent refresh failed", task.getException()));
+
+        RefreshTask task = new RefreshTask(
+                httpClient, ownerId, folderId, breadcrumbManager.getCurrentParentId(),
+                fileItems, showParent
+        );
+
+        if (showUserFeedback) {
+            task.setOnSucceeded(e -> ps.finishOperation());
+            task.setOnFailed(e -> {
+                ps.finishOperation();
+                showAlert("Error", "Failed to load files: " + task.getException().getMessage());
+            });
+        } else {
+            task.setOnFailed(e -> log.warn("Silent refresh failed", task.getException()));
+        }
+
         executorService.submit(task);
     }
+
+    // ==================== WebSocket Update Handler (MINIMAL FIX) ====================
+
+    public void handleFileUpdate(FileUpdateMessage msg) {
+        Platform.runLater(() -> {
+            try {
+                String eventType = msg.getEventType();
+                String relativePath = msg.getRelativePath();
+
+                if ("DELETED".equals(eventType)) {
+                    // Remove from the list immediately – no refresh needed to avoid race
+                    fileItems.removeIf(item -> item.getRelativePath().equals(relativePath));
+
+                    // Delete local file if it exists
+                    try {
+                        String basePath = System.getProperty("user.home") + "/FileSync";
+                        String folderName = (folderId != null) ? "shared_" + folderId.toString() : "personal_" + ownerId;
+                        Path filePath = Paths.get(basePath, ownerId, folderName, relativePath);
+                        if (Files.exists(filePath)) {
+                            Files.delete(filePath);
+                        }
+                    } catch (IOException e) {
+                        log.warn("Could not delete local file: {}", relativePath, e);
+                    }
+
+                    // Force UI refresh (without reassigning the list)
+                    fileTable.refresh();
+
+                } else if ("CREATED_OR_UPDATED".equals(eventType)) {
+                    // For creation/update, we still need full metadata from server.
+                    // The server should have committed, so a silent refresh is safe.
+                    refreshWindowSilent();
+                }
+
+            } catch (Exception e) {
+                log.error("Error processing file update", e);
+            }
+        });
+    }
+
+    public void stopAutoSync() {
+        if (syncScheduler != null) {
+            syncScheduler.stop();
+        }
+    }
+
+    // ==================== Utility Methods ====================
 
     private void showSharedFoldersList() {
         if (breadcrumbManager != null) breadcrumbManager.reset();
@@ -564,74 +625,5 @@ public class FileExplorerController {
             unitIndex++;
         }
         return String.format("%.1f %s", converted, units[unitIndex]);
-    }
-
-    // ==================== WebSocket Update Handler ====================
-
-    public void handleFileUpdate(FileUpdateMessage msg) {
-        Platform.runLater(() -> {
-            try {
-                String eventType = msg.getEventType();
-                String relativePath = msg.getRelativePath();
-
-                if ("DELETED".equals(eventType)) {
-                    fileItems.removeIf(item -> item.getRelativePath().equals(relativePath));
-                    // Delete local file if exists
-                    try {
-                        String basePath = System.getProperty("user.home") + "/FileSync";
-                        String folderName = (folderId != null) ? "shared_" + folderId.toString() : "personal_" + ownerId;
-                        Path filePath = Paths.get(basePath, ownerId, folderName, relativePath);
-                        if (Files.exists(filePath)) {
-                            Files.delete(filePath);
-                        }
-                    } catch (IOException e) {
-                        log.warn("Could not delete local file: {}", relativePath, e);
-                    }
-
-                } else if ("CREATED_OR_UPDATED".equals(eventType)) {
-                    fileItems.removeIf(item -> item.getRelativePath().equals(relativePath));
-                    ServerFileItem newItem = new ServerFileItem(
-                            msg.getFileId(),
-                            relativePath,
-                            msg.getSize(),
-                            Instant.now(),
-                            null,
-                            folderId,
-                            msg.isDirectory(),
-                            null,
-                            FileIconResolver.getIconForFile(relativePath),
-                            Permission.WRITE
-                    );
-                    fileItems.add(newItem);
-                }
-
-                // Force UI update
-                ObservableList<ServerFileItem> freshList = FXCollections.observableArrayList(fileItems);
-                fileTable.setItems(freshList);
-                fileItems = freshList;
-
-                if (!fileTable.getColumns().isEmpty()) {
-                    TableColumn<ServerFileItem, ?> col = fileTable.getColumns().get(0);
-                    col.setVisible(false);
-                    col.setVisible(true);
-                }
-                fileTable.refresh();
-                fileTable.requestLayout();
-
-                // Background refresh only for CREATED_OR_UPDATED
-                if ("CREATED_OR_UPDATED".equals(eventType)) {
-                    refreshWindowSilent();
-                }
-
-            } catch (Exception e) {
-                log.error("Error processing file update", e);
-            }
-        });
-    }
-
-    public void stopAutoSync() {
-        if (syncScheduler != null) {
-            syncScheduler.stop();
-        }
     }
 }

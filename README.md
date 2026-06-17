@@ -36,319 +36,160 @@ The project is split into three Maven modules:
 
 ```
 File_Synchronization_System/
-├───── .env
-├───── .gitignore
-
-├───── client
-│     ├───── dependency-reduced-pom.xml
-│     ├───── pom.xml
-│     ├───── src
-│     │     ├───── main
-│     │     │     ├───── java
-│     │     │     │     └───── com
-│     │     │     │           └───── filesync
-│     │     │     │                 └───── client
-│     │     │     │                       ├───── auth
-│     │     │     │                       │     ├───── ConfirmResetController.java
-│     │     │     │                       │     ├───── ForgotPasswordController.java
-│     │     │     │                       │     ├───── RequestResetController.java
-│     │     │     │                       │     └───── StartupController.java
-│     │     │     │                       ├───── conflict
-│     │     │     │                       │     ├───── ConflictController.java
-│     │     │     │                       │     └───── ConflictResolver.java
-│     │     │     │                       ├───── controller
-│     │     │     │                       │     ├───── ChatController.java
-│     │     │     │                       │     ├───── helper
-│     │     │     │                       │     │     ├───── BreadcrumbManager.java
-│     │     │     │                       │     │     ├───── BulkOperationHandler.java
-│     │     │     │                       │     │     ├───── ButtonPermissionManager.java
-│     │     │     │                       │     │     ├───── DragDropHandler.java
-│     │     │     │                       │     │     └───── PermissionGuard.java
-│     │     │     │                       │     ├───── ImageViewerController.java
-│     │     │     │                       │     └───── ServerAdminApp.java
-│     │     │     │                       ├───── db
-│     │     │     │                       │     └───── LocalMetadataRepository.java
-│     │     │     │                       ├───── dialog
-│     │     │     │                       │     ├───── AddMemberDialog.java
-│     │     │     │                       │     ├───── ConfirmationDialog.java
-│     │     │     │                       │     ├───── ConfirmationDialogController.java
-│     │     │     │                       │     ├───── CreateFileDialog.java
-│     │     │     │                       │     ├───── CreateFileDialogController.java
-│     │     │     │                       │     ├───── CreateFolderDialog.java
-│     │     │     │                       │     ├───── CreateSharedFolderDialog.java
-│     │     │     │                       │     ├───── ImageViewerDialog.java
-│     │     │     │                       │     ├───── MediaPlayerDialog.java
-│     │     │     │                       │     ├───── PendingRequestsDialog.java
-│     │     │     │                       │     ├───── ProgressDialog.java
-│     │     │     │                       │     ├───── ProgressDialogController.java
-│     │     │     │                       │     ├───── RequestAccessDialog.java
-│     │     │     │                       │     ├───── UploadChoiceController.java
-│     │     │     │                       │     └───── UploadChoiceDialog.java
-│     │     │     │                       ├───── document
-│     │     │     │                       │     ├───── DocumentConverter.java
-│     │     │     │                       │     ├───── DocumentViewerDialog.java
-│     │     │     │                       │     ├───── DocxEditorController.java
-│     │     │     │                       │     └───── PdfViewerController.java
-│     │     │     │                       ├───── file
-│     │     │     │                       │     ├───── FileHasher.java
-│     │     │     │                       │     └───── FolderScanner.java
-│     │     │     │                       ├───── files
-│     │     │     │                       │     ├───── CreateFolderController.java
-│     │     │     │                       │     ├───── delete
-│     │     │     │                       │     ├───── download
-│     │     │     │                       │     ├───── edit
-│     │     │     │                       │     │     └───── EditDialogController.java
-│     │     │     │                       │     ├───── FileExplorerController.java
-│     │     │     │                       │     ├───── helper
-│     │     │     │                       │     ├───── move
-│     │     │     │                       │     ├───── ServerFileItem.java
-│     │     │     │                       │     └───── upload
-│     │     │     │                       ├───── http
-│     │     │     │                       │     ├───── ChunkedUploader.java
-│     │     │     │                       │     └───── SyncHttpClient.java
-│     │     │     │                       ├───── icon
-│     │     │     │                       │     └───── FileIconResolver.java
-│     │     │     │                       ├───── media
-│     │     │     │                       │     └───── MediaPlayerController.java
-│     │     │     │                       ├───── model
-│     │     │     │                       │     ├───── DragData.java
-│     │     │     │                       │     └───── FileTransferData.java
-│     │     │     │                       ├───── service
-│     │     │     │                       │     ├───── FileOperationService.java
-│     │     │     │                       │     ├───── FolderUploadService.java
-│     │     │     │                       │     ├───── GlobalProgressController.java
-│     │     │     │                       │     ├───── PasswordResetService.java
-│     │     │     │                       │     └───── ProgressService.java
-│     │     │     │                       ├───── SessionManager.java
-│     │     │     │                       ├───── shared
-│     │     │     │                       │     ├───── create
-│     │     │     │                       │     │     └───── CreateSharedFolderController.java
-│     │     │     │                       │     ├───── members
-│     │     │     │                       │     │     └───── AddMemberController.java
-│     │     │     │                       │     ├───── requests
-│     │     │     │                       │     │     ├───── ApproveRequestsController.java
-│     │     │     │                       │     │     └───── RequestAccessController.java
-│     │     │     │                       │     └───── SharedFoldersController.java
-│     │     │     │                       ├───── sync
-│     │     │     │                       │     └───── SyncEngine.java
-│     │     │     │                       ├───── task
-│     │     │     │                       │     ├───── DeleteTask.java
-│     │     │     │                       │     ├───── DownloadTask.java
-│     │     │     │                       │     ├───── EditTask.java
-│     │     │     │                       │     ├───── MoveTask.java
-│     │     │     │                       │     ├───── RefreshTask.java
-│     │     │     │                       │     └───── UploadTask.java
-│     │     │     │                       ├───── util
-│     │     │     │                       │     └───── ProjectStructurePrinter.java
-│     │     │     │                       └───── websocket
-│     │     │     │                             └───── ChatClient.java
-│     │     │     └───── resources
-│     │     │           └───── com
-│     │     │                 └───── filesync
-│     │     │                       └───── client
-│     │     │                             ├───── auth
-│     │     │                             │     ├───── confirm-reset.fxml
-│     │     │                             │     ├───── send-reset-code.fxml
-│     │     │                             │     ├───── startup-dialog.fxml
-│     │     │                             │     └───── startup.css
-│     │     │                             ├───── conflict
-│     │     │                             │     └───── conflict-view.fxml
-│     │     │                             ├───── css
-│     │     │                             │     └───── styles.css
-│     │     │                             ├───── dialog
-│     │     │                             │     ├───── confirmation-dialog.fxml
-│     │     │                             │     ├───── create-file-dialog.fxml
-│     │     │                             │     ├───── create-folder-dialog.fxml
-│     │     │                             │     ├───── General-design.css
-│     │     │                             │     ├───── image-viewer.fxml
-│     │     │                             │     ├───── new-folder-dialog.fxml
-│     │     │                             │     ├───── progress-dialog.fxml
-│     │     │                             │     └───── upload-choice-dialog.fxml
-│     │     │                             ├───── document
-│     │     │                             │     ├───── docx-editor.fxml
-│     │     │                             │     └───── pdf-viewer.fxml
-│     │     │                             ├───── files
-│     │     │                             │     ├───── edit
-│     │     │                             │     │     └───── edit-dialog.fxml
-│     │     │                             │     └───── server-file-list.fxml
-│     │     │                             ├───── icons
-│     │     │                             │     ├───── audio.png
-│     │     │                             │     ├───── doc.png
-│     │     │                             │     ├───── file.png
-│     │     │                             │     ├───── image.png
-│     │     │                             │     ├───── pdf.png
-│     │     │                             │     ├───── text.png
-│     │     │                             │     └───── video.png
-│     │     │                             ├───── media
-│     │     │                             │     └───── media-player.fxml
-│     │     │                             ├───── service
-│     │     │                             │     └───── global-progress.fxml
-│     │     │                             └───── shared
-│     │     │                                   ├───── chat-view.fxml
-│     │     │                                   ├───── create
-│     │     │                                   │     └───── create-shared-folder.fxml
-│     │     │                                   ├───── members
-│     │     │                                   │     └───── add-member-dialog.fxml
-│     │     │                                   ├───── requests
-│     │     │                                   │     ├───── pending-requests-dialog.fxml
-│     │     │                                   │     └───── request-access-dialog.fxml
-│     │     │                                   └───── shared-folders-view.fxml
-│     │     └───── test
-│     │           └───── java
-│
-├───── common
-│     ├───── pom.xml
-│     ├───── src
-│     │     ├───── main
-│     │     │     ├───── java
-│     │     │     │     └───── com
-│     │     │     │           └───── filesync
-│     │     │     │                 └───── common
-│     │     │     │                       ├───── dto
-│     │     │     │                       │     ├───── ChatMessage.java
-│     │     │     │                       │     ├───── ChunkMetadataDto.java
-│     │     │     │                       │     ├───── ConflictContextDto.java
-│     │     │     │                       │     ├───── CreateFolderDto.java
-│     │     │     │                       │     ├───── CreateFolderRequest.java
-│     │     │     │                       │     ├───── EditSessionDto.java
-│     │     │     │                       │     ├───── FileMetadataDto.java
-│     │     │     │                       │     ├───── ForgotPasswordRequestDto.java
-│     │     │     │                       │     ├───── MemberDto.java
-│     │     │     │                       │     ├───── ResetPasswordRequestDto.java
-│     │     │     │                       │     ├───── SharedFolderDto.java
-│     │     │     │                       │     ├───── SyncActionDto.java
-│     │     │     │                       │     ├───── SyncRequestDto.java
-│     │     │     │                       │     ├───── SyncResponseDto.java
-│     │     │     │                       │     ├───── UploadStatusDto.java
-│     │     │     │                       │     └───── UserSearchResult.java
-│     │     │     │                       ├───── enums
-│     │     │     │                       │     ├───── Permission.java
-│     │     │     │                       │     ├───── SyncActionType.java
-│     │     │     │                       │     └───── SyncStatus.java
-│     │     │     │                       └───── model
-│     │     │     │                             └───── VersionVector.java
-│     │     │     └───── resources
-│     │     └───── test
-│     │           └───── java
-│
-├───── context.md
-├───── data
-│     └───── filesyncdb.mv.db
-├───── Dockerfile
-├───── mvnw
-├───── mvnw.cmd
-├───── pom.xml
-├───── README.md
-├───── run-servers.bat
-│
-└───── server
-      ├───── pom.xml
-      ├───── src
-      │     └───── main
-      │           ├───── java
-      │           │     └───── com
-      │           │           └───── filesync
-      │           │                 └───── server
-      │           │                       ├───── config
-      │           │                       │     ├───── ManualRabbitConfig.java
-      │           │                       │     ├───── R2Config.java
-      │           │                       │     ├───── RabbitMQConfig.java
-      │           │                       │     └───── SecurityConfig.java
-      │           │                       ├───── conflict
-      │           │                       │     ├───── detector
-      │           │                       │     │     └───── ConflictDetector.java
-      │           │                       │     └───── strategy
-      │           │                       │           ├───── ConflictStrategyFactory.java
-      │           │                       │           ├───── ConflictStrategyInterface.java
-      │           │                       │           ├───── ServerStrategyImplement.java
-      │           │                       │           └───── UserStrategyImplement.java
-      │           │                       ├───── consumer
-      │           │                       │     └───── SyncConsumer.java
-      │           │                       ├───── controller
-      │           │                       │     ├───── AuthController.java
-      │           │                       │     ├───── ChunkUploadController.java
-      │           │                       │     ├───── FileController.java
-      │           │                       │     ├───── FileTransferController.java
-      │           │                       │     ├───── HealthController.java
-      │           │                       │     ├───── SharedFolderController.java
-      │           │                       │     ├───── SyncController.java
-      │           │                       │     └───── UserController.java
-      │           │                       ├───── debug
-      │           │                       ├───── domain
-      │           │                       │     ├───── ChatMessageEntity.java
-      │           │                       │     ├───── FileMetadataEntity.java
-      │           │                       │     ├───── SharedFolderEntity.java
-      │           │                       │     ├───── SharedFolderMemberEntity.java
-      │           │                       │     ├───── SharedFolderRequestEntity.java
-      │           │                       │     ├───── SyncTask.java
-      │           │                       │     └───── User.java
-      │           │                       ├───── dto
-      │           │                       │     └───── SyncMessage.java
-      │           │                       ├───── filter
-      │           │                       │     └───── RateLimitFilter.java
-      │           │                       ├───── repository
-      │           │                       │     ├───── ChatMessageRepository.java
-      │           │                       │     ├───── FileMetadataRepository.java
-      │           │                       │     ├───── SharedFolderMemberRepository.java
-      │           │                       │     ├───── SharedFolderRepository.java
-      │           │                       │     ├───── SharedFolderRequestRepository.java
-      │           │                       │     ├───── SyncTaskRepository.java
-      │           │                       │     └───── UserRepository.java
-      │           │                       ├───── security
-      │           │                       │     ├───── JwtAuthenticationFilter.java
-      │           │                       │     └───── JwtService.java
-      │           │                       ├───── ServerApplication.java
-      │           │                       ├───── service
-      │           │                       │     ├───── EditLogicInterface.java
-      │           │                       │     ├───── EmailService.java
-      │           │                       │     ├───── FileContentService.java
-      │           │                       │     ├───── FileMetaDataService.java
-      │           │                       │     ├───── HashCalculator.java
-      │           │                       │     ├───── PermissionService.java
-      │           │                       │     ├───── SharedFolderService.java
-      │           │                       │     ├───── SyncTaskStatusService.java
-      │           │                       │     └───── UserFindService.java
-      │           │                       ├───── storage
-      │           │                       │     ├───── ChunkStorageService.java
-      │           │                       │     ├───── FileStorage.java
-      │           │                       │     ├───── LocalDiskChunkStorage.java
-      │           │                       │     ├───── LocalFileStorage.java
-      │           │                       │     ├───── R2ChunkStorageService.java
-      │           │                       │     ├───── R2StorageService.java
-      │           │                       │     └───── RedisUploadStateService.java
-      │           │                       ├───── web
-      │           │                       │     ├───── FileBrowserController.java
-      │           │                       │     └───── TestController.java
-      │           │                       └───── websocket
-      │           │                             ├───── AuthChannelInterceptor.java
-      │           │                             ├───── config
-      │           │                             │     └───── WebSocketConfig.java
-      │           │                             ├───── controller
-      │           │                             │     └───── ChatController.java
-      │           │                             └───── service
-      │           │                                   ├───── ActiveUserService.java
-      │           │                                   └───── RedisActiveUserService.java
-      │           └───── resources
-      │                 ├───── application.properties
-      │                 ├───── db
-      │                 │     └───── migration
-      │                 │           ├───── V1__initial_schema.sql
-      │                 │           ├───── V2__add_shared_folders.sql
-      │                 │           ├───── V3__add_unique_constraint_shared_folder_name.sql
-      │                 │           ├───── V4__add_directory_support.sql
-      │                 │           ├───── V5__compute_folder_sizes.sql
-      │                 │           ├───── V6__add_requested_permission_to_requests.sql
-      │                 │           └───── V7__create_chat_messages.sql
-      │                 └───── templates
-      │                       ├───── conflict.html
-      │                       ├───── edit.html
-      │                       ├───── files.html
-      │                       ├───── forgot-password.html
-      │                       ├───── login.html
-      │                       ├───── register.html
-      │                       ├───── reset-password.html
-      │                       └───── upload.html
-            
+├── .env
+├── .gitignore
+├── client/
+│   ├── dependency-reduced-pom.xml
+│   ├── pom.xml
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── java/
+│   │   │   │   └── com/filesync/client/
+│   │   │   │       ├── auth/
+│   │   │   │       │   ├── ConfirmResetController.java
+│   │   │   │       │   ├── ForgotPasswordController.java
+│   │   │   │       │   ├── RequestResetController.java
+│   │   │   │       │   ├── SessionManager.java
+│   │   │   │       │   └── StartupController.java
+│   │   │   │       ├── chat/
+│   │   │   │       │   ├── ChatClient.java
+│   │   │   │       │   └── ChatController.java
+│   │   │   │       ├── conflict/
+│   │   │   │       │   ├── ConflictController.java
+│   │   │   │       │   └── ConflictResolver.java
+│   │   │   │       ├── dialog/
+│   │   │   │       │   ├── AddMemberDialog.java
+│   │   │   │       │   ├── ConfirmationDialog.java
+│   │   │   │       │   ├── ConfirmationDialogController.java
+│   │   │   │       │   ├── CreateFileDialog.java
+│   │   │   │       │   ├── CreateFileDialogController.java
+│   │   │   │       │   ├── CreateFolderController.java
+│   │   │   │       │   ├── CreateFolderDialog.java
+│   │   │   │       │   ├── CreateSharedFolderDialog.java
+│   │   │   │       │   ├── PendingRequestsDialog.java
+│   │   │   │       │   ├── ProgressDialog.java
+│   │   │   │       │   ├── ProgressDialogController.java
+│   │   │   │       │   ├── RequestAccessDialog.java
+│   │   │   │       │   ├── UploadChoiceController.java
+│   │   │   │       │   └── UploadChoiceDialog.java
+│   │   │   │       ├── document/
+│   │   │   │       │   ├── DocumentConverter.java
+│   │   │   │       │   ├── DocumentViewerDialog.java
+│   │   │   │       │   ├── DocxEditorController.java
+│   │   │   │       │   └── PdfViewerController.java
+│   │   │   │       ├── files/
+│   │   │   │       │   ├── edit/
+│   │   │   │       │   │   └── EditDialogController.java
+│   │   │   │       │   ├── FileExplorerController.java
+│   │   │   │       │   ├── FileOpenHandler.java
+│   │   │   │       │   ├── ServerFileItem.java
+│   │   │   │       │   └── util/
+│   │   │   │       │       ├── BreadcrumbManager.java
+│   │   │   │       │       ├── BulkOperationHandler.java
+│   │   │   │       │       ├── ButtonPermissionManager.java
+│   │   │   │       │       ├── DragDropHandler.java
+│   │   │   │       │       └── PermissionGuard.java
+│   │   │   │       ├── GUIApplication.java
+│   │   │   │       ├── http/
+│   │   │   │       │   ├── ChunkedUploader.java
+│   │   │   │       │   └── SyncHttpClient.java
+│   │   │   │       ├── icon/
+│   │   │   │       │   └── FileIconResolver.java
+│   │   │   │       ├── model/
+│   │   │   │       │   ├── DragData.java
+│   │   │   │       │   └── FileTransferData.java
+│   │   │   │       ├── service/
+│   │   │   │       │   ├── FileOperationService.java
+│   │   │   │       │   ├── FolderUploadService.java
+│   │   │   │       │   ├── GlobalProgressController.java
+│   │   │   │       │   ├── PasswordResetService.java
+│   │   │   │       │   └── ProgressService.java
+│   │   │   │       ├── shared/
+│   │   │   │       │   ├── create/
+│   │   │   │       │   │   └── CreateSharedFolderController.java
+│   │   │   │       │   ├── members/
+│   │   │   │       │   │   └── AddMemberController.java
+│   │   │   │       │   ├── requests/
+│   │   │   │       │   │   ├── ApproveRequestsController.java
+│   │   │   │       │   │   └── RequestAccessController.java
+│   │   │   │       │   └── SharedFoldersController.java
+│   │   │   │       ├── sync/
+│   │   │   │       │   ├── FolderScanner.java
+│   │   │   │       │   ├── SyncEngine.java
+│   │   │   │       │   └── SyncScheduler.java
+│   │   │   │       ├── task/
+│   │   │   │       │   ├── DeleteTask.java
+│   │   │   │       │   ├── DownloadTask.java
+│   │   │   │       │   ├── EditTask.java
+│   │   │   │       │   ├── MoveTask.java
+│   │   │   │       │   ├── RefreshTask.java
+│   │   │   │       │   └── UploadTask.java
+│   │   │   │       ├── util/
+│   │   │   │       │   ├── FileHasher.java
+│   │   │   │       │   ├── FileTypeHelper.java
+│   │   │   │       │   ├── NodeHealthChecker.java
+│   │   │   │       │   └── ProjectStructurePrinter.java
+│   │   │   │       ├── viewer/
+│   │   │   │       │   ├── ImageViewerController.java
+│   │   │   │       │   ├── ImageViewerDialog.java
+│   │   │   │       │   ├── MediaPlayerController.java
+│   │   │   │       │   └── MediaPlayerDialog.java
+│   │   │   │       └── websocket/
+│   │   │   │           └── FileUpdateClient.java
+│   │   │   └── resources/
+│   │   │       └── com/filesync/client/
+│   │   │           ├── auth/
+│   │   │           ├── conflict/
+│   │   │           ├── css/
+│   │   │           ├── dialog/
+│   │   │           ├── document/
+│   │   │           ├── files/
+│   │   │           ├── icons/
+│   │   │           ├── media/
+│   │   │           ├── service/
+│   │   │           └── shared/
+│   │   └── test/
+│   │       └── java/
+├── common/
+│   ├── pom.xml
+│   └── src/
+│       ├── main/
+│       │   ├── java/
+│       │   │   └── com/filesync/common/
+│       │   │       ├── dto/
+│       │   │       ├── enums/
+│       │   │       └── model/
+│       │   └── resources/
+│       └── test/
+├── context.md
+├── demo/
+│   └── run-servers.bat
+├── mvnw
+├── mvnw.cmd
+├── pom.xml
+├── README.md
+└── server/
+    ├── pom.xml
+    └── src/
+        └── main/
+            ├── java/
+            │   └── com/filesync/server/
+            │       ├── config/
+            │       ├── conflict/
+            │       ├── consumer/
+            │       ├── controller/
+            │       ├── domain/
+            │       ├── dto/
+            │       ├── filter/
+            │       ├── repository/
+            │       ├── security/
+            │       ├── service/
+            │       ├── storage/
+            │       └── websocket/
+            └── resources/
+                ├── application.properties
+                └── db/
+                    └── migration/
 ```
 
 ## What Is Already Implemented

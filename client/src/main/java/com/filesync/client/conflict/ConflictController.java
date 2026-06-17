@@ -7,11 +7,15 @@ import javafx.scene.control.TextArea;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
 import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.LinkedList;
 import java.util.function.Consumer;
 
 public class ConflictController {
+
+    private static final Logger log = LoggerFactory.getLogger(ConflictController.class);
 
     @FXML private Label titleLabel;
     @FXML private TextFlow leftTextFlow;
@@ -31,18 +35,25 @@ public class ConflictController {
         this.leftText = serverContent;
         this.rightText = localContent;
 
-        titleLabel.setText("Conflict: " + fileName);
+        // Guard against missing FXML elements
+        if (titleLabel != null) {
+            titleLabel.setText("Conflict: " + fileName);
+        } else {
+            log.warn("titleLabel is null – please check conflict-view.fxml for fx:id=\"titleLabel\"");
+        }
+
         mergedArea.setText(localContent);
 
-        // compute character‑level diff using DiffMatchPatch
         DiffMatchPatch diffMatchPatch = new DiffMatchPatch();
         LinkedList<DiffMatchPatch.Diff> diffs = diffMatchPatch.diffMain(serverContent, localContent);
         diffMatchPatch.diffCleanupSemantic(diffs);
 
-        // build left side (show only deletions and equal text)
-        buildTextFlow(leftTextFlow, diffs, true);
-        // build right side (show only insertions and equal text)
-        buildTextFlow(rightTextFlow, diffs, false);
+        if (leftTextFlow != null && rightTextFlow != null) {
+            buildTextFlow(leftTextFlow, diffs, true);
+            buildTextFlow(rightTextFlow, diffs, false);
+        } else {
+            log.warn("leftTextFlow or rightTextFlow is null – diff views will not be shown");
+        }
     }
 
     private void buildTextFlow(TextFlow flow, LinkedList<DiffMatchPatch.Diff> diffs, boolean leftSide) {
@@ -66,8 +77,20 @@ public class ConflictController {
 
     @FXML
     public void initialize() {
-        useLeftButton.setOnAction(e -> onSaveCallback.accept(leftText));
-        useRightButton.setOnAction(e -> onSaveCallback.accept(rightText));
-        saveButton.setOnAction(e -> onSaveCallback.accept(mergedArea.getText()));
+        if (useLeftButton != null) {
+            useLeftButton.setOnAction(e -> {
+                if (onSaveCallback != null) onSaveCallback.accept(leftText);
+            });
+        }
+        if (useRightButton != null) {
+            useRightButton.setOnAction(e -> {
+                if (onSaveCallback != null) onSaveCallback.accept(rightText);
+            });
+        }
+        if (saveButton != null) {
+            saveButton.setOnAction(e -> {
+                if (onSaveCallback != null) onSaveCallback.accept(mergedArea.getText());
+            });
+        }
     }
 }
