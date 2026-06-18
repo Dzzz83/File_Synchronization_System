@@ -7,8 +7,11 @@ import com.filesync.client.service.ProgressService;
 import com.filesync.client.task.DeleteTask;
 import com.filesync.client.task.MoveTask;
 import javafx.collections.ObservableList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
@@ -17,13 +20,19 @@ public class BulkOperationHandler {
     private final FileOperationService fileService;
     private final Runnable refreshCallback;
     private final ExecutorService executorService;
+    private final String ownerId;          // added
+    private final UUID folderId;           // added
+    private static final Logger log = LoggerFactory.getLogger(BulkOperationHandler.class);
 
     public BulkOperationHandler(SyncHttpClient httpClient, FileOperationService fileService,
-                                Runnable refreshCallback, ExecutorService executorService) {
+                                Runnable refreshCallback, ExecutorService executorService,
+                                String ownerId, UUID folderId) {
         this.httpClient = httpClient;
         this.fileService = fileService;
         this.refreshCallback = refreshCallback;
         this.executorService = executorService;
+        this.ownerId = ownerId;
+        this.folderId = folderId;
     }
 
     public void bulkMove(List<String> fileIds, List<String> fileNames, String targetFolderId) {
@@ -48,8 +57,7 @@ public class BulkOperationHandler {
     }
 
     public void bulkDelete(ObservableList<ServerFileItem> items) {
-        // Debug logging
-        System.out.println("[BulkOperationHandler] bulkDelete called with " + items.size() + " items");
+        log.info("🗑️ bulkDelete called with {} items", items.size());
 
         List<String> fileIds = items.stream()
                 .map(ServerFileItem::getFileId)
@@ -60,12 +68,8 @@ public class BulkOperationHandler {
                 .map(ServerFileItem::getRelativePath)
                 .collect(Collectors.toList());
 
-        System.out.println("[BulkOperationHandler] Extracted fileIds: " + fileIds);
-        System.out.println("[BulkOperationHandler] Extracted fileNames: " + fileNames);
-
-        // If no valid file IDs, show alert and return
         if (fileIds.isEmpty()) {
-            System.out.println("[BulkOperationHandler] No valid file IDs found, aborting delete");
+            log.warn("⚠️ No valid file IDs found, aborting delete");
             showInfo("No items to delete", "The selected items do not have valid file IDs.");
             return;
         }
@@ -73,17 +77,19 @@ public class BulkOperationHandler {
         ProgressService ps = ProgressService.getInstance();
         ps.startOperation("Deleting " + fileIds.size() + " item(s)");
 
-        DeleteTask task = new DeleteTask(fileService, fileIds, fileNames);
+        DeleteTask task = new DeleteTask(fileService, fileIds, fileNames, ownerId, folderId);
         task.messageProperty().addListener((obs, old, msg) -> ps.updateMessage(msg));
         task.progressProperty().addListener((obs, old, val) -> ps.updateProgress(val.doubleValue(), 1.0));
 
         task.setOnSucceeded(e -> {
             ps.finishOperation();
             refreshCallback.run();
+            log.info("✅ Successfully deleted {} item(s)", fileIds.size());
             showInfo("Success", "Deleted " + fileIds.size() + " item(s)");
         });
         task.setOnFailed(e -> {
             ps.finishOperation();
+            log.error("❌ Delete failed for {} items", fileIds.size(), task.getException());
             showError("Delete failed", task.getException().getMessage());
         });
 

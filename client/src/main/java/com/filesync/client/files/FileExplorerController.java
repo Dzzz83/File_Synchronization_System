@@ -8,7 +8,6 @@ import com.filesync.client.files.util.BulkOperationHandler;
 import com.filesync.client.files.util.ButtonPermissionManager;
 import com.filesync.client.files.util.DragDropHandler;
 import com.filesync.client.http.SyncHttpClient;
-import com.filesync.client.icon.FileIconResolver;
 import com.filesync.client.service.FileOperationService;
 import com.filesync.client.service.FolderUploadService;
 import com.filesync.client.service.ProgressService;
@@ -19,7 +18,6 @@ import com.filesync.client.task.RefreshTask;
 import com.filesync.client.task.UploadTask;
 import com.filesync.common.dto.FileMetadataDto;
 import com.filesync.common.dto.FileUpdateMessage;
-import com.filesync.common.enums.Permission;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -109,7 +107,9 @@ public class FileExplorerController {
         breadcrumbManager.setCurrentParentId(parentId);
         breadcrumbManager.setOnExitSharedFolder(this::showSharedFoldersList);
 
-        bulkOperationHandler = new BulkOperationHandler(httpClient, fileOpService, this::refreshWindow, executorService);
+        // ✅ Fixed: passing ownerId and folderId
+        bulkOperationHandler = new BulkOperationHandler(httpClient, fileOpService, this::refreshWindow, executorService, ownerId, folderId);
+
         dragDropHandler = new DragDropHandler(fileTable, (fileIds, targetId) -> {
             List<String> names = fileIds.stream().map(id -> "item").collect(Collectors.toList());
             bulkOperationHandler.bulkMove(fileIds, names, targetId);
@@ -595,7 +595,10 @@ public class FileExplorerController {
                 String relativePath = msg.getRelativePath();
 
                 if ("DELETED".equals(eventType)) {
-                    // Remove from the list immediately – no refresh needed to avoid race
+                    // Log that we received a deletion event
+                    log.info("📩 Received DELETED event for file: {}", relativePath);
+
+                    // Remove from UI list
                     fileItems.removeIf(item -> item.getRelativePath().equals(relativePath));
 
                     // Delete local file if it exists
@@ -605,17 +608,18 @@ public class FileExplorerController {
                         Path filePath = Paths.get(basePath, ownerId, folderName, relativePath);
                         if (Files.exists(filePath)) {
                             Files.delete(filePath);
+                            log.info("🗑️ Deleted local file: {}", filePath);
+                        } else {
+                            log.warn("Local file not found: {}", filePath);
                         }
                     } catch (IOException e) {
                         log.warn("Could not delete local file: {}", relativePath, e);
                     }
 
-                    // Force UI refresh (without reassigning the list)
                     fileTable.refresh();
 
                 } else if ("CREATED_OR_UPDATED".equals(eventType)) {
-                    // For creation/update, we still need full metadata from server.
-                    // The server should have committed, so a silent refresh is safe.
+                    log.info("📩 Received CREATED_OR_UPDATED event for file: {}", relativePath);
                     refreshWindowSilent();
                 }
 
@@ -655,5 +659,30 @@ public class FileExplorerController {
             unitIndex++;
         }
         return String.format("%.1f %s", converted, units[unitIndex]);
+    }
+
+    public void removeItemByFileId(String fileId) {
+        Platform.runLater(() -> {
+            ServerFileItem toRemove = fileItems.stream()
+                    .filter(item -> fileId.equals(item.getFileId()))
+                    .findFirst()
+                    .orElse(null);
+            if (toRemove != null) {
+                // Delete local file
+                String basePath = System.getProperty("user.home") + "/FileSync";
+                String folderName = (folderId != null) ? "shared_" + folderId.toString() : "personal_" + ownerId;
+                Path filePath = Paths.get(basePath, ownerId, folderName, toRemove.getRelativePath());
+                try {
+                    Files.deleteIfExists(filePath);
+                    log.info("🗑️ Deleted stale local file: {}", filePath);
+                } catch (IOException e) {
+                    log.warn("Failed to delete stale local file: {}", filePath, e);
+                }
+                // Remove from UI
+                fileItems.remove(toRemove);
+                fileTable.refresh();
+                log.info("🧹 Removed stale entry: {}", toRemove.getRelativePath());
+            }
+        });
     }
 }

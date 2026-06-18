@@ -57,7 +57,7 @@
                   <center>
                      <FlowPane>
                         <children>
-                            <TextField fx:id="serverUrlField" prefHeight="31.0" prefWidth="231.0" text="http://127.0.0.1" />
+                            <TextField fx:id="serverUrlField" prefHeight="31.0" prefWidth="231.0" text="http://100.127.165.125" />
                         </children>
                      </FlowPane>
                   </center>
