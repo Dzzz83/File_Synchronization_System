@@ -19,4 +19,6 @@ public interface FileMetadataRepository extends JpaRepository<FileMetadataEntity
     List<FileMetadataEntity> findByParentId(UUID parentId);
     Optional<FileMetadataEntity> findByIdAndIsDirectoryTrue(String id);
     boolean existsByParentIdAndRelativePath(UUID parentId, String relativePath);
+    List<FileMetadataEntity> findByOwnerIdAndParentIdIsNullAndFolderIdIsNull(String ownerId);
+    List<FileMetadataEntity> findByOwnerIdAndParentIdAndFolderIdIsNull(String ownerId, UUID parentId);
 }

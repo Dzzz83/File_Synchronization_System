@@ -19,13 +19,13 @@
             <version>1.0-SNAPSHOT</version>
         </dependency>
 
-        <!-- Spring Boot WebFlux (brings reactor-netty-http with compatible version) -->
+        <!-- Spring Boot WebFlux -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
 
-        <!-- Spring WebSocket & Messaging (using parent versions) -->
+        <!-- Spring WebSocket & Messaging -->
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-websocket</artifactId>
@@ -35,7 +35,7 @@
             <artifactId>spring-messaging</artifactId>
         </dependency>
 
-        <!-- Jackson JSR310 (remove duplicate) -->
+        <!-- Jackson JSR310 -->
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-jsr310</artifactId>
@@ -48,7 +48,7 @@
             <version>2.1.0</version>
         </dependency>
 
-        <!-- Tyrus WebSocket client with Grizzly transport -->
+        <!-- Tyrus WebSocket client -->
         <dependency>
             <groupId>org.glassfish.tyrus</groupId>
             <artifactId>tyrus-client</artifactId>
@@ -66,14 +66,13 @@
             </exclusions>
         </dependency>
 
-        <!-- Force secure version of grizzly-http-client -->
         <dependency>
             <groupId>org.glassfish.grizzly</groupId>
             <artifactId>grizzly-http-client</artifactId>
             <version>1.16</version>
         </dependency>
 
-        <!-- Netty (version managed by parent) -->
+        <!-- Netty -->
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-all</artifactId>
@@ -117,10 +116,17 @@
             <artifactId>pdfbox</artifactId>
             <version>2.0.31</version>
         </dependency>
+        <!-- POI for DOCX (includes ooxml-schemas internally) -->
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
             <version>5.5.0</version>
+        </dependency>
+        <!-- Optional: explicit xmlbeans (already transitively included) -->
+        <dependency>
+            <groupId>org.apache.xmlbeans</groupId>
+            <artifactId>xmlbeans</artifactId>
+            <version>5.3.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -156,10 +162,18 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
+                            <!-- Prevent creation of reduced pom -->
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
                             <transformers>
+                                <!-- Main class manifest -->
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>com.filesync.client.GUIApplication</mainClass>
                                 </transformer>
+                                <!-- Merge META-INF/services files (critical for POI) -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                                <!-- Handle license/notice files -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ApacheLicenseResourceTransformer"/>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ApacheNoticeResourceTransformer"/>
                             </transformers>
                             <filters>
                                 <filter>

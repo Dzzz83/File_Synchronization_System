@@ -180,7 +180,7 @@ public class FileMetaDataService {
     }
 
     public List<FileMetadataEntity> getPersonalRootFiles(String ownerId) {
-        return fileMetadataRepository.findByOwnerIdAndParentIdIsNull(ownerId);
+        return fileMetadataRepository.findByOwnerIdAndParentIdIsNullAndFolderIdIsNull(ownerId);
     }
 
     // ========== Quota Helpers ==========
@@ -216,6 +216,10 @@ public class FileMetaDataService {
         FileMetadataEntity file = getFileById(fileId);
         if (file == null) return false;
         return permissionService.hasPermission(file, username, requiredPermission);
+    }
+
+    public List<FileMetadataEntity> getPersonalFilesByParent(String ownerId, UUID parentId) {
+        return fileMetadataRepository.findByOwnerIdAndParentIdAndFolderIdIsNull(ownerId, parentId);
     }
 
     public enum ResolutionStrategy {

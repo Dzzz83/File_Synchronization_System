@@ -228,7 +228,7 @@ public class FileController {
             }
         } else {
             if (parentId != null) {
-                entities = fileMetaDataService.getFilesByParent(parentId);
+                entities = fileMetaDataService.getPersonalFilesByParent(ownerId, parentId);
             } else {
                 entities = fileMetaDataService.getPersonalRootFiles(ownerId);
             }

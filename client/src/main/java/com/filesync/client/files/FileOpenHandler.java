@@ -17,7 +17,9 @@ import java.util.concurrent.ExecutorService;
 import static com.filesync.client.util.FileTypeHelper.*;
 
 public class FileOpenHandler {
-
+    static {
+        System.out.println("🔥🔥🔥 FileOpenHandler class LOADED from JAR 🔥🔥🔥");
+    }
     private static final Logger log = LoggerFactory.getLogger(FileOpenHandler.class);
     private final SyncHttpClient httpClient;
     private final ExecutorService executorService;
@@ -28,7 +30,8 @@ public class FileOpenHandler {
     }
 
     public void openItem(ServerFileItem item, Stage ownerStage, FileExplorerController controller) {
-        log.info("📂 Opening item: {} (ID: {})", item.getRelativePath(), item.getFileId());
+        System.out.println("🔥🔥🔥 openItem called for: " + item.getRelativePath() + " (ID: " + item.getFileId() + ")");
+
         if (item.isDirectory()) {
             if ("..".equals(item.getRelativePath())) {
                 if (controller.canGoUp()) {
@@ -42,23 +45,23 @@ public class FileOpenHandler {
             return;
         }
 
-        // --- Validate file still exists on server ---
+        System.out.println("📡 Fetching metadata for fileId: " + item.getFileId());
         try {
             FileMetadataDto meta = httpClient.getFileMetadata(item.getFileId());
-            // Optional: you can update the item with fresh metadata if needed
+            System.out.println("✅ Metadata fetched successfully for: " + item.getFileId() + " (size: " + meta.getSize() + ")");
         } catch (WebClientResponseException e) {
-            log.warn("🔥 File not found on server, removing: {}", item.getRelativePath());
+            System.out.println("🔥 WebClientResponseException for fileId " + item.getFileId() + ": status " + e.getStatusCode() + ", body " + e.getResponseBodyAsString());
             if (e.getStatusCode().is4xxClientError()) {
-                log.warn("File {} no longer exists on server ({}). Removing stale entry.", item.getRelativePath(), e.getStatusCode());
+                System.out.println("🔥 4xx error, removing stale entry: " + item.getRelativePath());
                 controller.removeItemByFileId(item.getFileId());
                 showAlert("File Not Found", "This file no longer exists on the server. It has been removed from the list.");
                 return;
             }
-            log.error("Unexpected error checking file metadata for {}", item.getRelativePath(), e);
+            System.err.println("Unexpected HTTP error: " + e.getMessage());
             showAlert("Error", "Could not verify file: " + e.getMessage());
             return;
         } catch (Exception e) {
-            log.error("Error checking file metadata for {}", item.getRelativePath(), e);
+            System.err.println("Unexpected error: " + e.getMessage());
             showAlert("Error", "Could not verify file: " + e.getMessage());
             return;
         }
