@@ -1,10 +1,14 @@
 package com.filesync.server.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.filesync.common.dto.ChatMessage;
 import com.filesync.server.domain.ChatMessageEntity;
 import com.filesync.server.repository.ChatMessageRepository;
 import com.filesync.server.websocket.service.ActiveUserService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
@@ -24,17 +28,25 @@ import java.util.stream.Collectors;
 @Controller
 public class ChatController {
 
+    private static final Logger log = LoggerFactory.getLogger(ChatController.class);
+
     private final ActiveUserService activeUserService;
     private final SimpMessagingTemplate messagingTemplate;
     private final ChatMessageRepository chatMessageRepository;
     private final Map<String, Set<UUID>> sessionSubscriptions = new ConcurrentHashMap<>();
+    private final StringRedisTemplate redisTemplate;
+    private final ObjectMapper objectMapper;
 
     public ChatController(ActiveUserService activeUserService,
                           SimpMessagingTemplate messagingTemplate,
-                          ChatMessageRepository chatMessageRepository) {
+                          ChatMessageRepository chatMessageRepository,
+                          StringRedisTemplate redisTemplate,
+                          ObjectMapper objectMapper) {
         this.activeUserService = activeUserService;
         this.messagingTemplate = messagingTemplate;
         this.chatMessageRepository = chatMessageRepository;
+        this.redisTemplate = redisTemplate;
+        this.objectMapper = objectMapper;
     }
 
     @MessageMapping("/chat.send")
@@ -42,7 +54,7 @@ public class ChatController {
         Instant now = Instant.now();
         message.setTimestamp(now);
 
-        // Save message to database
+        // Save to DB
         ChatMessageEntity entity = new ChatMessageEntity(
                 message.getFolderId(),
                 message.getSender(),
@@ -51,11 +63,16 @@ public class ChatController {
         );
         chatMessageRepository.save(entity);
 
-        // Refresh the sender's active timestamp (keeps them from being cleaned up)
+        // Refresh active timestamp
         activeUserService.userJoined(message.getFolderId(), message.getSender());
 
-        // Broadcast to all subscribers of this folder
-        messagingTemplate.convertAndSend("/topic/folder/" + message.getFolderId().toString(), message);
+        // Publish to Redis as JSON
+        try {
+            String json = objectMapper.writeValueAsString(message);
+            redisTemplate.convertAndSend("chat-events", json);
+        } catch (Exception e) {
+            log.error("Failed to serialize chat message", e);
+        }
     }
 
     @EventListener
@@ -72,7 +89,6 @@ public class ChatController {
                     String sessionId = accessor.getSessionId();
                     if (username != null && sessionId != null) {
                         sessionSubscriptions.computeIfAbsent(sessionId, k -> ConcurrentHashMap.newKeySet()).add(folderId);
-                        // Add user with current timestamp (updates if already present)
                         activeUserService.userJoined(folderId, username);
                         messagingTemplate.convertAndSend("/topic/folder/" + folderId + "/active",
                                 activeUserService.getActiveUsers(folderId));
@@ -85,7 +101,7 @@ public class ChatController {
                         messagingTemplate.convertAndSendToUser(username, "/queue/history", history);
                     }
                 } catch (IllegalArgumentException e) {
-                    System.err.println("Invalid UUID in subscription destination: " + destination);
+                    log.warn("Invalid UUID in subscription destination: {}", destination);
                 }
             }
         }

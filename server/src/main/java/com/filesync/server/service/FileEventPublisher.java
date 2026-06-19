@@ -39,9 +39,9 @@ public class FileEventPublisher {
         try {
             String json = objectMapper.writeValueAsString(message);
             redisTemplate.convertAndSend(REDIS_FILE_EVENT_CHANNEL, json);
-            log.info("📤 Publishing file event to Redis: fileId={}, folderId={}, eventType={}",
+            log.info("Publishing file event to Redis: fileId={}, folderId={}, eventType={}",
                     file.getId(), file.getFolderId(), eventType);
-            log.info("🔔 Published file event to Redis: {} for fileId {}", eventType, file.getId());
+            log.info("Published file event to Redis: {} for fileId {}", eventType, file.getId());
         } catch (Exception e) {
             log.error("Failed to serialize file event for fileId {}", file.getId(), e);
         }

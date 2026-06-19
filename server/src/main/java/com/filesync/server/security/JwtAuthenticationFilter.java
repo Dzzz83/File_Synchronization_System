@@ -35,7 +35,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
             "/monitoring",
             "/debug/",
             "/ws/chat",
-            "/ws/files"
+            "/ws/files",
+            "/ws/folders"
     );
 
     public JwtAuthenticationFilter(JwtService jwtService)

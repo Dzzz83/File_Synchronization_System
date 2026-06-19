@@ -6,7 +6,9 @@ import com.filesync.client.files.FileExplorerController;
 import com.filesync.client.http.SyncHttpClient;
 import com.filesync.client.chat.ChatClient;
 import com.filesync.client.websocket.FileUpdateClient;
+import com.filesync.client.websocket.FolderUpdateClient;
 import com.filesync.common.dto.CreateFolderDto;
+import com.filesync.common.dto.FolderUpdateMessage;
 import com.filesync.common.dto.SharedFolderDto;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -51,18 +53,32 @@ public class SharedFoldersController {
     private ChatController currentChatController;
     private boolean showingFoldersList = true;
     private FileUpdateClient fileUpdateClient;
+    private FolderUpdateClient folderUpdateClient;
     private UUID currentFolderId;
     private ScheduledExecutorService fallbackScheduler = Executors.newSingleThreadScheduledExecutor();
 
-    public SharedFoldersController() {
-        // no debug
+    // Standard JavaFX initialize – called automatically after FXML load
+    @FXML
+    public void initialize() {
+        log.info("SharedFoldersController FXML initialized (no-arg)");
+        // If dependencies are already set (via setters or custom init), initialize now.
+        if (httpClient != null && ownerId != null && executorService != null) {
+            init();
+        }
     }
 
+    // Custom initialization method called from the parent controller
     public void initialize(SyncHttpClient httpClient, String ownerId, ExecutorService executorService) {
-        log.info("SharedFoldersController initialized");
+        log.info("SharedFoldersController custom initialize called");
         this.httpClient = httpClient;
         this.ownerId = ownerId;
         this.executorService = executorService;
+        // Now call init (if not already called by no-arg initialize)
+        init();
+    }
+
+    private void init() {
+        log.info("SharedFoldersController init() - setting up UI and connections");
 
         nameColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
         ownerColumn.setCellValueFactory(new PropertyValueFactory<>("ownerId"));
@@ -95,7 +111,41 @@ public class SharedFoldersController {
 
         showSharedFoldersList();
         refreshFolders();
-        log.info("SharedFoldersController initialization complete");
+
+        // Connect to folder update WebSocket
+        connectFolderUpdateWebSocket();
+
+        // ALWAYS start a fallback poll every 30 seconds to ensure eventual consistency
+        // even if WebSocket fails. This guarantees the list updates.
+        fallbackScheduler.scheduleAtFixedRate(() -> {
+            if (showingFoldersList) {
+                log.debug("🔄 Fallback polling (every 30s): refreshing folder list");
+                Platform.runLater(this::refreshFolders);
+            }
+        }, 30, 30, TimeUnit.SECONDS);
+
+        log.info("SharedFoldersController init() complete");
+    }
+
+    private void connectFolderUpdateWebSocket() {
+        try {
+            log.info("Attempting to connect FolderUpdateWebSocket...");
+            folderUpdateClient = new FolderUpdateClient(httpClient.getBaseUrl(), httpClient.getAuthToken());
+            folderUpdateClient.connect(this::handleFolderUpdate);
+            log.info("✅ Folder update WebSocket client created and connected");
+        } catch (Exception e) {
+            log.warn("❌ Failed to connect folder update WebSocket", e);
+            // Fallback polling is already active, so we just log.
+        }
+    }
+
+    private void handleFolderUpdate(FolderUpdateMessage msg) {
+        log.info("📩 Received folder update: {} - {}", msg.getEventType(), msg.getFolderId());
+        Platform.runLater(() -> {
+            log.info("🔄 Refreshing folder list due to event: {} - {}", msg.getEventType(), msg.getFolderId());
+            refreshFolders();
+            log.info("✅ Folder list refresh complete");
+        });
     }
 
     private void stopCurrentExplorerSync() {
@@ -112,12 +162,9 @@ public class SharedFoldersController {
             fileUpdateClient.disconnect();
             fileUpdateClient = null;
         }
+        // Keep folderUpdateClient connected while on this screen
         stopCurrentExplorerSync();
-        if (fallbackScheduler != null) {
-            fallbackScheduler.shutdownNow();
-            fallbackScheduler = Executors.newSingleThreadScheduledExecutor();
-        }
-
+        // Do not shut down fallbackScheduler here; it is managed globally.
         showingFoldersList = true;
         actionButtons.setVisible(true);
         actionButtons.setManaged(true);
@@ -183,11 +230,7 @@ public class SharedFoldersController {
                 });
             } catch (Exception e) {
                 log.error("Failed to connect/subscribe to file update WebSocket", e);
-                fallbackScheduler.scheduleAtFixedRate(() -> {
-                    if (currentExplorer != null) {
-                        currentExplorer.refreshWindowSilent();
-                    }
-                }, 5, 300, TimeUnit.SECONDS);  // 5 minutes initial delay, 5 minutes between runs
+                // fallback already scheduled globally
             }
 
             TabPane tabPane = new TabPane();
@@ -246,6 +289,7 @@ public class SharedFoldersController {
     }
 
     private void refreshFolders() {
+        log.debug("🔄 refreshFolders() called");
         foldersTable.setDisable(true);
 
         Task<List<SharedFolderDto>> refreshTask = new Task<>() {
@@ -267,11 +311,13 @@ public class SharedFoldersController {
                     ));
                 }
                 foldersTable.setDisable(false);
+                log.debug("🔄 Folders refreshed: {} items", folderItems.size());
             });
         });
         refreshTask.setOnFailed(e -> {
             Platform.runLater(() -> {
                 foldersTable.setDisable(false);
+                log.error("❌ Failed to refresh folders", e);
                 showAlert("Error", "Failed to load shared folders: " + refreshTask.getException().getMessage());
             });
         });
@@ -388,6 +434,26 @@ public class SharedFoldersController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    public void dispose() {
+        if (folderUpdateClient != null) {
+            folderUpdateClient.disconnect();
+            folderUpdateClient = null;
+        }
+        if (fileUpdateClient != null) {
+            fileUpdateClient.disconnect();
+            fileUpdateClient = null;
+        }
+        if (fallbackScheduler != null) {
+            fallbackScheduler.shutdownNow();
+            fallbackScheduler = null;
+        }
+        if (currentChatController != null) {
+            currentChatController.dispose();
+            currentChatController = null;
+        }
+        log.info("SharedFoldersController disposed");
     }
 
     public static class SharedFolderItem {

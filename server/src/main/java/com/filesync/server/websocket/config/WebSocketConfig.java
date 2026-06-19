@@ -36,6 +36,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registry.addEndpoint("/ws/files")
                 .setAllowedOriginPatterns("*")
                 .withSockJS();
+
+        registry.addEndpoint("/ws/folders")
+                .setAllowedOriginPatterns("*")
+                .withSockJS();
     }
 
     @Override

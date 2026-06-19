@@ -25,17 +25,20 @@ public class SharedFolderService {
     private final SharedFolderRequestRepository requestRepository;
     private final FileMetadataRepository fileMetadataRepository;
     private final FileStorage fileStorage;
+    private final FolderEventPublisher folderEventPublisher; // new
 
     public SharedFolderService(SharedFolderRepository folderRepository,
                                SharedFolderMemberRepository memberRepository,
                                SharedFolderRequestRepository requestRepository,
                                FileMetadataRepository fileMetadataRepository,
-                               FileStorage fileStorage) {
+                               FileStorage fileStorage,
+                               FolderEventPublisher folderEventPublisher) { // added parameter
         this.folderRepository = folderRepository;
         this.memberRepository = memberRepository;
         this.requestRepository = requestRepository;
         this.fileMetadataRepository = fileMetadataRepository;
         this.fileStorage = fileStorage;
+        this.folderEventPublisher = folderEventPublisher;
     }
 
     public SharedFolderEntity createFolder(String name, String ownerId) {
@@ -46,7 +49,12 @@ public class SharedFolderService {
         SharedFolderEntity folder = new SharedFolderEntity();
         folder.setName(name);
         folder.setOwnerId(ownerId);
-        return folderRepository.save(folder);
+        SharedFolderEntity saved = folderRepository.save(folder);
+
+        // Publish creation event
+        folderEventPublisher.publishFolderEvent("CREATED", saved.getId(), saved.getName(), saved.getOwnerId());
+
+        return saved;
     }
 
     public void addMember(UUID folderId, String userId, Permission permission) {
@@ -121,6 +129,12 @@ public class SharedFolderService {
 
     @Transactional
     public void deleteFolder(UUID folderId) {
+        // Fetch folder details before deletion (needed for event)
+        SharedFolderEntity folder = folderRepository.findById(folderId)
+                .orElseThrow(() -> new RuntimeException("Folder not found"));
+        String folderName = folder.getName();
+        String ownerId = folder.getOwnerId();
+
         // Delete all files in this folder (metadata and actual storage)
         List<FileMetadataEntity> files = fileMetadataRepository.findByFolderId(folderId);
         for (FileMetadataEntity file : files) {
@@ -133,6 +147,9 @@ public class SharedFolderService {
         requestRepository.deleteByFolderId(folderId);
         // Delete folder itself
         folderRepository.deleteById(folderId);
+
+        // Publish deletion event after successful deletion
+        folderEventPublisher.publishFolderEvent("DELETED", folderId, folderName, ownerId);
     }
 
     public List<SharedFolderEntity> findByNameContainingIgnoreCase(String name) {
