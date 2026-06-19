@@ -28,7 +28,7 @@ public class User {
     private Integer fileCount = 0;
 
     @Column(name = "max_storage_bytes", nullable = false)
-    private Long maxStorageBytes = 104857600L; // 100 MB default
+    private Long maxStorageBytes = 1073741824L; // 100 MB default
 
     @Column(name = "max_file_count", nullable = false)
     private Integer maxFileCount = 500;
