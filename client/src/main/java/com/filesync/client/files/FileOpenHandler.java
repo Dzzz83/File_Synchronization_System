@@ -17,9 +17,6 @@ import java.util.concurrent.ExecutorService;
 import static com.filesync.client.util.FileTypeHelper.*;
 
 public class FileOpenHandler {
-    static {
-        System.out.println("🔥🔥🔥 FileOpenHandler class LOADED from JAR 🔥🔥🔥");
-    }
     private static final Logger log = LoggerFactory.getLogger(FileOpenHandler.class);
     private final SyncHttpClient httpClient;
     private final ExecutorService executorService;
@@ -30,8 +27,6 @@ public class FileOpenHandler {
     }
 
     public void openItem(ServerFileItem item, Stage ownerStage, FileExplorerController controller) {
-        System.out.println("🔥🔥🔥 openItem called for: " + item.getRelativePath() + " (ID: " + item.getFileId() + ")");
-
         if (item.isDirectory()) {
             if ("..".equals(item.getRelativePath())) {
                 if (controller.canGoUp()) {
@@ -45,23 +40,19 @@ public class FileOpenHandler {
             return;
         }
 
-        System.out.println("📡 Fetching metadata for fileId: " + item.getFileId());
         try {
             FileMetadataDto meta = httpClient.getFileMetadata(item.getFileId());
-            System.out.println("✅ Metadata fetched successfully for: " + item.getFileId() + " (size: " + meta.getSize() + ")");
         } catch (WebClientResponseException e) {
-            System.out.println("🔥 WebClientResponseException for fileId " + item.getFileId() + ": status " + e.getStatusCode() + ", body " + e.getResponseBodyAsString());
             if (e.getStatusCode().is4xxClientError()) {
-                System.out.println("🔥 4xx error, removing stale entry: " + item.getRelativePath());
                 controller.removeItemByFileId(item.getFileId());
                 showAlert("File Not Found", "This file no longer exists on the server. It has been removed from the list.");
                 return;
             }
-            System.err.println("Unexpected HTTP error: " + e.getMessage());
+            log.error("Unexpected HTTP error checking file metadata for {}", item.getRelativePath(), e);
             showAlert("Error", "Could not verify file: " + e.getMessage());
             return;
         } catch (Exception e) {
-            System.err.println("Unexpected error: " + e.getMessage());
+            log.error("Error checking file metadata for {}", item.getRelativePath(), e);
             showAlert("Error", "Could not verify file: " + e.getMessage());
             return;
         }

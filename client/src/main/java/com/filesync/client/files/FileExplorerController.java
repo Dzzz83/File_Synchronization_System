@@ -85,7 +85,6 @@ public class FileExplorerController {
     private DragDropHandler dragDropHandler;
     private FileOpenHandler fileOpenHandler;
 
-    // Single, never reassigned list – fixes the earlier race condition
     private final ObservableList<ServerFileItem> fileItems = FXCollections.observableArrayList();
 
     // ==================== Initialization ====================
@@ -107,7 +106,6 @@ public class FileExplorerController {
         breadcrumbManager.setCurrentParentId(parentId);
         breadcrumbManager.setOnExitSharedFolder(this::showSharedFoldersList);
 
-        // ✅ Fixed: passing ownerId and folderId
         bulkOperationHandler = new BulkOperationHandler(httpClient, fileOpService, this::refreshWindow, executorService, ownerId, folderId);
 
         dragDropHandler = new DragDropHandler(fileTable, (fileIds, targetId) -> {
@@ -157,7 +155,6 @@ public class FileExplorerController {
         pathColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getRelativePath()));
         fileTypeColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getFileType()));
 
-        // Size column – format to human‑readable
         sizeColumn.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().getSize()));
         sizeColumn.setCellFactory(column -> new TableCell<ServerFileItem, Long>() {
             @Override
@@ -171,7 +168,6 @@ public class FileExplorerController {
             }
         });
 
-        // Last modified column – format to readable date/time
         lastModifiedColumn.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().getLastModified()));
         lastModifiedColumn.setCellFactory(column -> new TableCell<ServerFileItem, Instant>() {
             @Override
@@ -180,7 +176,6 @@ public class FileExplorerController {
                 if (empty || instant == null) {
                     setText(null);
                 } else {
-                    // Format with system default time zone and pattern
                     java.time.format.DateTimeFormatter formatter =
                             java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
                                     .withZone(java.time.ZoneId.systemDefault());
@@ -586,7 +581,7 @@ public class FileExplorerController {
         executorService.submit(task);
     }
 
-    // ==================== WebSocket Update Handler (MINIMAL FIX) ====================
+    // ==================== WebSocket Update Handler ====================
 
     public void handleFileUpdate(FileUpdateMessage msg) {
         Platform.runLater(() -> {
@@ -595,20 +590,16 @@ public class FileExplorerController {
                 String relativePath = msg.getRelativePath();
 
                 if ("DELETED".equals(eventType)) {
-                    // Log that we received a deletion event
-                    log.info("📩 Received DELETED event for file: {}", relativePath);
-
-                    // Remove from UI list
+                    log.info("Received DELETED event for file: {}", relativePath);
                     fileItems.removeIf(item -> item.getRelativePath().equals(relativePath));
 
-                    // Delete local file if it exists
                     try {
                         String basePath = System.getProperty("user.home") + "/FileSync";
                         String folderName = (folderId != null) ? "shared_" + folderId.toString() : "personal_" + ownerId;
                         Path filePath = Paths.get(basePath, ownerId, folderName, relativePath);
                         if (Files.exists(filePath)) {
                             Files.delete(filePath);
-                            log.info("🗑️ Deleted local file: {}", filePath);
+                            log.info("Deleted local file: {}", filePath);
                         } else {
                             log.warn("Local file not found: {}", filePath);
                         }
@@ -619,7 +610,7 @@ public class FileExplorerController {
                     fileTable.refresh();
 
                 } else if ("CREATED_OR_UPDATED".equals(eventType)) {
-                    log.info("📩 Received CREATED_OR_UPDATED event for file: {}", relativePath);
+                    log.info("Received CREATED_OR_UPDATED event for file: {}", relativePath);
                     refreshWindowSilent();
                 }
 
@@ -668,20 +659,18 @@ public class FileExplorerController {
                     .findFirst()
                     .orElse(null);
             if (toRemove != null) {
-                // Delete local file
                 String basePath = System.getProperty("user.home") + "/FileSync";
                 String folderName = (folderId != null) ? "shared_" + folderId.toString() : "personal_" + ownerId;
                 Path filePath = Paths.get(basePath, ownerId, folderName, toRemove.getRelativePath());
                 try {
                     Files.deleteIfExists(filePath);
-                    log.info("🗑️ Deleted stale local file: {}", filePath);
+                    log.info("Deleted stale local file: {}", filePath);
                 } catch (IOException e) {
                     log.warn("Failed to delete stale local file: {}", filePath, e);
                 }
-                // Remove from UI
                 fileItems.remove(toRemove);
                 fileTable.refresh();
-                log.info("🧹 Removed stale entry: {}", toRemove.getRelativePath());
+                log.info("Removed stale entry: {}", toRemove.getRelativePath());
             }
         });
     }
