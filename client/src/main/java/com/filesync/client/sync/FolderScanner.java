@@ -30,7 +30,7 @@ public class FolderScanner {
             return files;
         }
 
-        log.info("🔍 Scanning local folder: {}", syncFolder.toAbsolutePath());
+        log.info("Scanning local folder: {}", syncFolder.toAbsolutePath());
 
         Files.walk(syncFolder)
                 .filter(Files::isRegularFile)
@@ -42,7 +42,7 @@ public class FolderScanner {
                         long size = Files.size(file);
                         Instant lastModified = Files.getLastModifiedTime(file).toInstant();
 
-                        log.debug("📄 Found file: {} (size: {}, hash: {})", relativePath, size, hash);
+                        log.debug("Found file: {} (size: {}, hash: {})", relativePath, size, hash);
 
                         FileMetadataDto dto = new FileMetadataDto();
                         dto.setFileId(fileId);
@@ -57,7 +57,7 @@ public class FolderScanner {
                     }
                 });
 
-        log.info("📊 Scan complete: {} files found", files.size());
+        log.info("Scan complete: {} files found", files.size());
         return files;
     }
 }

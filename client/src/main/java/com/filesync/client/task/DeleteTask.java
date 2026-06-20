@@ -44,7 +44,7 @@ public class DeleteTask extends Task<Void> {
             updateMessage("Deleting " + fileName + "...");
 
             // 1. Delete from server
-            log.info("🗑️ Deleting file from server: {} (ID: {})", fileName, fileId);
+            log.info("Deleting file from server: {} (ID: {})", fileName, fileId);
             fileService.deleteFile(fileId);
 
             // 2. Delete local file
@@ -52,7 +52,7 @@ public class DeleteTask extends Task<Void> {
             try {
                 boolean deleted = Files.deleteIfExists(localPath);
                 if (deleted) {
-                    log.info("🗑️ Deleted local file: {}", localPath);
+                    log.info("Deleted local file: {}", localPath);
                 } else {
                     log.warn("Local file not found (already deleted): {}", localPath);
                 }
@@ -64,7 +64,7 @@ public class DeleteTask extends Task<Void> {
         }
 
         updateMessage("Delete complete");
-        log.info("✅ Server and local delete complete for {} items", total);
+        log.info("Server and local delete complete for {} items", total);
         return null;
     }
 

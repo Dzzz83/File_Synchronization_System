@@ -64,7 +64,7 @@ public class FileMetaDataService {
         if (file.isDirectory()) {
             throw new IllegalArgumentException("Cannot delete a folder using deleteFileAndUpdateAncestors");
         }
-        log.info("🗑️ Deleting file: {} with folderId: {}", fileId, file.getFolderId());
+        log.info("Deleting file: {} with folderId: {}", fileId, file.getFolderId());
         // Publish WebSocket event once
         fileEventPublisher.publishFileEvent(file, "DELETED");
         long size = file.getSize();

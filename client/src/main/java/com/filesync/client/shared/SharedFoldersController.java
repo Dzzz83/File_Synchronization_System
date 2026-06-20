@@ -119,7 +119,7 @@ public class SharedFoldersController {
         // even if WebSocket fails. This guarantees the list updates.
         fallbackScheduler.scheduleAtFixedRate(() -> {
             if (showingFoldersList) {
-                log.debug("🔄 Fallback polling (every 30s): refreshing folder list");
+                log.debug("Fallback polling (every 30s): refreshing folder list");
                 Platform.runLater(this::refreshFolders);
             }
         }, 30, 30, TimeUnit.SECONDS);
@@ -132,19 +132,19 @@ public class SharedFoldersController {
             log.info("Attempting to connect FolderUpdateWebSocket...");
             folderUpdateClient = new FolderUpdateClient(httpClient.getBaseUrl(), httpClient.getAuthToken());
             folderUpdateClient.connect(this::handleFolderUpdate);
-            log.info("✅ Folder update WebSocket client created and connected");
+            log.info("Folder update WebSocket client created and connected");
         } catch (Exception e) {
-            log.warn("❌ Failed to connect folder update WebSocket", e);
+            log.warn("Failed to connect folder update WebSocket", e);
             // Fallback polling is already active, so we just log.
         }
     }
 
     private void handleFolderUpdate(FolderUpdateMessage msg) {
-        log.info("📩 Received folder update: {} - {}", msg.getEventType(), msg.getFolderId());
+        log.info(" Received folder update: {} - {}", msg.getEventType(), msg.getFolderId());
         Platform.runLater(() -> {
-            log.info("🔄 Refreshing folder list due to event: {} - {}", msg.getEventType(), msg.getFolderId());
+            log.info("Refreshing folder list due to event: {} - {}", msg.getEventType(), msg.getFolderId());
             refreshFolders();
-            log.info("✅ Folder list refresh complete");
+            log.info(" Folder list refresh complete");
         });
     }
 
@@ -289,7 +289,7 @@ public class SharedFoldersController {
     }
 
     private void refreshFolders() {
-        log.debug("🔄 refreshFolders() called");
+        log.debug(" refreshFolders() called");
         foldersTable.setDisable(true);
 
         Task<List<SharedFolderDto>> refreshTask = new Task<>() {
@@ -311,13 +311,13 @@ public class SharedFoldersController {
                     ));
                 }
                 foldersTable.setDisable(false);
-                log.debug("🔄 Folders refreshed: {} items", folderItems.size());
+                log.debug("Folders refreshed: {} items", folderItems.size());
             });
         });
         refreshTask.setOnFailed(e -> {
             Platform.runLater(() -> {
                 foldersTable.setDisable(false);
-                log.error("❌ Failed to refresh folders", e);
+                log.error(" Failed to refresh folders", e);
                 showAlert("Error", "Failed to load shared folders: " + refreshTask.getException().getMessage());
             });
         });

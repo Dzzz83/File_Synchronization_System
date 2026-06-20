@@ -69,7 +69,7 @@ public class BulkOperationHandler {
                 .collect(Collectors.toList());
 
         if (fileIds.isEmpty()) {
-            log.warn("⚠️ No valid file IDs found, aborting delete");
+            log.warn("No valid file IDs found, aborting delete");
             showInfo("No items to delete", "The selected items do not have valid file IDs.");
             return;
         }
@@ -84,12 +84,12 @@ public class BulkOperationHandler {
         task.setOnSucceeded(e -> {
             ps.finishOperation();
             refreshCallback.run();
-            log.info("✅ Successfully deleted {} item(s)", fileIds.size());
+            log.info("Successfully deleted {} item(s)", fileIds.size());
             showInfo("Success", "Deleted " + fileIds.size() + " item(s)");
         });
         task.setOnFailed(e -> {
             ps.finishOperation();
-            log.error("❌ Delete failed for {} items", fileIds.size(), task.getException());
+            log.error("Delete failed for {} items", fileIds.size(), task.getException());
             showError("Delete failed", task.getException().getMessage());
         });
 

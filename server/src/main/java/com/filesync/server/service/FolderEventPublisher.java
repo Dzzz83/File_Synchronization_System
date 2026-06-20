@@ -39,6 +39,6 @@ public class FolderEventPublisher {
 
     public void broadcastLocally(FolderUpdateMessage message) {
         messagingTemplate.convertAndSend("/topic/folders", message);
-        log.info("📨 Broadcast folder event locally: {} - {}", message.getEventType(), message.getFolderId());
+        log.info("Broadcast folder event locally: {} - {}", message.getEventType(), message.getFolderId());
     }
 }

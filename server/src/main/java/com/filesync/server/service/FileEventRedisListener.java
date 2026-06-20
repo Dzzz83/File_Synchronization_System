@@ -32,8 +32,8 @@ public class FileEventRedisListener implements MessageListener {
             if (event == null) return;
 
             String destination = "/topic/file/" + event.getFolderId().toString();
-            log.info("📨 Broadcasting file event locally: {} to {}", event.getEventType(), destination);
-            log.info("📥 Received file event from Redis: {}", event);
+            log.info("Broadcasting file event locally: {} to {}", event.getEventType(), destination);
+            log.info("Received file event from Redis: {}", event);
             messagingTemplate.convertAndSend(destination, event);
         } catch (IOException e) {
             log.error("Failed to deserialize Redis file event", e);

@@ -39,20 +39,20 @@ public class SyncEngine {
     }
 
     public void sync() throws Exception {
-        log.info("🔄 Starting sync for owner: {}", ownerId);
-        log.info("📂 Sync folder: {}", syncFolder.toAbsolutePath());
+        log.info("Starting sync for owner: {}", ownerId);
+        log.info("Sync folder: {}", syncFolder.toAbsolutePath());
 
         // Scan local files
         List<FileMetadataDto> localFiles = scanner.scan();
-        log.info("📊 Local files found: {}", localFiles.size());
+        log.info("Local files found: {}", localFiles.size());
         for (FileMetadataDto f : localFiles) {
-            log.debug("   📄 Local: {} (size: {}, hash: {})", f.getRelativePath(), f.getSize(), f.getSha256Hash().substring(0, 8));
+            log.debug("Local: {} (size: {}, hash: {})", f.getRelativePath(), f.getSize(), f.getSha256Hash().substring(0, 8));
         }
 
         // Build and send sync request
         SyncRequestDto syncRequestDto = new SyncRequestDto(ownerId, localFiles, folderId);
         String taskId = httpClient.startSync(syncRequestDto);
-        log.info("📤 Sync task started: {}", taskId);
+        log.info("Sync task started: {}", taskId);
 
         // Poll for status
         SyncResponseDto response = null;
@@ -62,7 +62,7 @@ public class SyncEngine {
             pollCount++;
             Map<String, Object> status = httpClient.getSyncStatus(taskId);
             String state = (String) status.get("status");
-            log.debug("📊 Poll #{}: status = {}", pollCount, state);
+            log.debug("Poll #{}: status = {}", pollCount, state);
 
             if ("COMPLETED".equals(state)) {
                 Object actionsObj = status.get("actions");
@@ -71,18 +71,18 @@ public class SyncEngine {
                     List<SyncActionDto> actionDtos = objectMapper.readValue(json,
                             new TypeReference<List<SyncActionDto>>() {});
                     response = new SyncResponseDto(actionDtos);
-                    log.info("📋 Received {} actions from server", actionDtos.size());
+                    log.info("Received {} actions from server", actionDtos.size());
                     for (SyncActionDto a : actionDtos) {
-                        log.debug("   📋 Action: {} for file: {}", a.getAction(), a.getFileMetadata().getRelativePath());
+                        log.debug("Action: {} for file: {}", a.getAction(), a.getFileMetadata().getRelativePath());
                     }
                 } else {
                     response = new SyncResponseDto(List.of());
-                    log.info("📋 No actions received");
+                    log.info("No actions received");
                 }
                 break;
             } else if ("FAILED".equals(state)) {
                 String error = (String) status.get("errorMessage");
-                log.error("❌ Sync failed: {}", error);
+                log.error("Sync failed: {}", error);
                 throw new RuntimeException("Sync failed: " + error);
             }
         }
@@ -100,25 +100,25 @@ public class SyncEngine {
                     try {
                         file.setOwnerId(ownerId);
                         file.setFolderId(folderId);
-                        log.debug("   📤 Creating metadata for: {}", file.getRelativePath());
+                        log.debug("Creating metadata for: {}", file.getRelativePath());
                         httpClient.createMetadata(file);
 
                         long fileSize = Files.size(localPath);
                         long THRESHOLD = 5 * 1024 * 1024;
-                        log.debug("   📤 Uploading file: {} ({} bytes)", file.getRelativePath(), fileSize);
+                        log.debug("Uploading file: {} ({} bytes)", file.getRelativePath(), fileSize);
                         if (fileSize > THRESHOLD) {
                             httpClient.uploadLargeFile(file.getFileId(), localPath, folderId, null);
                         } else {
                             httpClient.uploadFile(file.getFileId(), localPath, folderId);
                         }
-                        log.info("✅ Uploaded {}", file.getRelativePath());
+                        log.info("Uploaded {}", file.getRelativePath());
                     } catch (Exception e) {
-                        log.error("❌ Upload failed for {}, deleting metadata to restore consistency", file.getRelativePath(), e);
+                        log.error("Upload failed for {}, deleting metadata to restore consistency", file.getRelativePath(), e);
                         try {
                             httpClient.deleteFile(file.getFileId(), folderId);
-                            log.info("   🗑️ Rolled back metadata for: {}", file.getRelativePath());
+                            log.info("Rolled back metadata for: {}", file.getRelativePath());
                         } catch (Exception deleteEx) {
-                            log.error("❌ Failed to delete orphaned metadata for fileId {}: {}", file.getFileId(), deleteEx.getMessage());
+                            log.error("Failed to delete orphaned metadata for fileId {}: {}", file.getFileId(), deleteEx.getMessage());
                         }
                         throw e;
                     }
@@ -127,9 +127,9 @@ public class SyncEngine {
                 case DOWNLOAD:
                     downloadCount++;
                     try {
-                        log.debug("   📥 Downloading: {}", file.getRelativePath());
+                        log.debug("Downloading: {}", file.getRelativePath());
                         httpClient.downloadFile(file.getFileId(), localPath);
-                        log.info("✅ Downloaded {}", file.getRelativePath());
+                        log.info("Downloaded {}", file.getRelativePath());
                     } catch (Exception e) {
                         boolean is4xx = false;
                         if (e instanceof WebClientResponseException) {
@@ -140,14 +140,14 @@ public class SyncEngine {
                             if (wce.getStatusCode().is4xxClientError()) is4xx = true;
                         }
                         if (is4xx) {
-                            log.warn("⚠️ File not found on server ({}), skipping download", file.getRelativePath());
+                            log.warn("File not found on server ({}), skipping download", file.getRelativePath());
                             if (Files.exists(localPath)) {
                                 Files.delete(localPath);
-                                log.info("   🗑️ Deleted local copy of {}", file.getRelativePath());
+                                log.info("Deleted local copy of {}", file.getRelativePath());
                             }
                             break;
                         } else {
-                            log.error("❌ Download failed for {}", file.getRelativePath(), e);
+                            log.error("Download failed for {}", file.getRelativePath(), e);
                             throw e;
                         }
                     }
@@ -156,9 +156,9 @@ public class SyncEngine {
                 case CONFLICT:
                     conflictCount++;
                     try {
-                        log.debug("   ⚡ Resolving conflict for: {}", file.getRelativePath());
+                        log.debug("Resolving conflict for: {}", file.getRelativePath());
                         ConflictResolver.resolve(file, localPath, httpClient);
-                        log.info("✅ Conflict resolved for {}", file.getRelativePath());
+                        log.info("Conflict resolved for {}", file.getRelativePath());
                     } catch (Exception e) {
                         boolean is4xx = false;
                         if (e instanceof WebClientResponseException) {
@@ -169,14 +169,14 @@ public class SyncEngine {
                             if (wce.getStatusCode().is4xxClientError()) is4xx = true;
                         }
                         if (is4xx) {
-                            log.warn("⚠️ File not found on server ({}), skipping conflict resolution", file.getRelativePath());
+                            log.warn("File not found on server ({}), skipping conflict resolution", file.getRelativePath());
                             if (Files.exists(localPath)) {
                                 Files.delete(localPath);
-                                log.info("   🗑️ Deleted local copy of {}", file.getRelativePath());
+                                log.info("Deleted local copy of {}", file.getRelativePath());
                             }
                             break;
                         } else {
-                            log.error("❌ Conflict resolution failed for {}", file.getRelativePath(), e);
+                            log.error("Conflict resolution failed for {}", file.getRelativePath(), e);
                             throw e;
                         }
                     }
@@ -184,7 +184,7 @@ public class SyncEngine {
 
                 case NO_ACTION:
                     noActionCount++;
-                    log.debug("   ✅ No action needed for: {}", file.getRelativePath());
+                    log.debug("No action needed for: {}", file.getRelativePath());
                     break;
             }
         }
