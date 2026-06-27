@@ -1,325 +1,696 @@
-# File Synchronization System – Project Documentation
+# 📁 File Synchronization System
+
+## Project Documentation
+
+---
 
 ## Introduction
 
-This project is a distributed file synchronization system similar to Dropbox. It consists of a Spring Boot server and a JavaFX client. The client supports two modes: an automatic sync client (folder watcher) and a manual admin GUI for file management.
+This project is a distributed file synchronization system similar to Dropbox. It consists of a Spring Boot server and a JavaFX client application.
 
-The system is designed with scalability in mind: it supports chunked upload with resume, pluggable object storage (local disk or Cloudflare R2), streaming I/O to avoid memory bottlenecks, and a stateless JWT‑based authentication that allows horizontal scaling.
+The client provides a full-featured administrative GUI for file management with automatic background synchronization. An asynchronous synchronization engine continuously compares local and server states and performs the required actions (upload, download, and conflict resolution) without user intervention.
 
-All code follows SOLID principles. The server is stateless, making it suitable for running multiple instances behind a load balancer.
+---
 
-## Technology Stack
+# Technology Stack
 
-- Java 17 (works with Java 25 as well)
-- Maven (multi‑module)
-- Spring Boot 3.2.5 (Web, Data JPA, Security, WebFlux, Thymeleaf)
-- PostgreSQL (metadata) and H2 (client local cache)
-- JavaFX 17 (client GUI)
-- diff‑match‑patch for character‑level diff
-- AWS S3 SDK (for Cloudflare R2 integration)
-- Cloudflare R2 (optional object storage backend)
-- JJWT for JSON Web Tokens
-- RabbitMQ (CloudAMQP) for asynchronous task processing
-- Flyway for database migrations
-- JavaMelody for embedded monitoring
-- Bucket4j for rate limiting
-- `Apache PDFBox` (PDF rendering)
-- `Apache POI` (DOCX manipulation)
-- `JSoup` (HTML conversion for DOCX)
+### Core Technologies
 
-## Project Structure
-The project is split into three Maven modules:
+* Java 17 (compatible with Java 25)
+* Maven (Multi-Module Project)
+* Spring Boot 3.2.5
 
-- **common** – shared DTOs, enums, and utility classes
-- **server** – Spring Boot application with REST APIs, JPA entities, storage backends, JWT authentication, WebSocket chat, and Redis active user tracking.
-- **client** – JavaFX application containing both the sync client and the admin GUI, with all viewer/editor features, chat, and dialogs.
+    * Spring Web
+    * Spring Data JPA
+    * Spring Security
+    * Spring WebFlux
+    * Thymeleaf
+* PostgreSQL (Metadata Storage)
+* JavaFX 17 (Desktop Client)
 
-```
+### Networking & Communication
+
+* Spring WebClient
+* WebSocket (STOMP)
+* RabbitMQ (CloudAMQP)
+
+### Authentication & Security
+
+* JWT (JJWT)
+* Bucket4j (Rate Limiting)
+
+### Storage
+
+* Local Disk Storage
+* Cloudflare R2
+* AWS S3 SDK
+
+### Synchronization & Processing
+
+* Redis
+* Flyway
+* diff-match-patch
+
+### Document & Media Processing
+
+* Apache PDFBox
+* Apache POI
+* JSoup
+
+### Monitoring
+
+* JavaMelody
+
+---
+
+# Project Structure
+
+The project is divided into three Maven modules:
+
+| Module     | Description                                                                                         |
+| ---------- | --------------------------------------------------------------------------------------------------- |
+| **common** | Shared DTOs, enums, and utility classes                                                             |
+| **server** | Spring Boot backend with REST APIs, authentication, storage, synchronization, and WebSocket support |
+| **client** | JavaFX desktop application with integrated automatic synchronization                                |
+
+```text
 File_Synchronization_System/
-├── .env
-├── .gitignore
-├── client/
-│   ├── dependency-reduced-pom.xml
-│   ├── pom.xml
-│   ├── src/
-│   │   ├── main/
-│   │   │   ├── java/
-│   │   │   │   └── com/filesync/client/
-│   │   │   │       ├── auth/
-│   │   │   │       │   ├── ConfirmResetController.java
-│   │   │   │       │   ├── ForgotPasswordController.java
-│   │   │   │       │   ├── RequestResetController.java
-│   │   │   │       │   ├── SessionManager.java
-│   │   │   │       │   └── StartupController.java
-│   │   │   │       ├── chat/
-│   │   │   │       │   ├── ChatClient.java
-│   │   │   │       │   └── ChatController.java
-│   │   │   │       ├── conflict/
-│   │   │   │       │   ├── ConflictController.java
-│   │   │   │       │   └── ConflictResolver.java
-│   │   │   │       ├── dialog/
-│   │   │   │       │   ├── AddMemberDialog.java
-│   │   │   │       │   ├── ConfirmationDialog.java
-│   │   │   │       │   ├── ConfirmationDialogController.java
-│   │   │   │       │   ├── CreateFileDialog.java
-│   │   │   │       │   ├── CreateFileDialogController.java
-│   │   │   │       │   ├── CreateFolderController.java
-│   │   │   │       │   ├── CreateFolderDialog.java
-│   │   │   │       │   ├── CreateSharedFolderDialog.java
-│   │   │   │       │   ├── PendingRequestsDialog.java
-│   │   │   │       │   ├── ProgressDialog.java
-│   │   │   │       │   ├── ProgressDialogController.java
-│   │   │   │       │   ├── RequestAccessDialog.java
-│   │   │   │       │   ├── UploadChoiceController.java
-│   │   │   │       │   └── UploadChoiceDialog.java
-│   │   │   │       ├── document/
-│   │   │   │       │   ├── DocumentConverter.java
-│   │   │   │       │   ├── DocumentViewerDialog.java
-│   │   │   │       │   ├── DocxEditorController.java
-│   │   │   │       │   └── PdfViewerController.java
-│   │   │   │       ├── files/
-│   │   │   │       │   ├── edit/
-│   │   │   │       │   │   └── EditDialogController.java
-│   │   │   │       │   ├── FileExplorerController.java
-│   │   │   │       │   ├── FileOpenHandler.java
-│   │   │   │       │   ├── ServerFileItem.java
-│   │   │   │       │   └── util/
-│   │   │   │       │       ├── BreadcrumbManager.java
-│   │   │   │       │       ├── BulkOperationHandler.java
-│   │   │   │       │       ├── ButtonPermissionManager.java
-│   │   │   │       │       ├── DragDropHandler.java
-│   │   │   │       │       └── PermissionGuard.java
-│   │   │   │       ├── GUIApplication.java
-│   │   │   │       ├── http/
-│   │   │   │       │   ├── ChunkedUploader.java
-│   │   │   │       │   └── SyncHttpClient.java
-│   │   │   │       ├── icon/
-│   │   │   │       │   └── FileIconResolver.java
-│   │   │   │       ├── model/
-│   │   │   │       │   ├── DragData.java
-│   │   │   │       │   └── FileTransferData.java
-│   │   │   │       ├── service/
-│   │   │   │       │   ├── FileOperationService.java
-│   │   │   │       │   ├── FolderUploadService.java
-│   │   │   │       │   ├── GlobalProgressController.java
-│   │   │   │       │   ├── PasswordResetService.java
-│   │   │   │       │   └── ProgressService.java
-│   │   │   │       ├── shared/
-│   │   │   │       │   ├── create/
-│   │   │   │       │   │   └── CreateSharedFolderController.java
-│   │   │   │       │   ├── members/
-│   │   │   │       │   │   └── AddMemberController.java
-│   │   │   │       │   ├── requests/
-│   │   │   │       │   │   ├── ApproveRequestsController.java
-│   │   │   │       │   │   └── RequestAccessController.java
-│   │   │   │       │   └── SharedFoldersController.java
-│   │   │   │       ├── sync/
-│   │   │   │       │   ├── FolderScanner.java
-│   │   │   │       │   ├── SyncEngine.java
-│   │   │   │       │   └── SyncScheduler.java
-│   │   │   │       ├── task/
-│   │   │   │       │   ├── DeleteTask.java
-│   │   │   │       │   ├── DownloadTask.java
-│   │   │   │       │   ├── EditTask.java
-│   │   │   │       │   ├── MoveTask.java
-│   │   │   │       │   ├── RefreshTask.java
-│   │   │   │       │   └── UploadTask.java
-│   │   │   │       ├── util/
-│   │   │   │       │   ├── FileHasher.java
-│   │   │   │       │   ├── FileTypeHelper.java
-│   │   │   │       │   ├── NodeHealthChecker.java
-│   │   │   │       │   └── ProjectStructurePrinter.java
-│   │   │   │       ├── viewer/
-│   │   │   │       │   ├── ImageViewerController.java
-│   │   │   │       │   ├── ImageViewerDialog.java
-│   │   │   │       │   ├── MediaPlayerController.java
-│   │   │   │       │   └── MediaPlayerDialog.java
-│   │   │   │       └── websocket/
-│   │   │   │           └── FileUpdateClient.java
-│   │   │   └── resources/
-│   │   │       └── com/filesync/client/
-│   │   │           ├── auth/
-│   │   │           ├── conflict/
-│   │   │           ├── css/
-│   │   │           ├── dialog/
-│   │   │           ├── document/
-│   │   │           ├── files/
-│   │   │           ├── icons/
-│   │   │           ├── media/
-│   │   │           ├── service/
-│   │   │           └── shared/
-│   │   └── test/
-│   │       └── java/
 ├── common/
-│   ├── pom.xml
-│   └── src/
-│       ├── main/
-│       │   ├── java/
-│       │   │   └── com/filesync/common/
-│       │   │       ├── dto/
-│       │   │       ├── enums/
-│       │   │       └── model/
-│       │   └── resources/
-│       └── test/
-├── context.md
-├── demo/
-│   └── run-servers.bat
-├── mvnw
-├── mvnw.cmd
-├── pom.xml
-├── README.md
-└── server/
-    ├── pom.xml
-    └── src/
-        └── main/
-            ├── java/
-            │   └── com/filesync/server/
-            │       ├── config/
-            │       ├── conflict/
-            │       ├── consumer/
-            │       ├── controller/
-            │       ├── domain/
-            │       ├── dto/
-            │       ├── filter/
-            │       ├── repository/
-            │       ├── security/
-            │       ├── service/
-            │       ├── storage/
-            │       └── websocket/
-            └── resources/
-                ├── application.properties
-                └── db/
-                    └── migration/
+├── server/
+├── client/
+└── ...
 ```
 
-## What Is Already Implemented
+*(Full project structure omitted here for brevity in documentation, but retained in repository source.)*
 
-### Server
+---
 
-- All REST endpoints for file metadata, simple upload/download, chunked upload, sync, and conflict detection.
-- User registration, forgot password, and reset password as JSON endpoints.
-- Chunked upload with resume: chunks are stored temporarily and assembled on the server.
-- Two storage backends for full files: local disk (`./uploads`) and Cloudflare R2 (S3‑compatible). Switchable via `storage.type={local|r2}`.
-- Two chunk storage implementations:
-    - `LocalDiskChunkStorage` – stores chunks on local disk, assembles them, then saves the final file using the chosen full‑file storage.
-    - `R2ChunkStorageService` – uses S3 multipart upload to send parts directly to R2. The final file is assembled on the cloud side, with no local disk usage for chunks or assembly.
-- **Folder size caching** – The size of a folder is automatically computed as the total size of all files inside it (including subfolders) and stored in the database. This value is updated incrementally on every file upload, delete, move, or edit, eliminating recursive size calculations on each listing. The client displays folder sizes in a human‑readable format (KB, MB, GB).
-- Streaming upload and download – no entire file loaded into memory.
-- Conflict detection when editing a file: client sends the original hash, server returns 409 if the file changed since last download.
-- **Asynchronous sync** – endpoint `POST /api/sync/start` returns a task ID. The server performs the file comparison in a background thread and stores the resulting actions (upload, download, conflict, etc.) as JSON. Client polls `GET /api/sync/status/{taskId}` until completion. This prevents HTTP timeouts and supports many concurrent syncs.
-- **PostgreSQL** is now used for metadata storage (instead of H2). Multiple server instances can share the same database.
-- **JWT authentication** – the server is stateless. Endpoint `POST /api/auth/login` returns a token. All protected endpoints (files, sync, chunks) require a valid `Authorization: Bearer <token>` header.
-- **RabbitMQ (message queue)** – sync requests are sent to a queue and processed by a separate consumer. This decouples HTTP handling from background work and makes the system more resilient under load.
-- **Rate limiting** – a Bucket4j filter limits each IP to 100 requests per minute, protecting the server from abusive clients.
-- **Embedded monitoring** – JavaMelody provides a web dashboard at `/monitoring` showing CPU, memory, HTTP requests, SQL queries, and more (no extra setup).
-- **Shared folders** – users can create shared folders, add members with READ/WRITE permissions, request access by folder name (search), and approve requests. Folder owners can delete a shared folder (removes all files and members). All file operations respect folder‑level permissions.
-- **Permission field in file metadata** – The endpoint `GET /api/files/user/{ownerId}` now returns a `userPermission` field (`READ`, `WRITE`, or `NONE`) for each file, allowing the client to enforce fine‑grained access control without additional round trips.
+# Implemented Features
 
-### Client – Admin GUI (JavaFX)
+## Server Features
 
-- Startup dialog with tabs for login (username + password) and registration, plus separate windows for forgot password and reset password.
-- Login validates credentials with the server and stores the JWT. Logout clears the token.
-- Main file list: table showing path, human‑readable size (e.g., 1.5 MB, 256 KB), last modified date, and buttons for upload, download, edit, delete, refresh.
-- Upload uses chunked upload for files larger than 5 MB, with **parallel chunk upload** (up to 5 chunks concurrently) for faster large file transfers. The global progress bar shows real‑time byte‑level progress for both uploads and downloads. Every chunk request includes the JWT.
-- Download works via the streaming endpoint with the token, and now reports progress through the global progress bar (including estimated bytes transferred).
-- Edit: downloads a text file, allows editing. When saving, the server compares the original hash; if a conflict occurs, the side‑by‑side diff viewer (reused from the sync client) opens, and the user can merge the changes.
-- Delete: removes metadata and the actual file from storage.
-- All file operations are performed via HTTP calls that include the JWT.
-- **Shared folders management** – a separate tab lists all shared folders accessible to the user. Owners see a red badge on the “Manage Requests” button when pending requests exist. Owners can add/update members (READ/WRITE), approve access requests, and delete the folder.
-- **Modular UI** – dialogs (create folder, add member, request access, pending requests) are separated into their own FXML files and controller classes, following a clear separation of UI and logic.
-- **File explorer navigation** – users can double‑click folders to navigate inside, and use the “..” entry to go up one level. The same explorer is used for personal files and for browsing inside shared folders, providing a consistent experience.
-- **Drag & drop file moves** – Files and folders can be moved to a different location by dragging them onto a folder or the “..” (parent folder) entry. Moving to the root of personal files or out of shared folders is fully supported, with automatic permission checks.
-- **Upload file or folder** – a single “Upload” button offers a choice between uploading a single file or an entire folder (with subfolders preserved). Large files use chunked upload; folder upload shows a progress dialog.
-- **Global progress indicator** – A top‑right status bar shows the current operation (upload, download, delete, move, edit, folder upload, refresh) with real‑time progress. The bar is non‑blocking, follows the observer pattern, and buttons are automatically disabled during operations to prevent concurrent actions.
-- **Breadcrumb path display** – A label above the file table shows the current navigation path (e.g., `My Files / Documents / Work`). It updates when entering folders, going up, or exiting shared folders, providing clear context.
-- **Direct text file editing via double‑click** – Users can double‑click any `.txt` file to open the editor immediately. The Edit button has been removed to declutter the interface. Write permission is enforced client‑side before opening the editor.
-- **Permission‑sensitive buttons** – The Delete and Download buttons are dynamically enabled/disabled based on the selected file’s `userPermission` (WRITE for delete, READ/WRITE for download). This prevents users from attempting unauthorized actions.
-- **Refactored FileExplorerController** – The controller has been split into helper classes (`DragDropHandler`, `BreadcrumbManager`, `ButtonPermissionManager`, `BulkOperationHandler`), improving maintainability and adhering to the Single Responsibility Principle.
-- **Integrated media player** – Supports playback of audio (MP3, WAV) and video (MP4, AVI, MOV, MKV) files directly inside the admin GUI. The player window includes play/pause, seek slider with click‑to‑seek, volume control, rewind/forward (10 seconds), and a time display. If JavaFX cannot decode the file (e.g., due to missing codecs), the player automatically falls back to the system’s default media player, ensuring reliable playback on any Windows system.
-- **Write‑permission enforcement for editing** – The Edit button has been removed; users can double‑click any `.txt` file to open the editor, but only if they have WRITE permission. Read‑only files cannot be edited, and an alert explains the restriction.
-- **Permission‑sensitive buttons** – The Delete button is enabled only for files/folders with WRITE permission; the Download button is enabled for READ or WRITE permission. This prevents users from attempting unauthorised actions.
-- **PDF viewer** – Double‑click a PDF file to open a dedicated viewer with page navigation, zoom in/out, and fit‑to‑width controls. Large PDFs are rendered page‑by‑page with caching for smooth navigation.
-- **DOCX editor** – Double‑click a DOCX file to open a rich text editor (based on JavaFX HTMLEditor). Supports bold, italic, underline, and plain text editing. Changes are saved back to the server with full conflict detection.
-- **Real‑time chat in shared folders** – When a shared folder is opened, a chat tab appears alongside the file explorer. Users can exchange messages in real time, see a list of active collaborators (updated automatically), and view message history when they re‑enter the folder. The chat uses WebSocket (STOMP) with RabbitMQ for horizontal scalability and Redis for tracking active users. Stale active users are cleaned up automatically after a configurable timeout.
-- **Image viewer** – Double‑click image files (`.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`) to open a dedicated viewer with zoom, fit‑to‑window, and original size controls. The image is downloaded progressively and displayed with panning support.
-- **Create new file** – A “New File” button opens a dialog where users can enter a file name and choose an extension (`.txt`, `.json`, `.xml`, `.html`, `.css`, `.js`, `.md`, `.csv`, `.yml`, `.properties`, `.docx`). The server receives a properly initialised file (empty for most formats; for `.docx`, a minimal valid document is generated).
-### Client – Sync Client (Automatic)
+### File Management APIs
 
-- Watches a local folder using Java’s WatchService.
-- Computes SHA‑256 hashes and calls the server’s asynchronous sync endpoint (start + poll).
-- Based on the server response (actions), it uploads, downloads, deletes, or resolves conflicts (using the same diff viewer as the admin GUI).
-- Stores local metadata in an H2 database to avoid recomputing hashes unnecessarily.
+* File metadata endpoints
+* Upload and download APIs
+* Chunked upload APIs
+* Synchronization APIs
+* Conflict detection APIs
 
-### Shared Folder Features
+### Authentication
 
-- **Create** – name, optional initial members (searched by username/email), owner automatically gets WRITE permission.
-- **Request access** – search by folder name, select from results, the owner receives a pending request.
-- **Manage requests** – owners see a red badge with the count of pending requests; they can approve, adding the requester as READ‑only.
-- **Manage members** – owners can add or update members (READ/WRITE) and revoke access (by removing the member).
-- **Delete folder** – owners can delete the entire folder, which removes all files (both metadata and actual storage) and members.
-- **Permission enforcement** – READ allows download/list, WRITE allows upload/edit/delete. Permissions are checked on every file operation.
-- **Integrated file explorer** – double‑click a shared folder to open its contents inside the same tab (instead of a new window). The explorer has the same buttons and “..” navigation as the personal files tab. A “Back to folders” button appears when inside a shared folder (or the “..” entry at the root exits back to the shared folder list).
-- **Real‑time chat** – Each shared folder has its own chat room where members can coordinate and discuss changes. Messages are persisted and displayed as history when a user rejoins the folder. Active collaborators are shown in real time, with stale entries removed automatically.
+* User registration
+* Forgot password
+* Password reset
+* JWT-based authentication
 
-### OOP & SOLID Highlights
+### Storage
 
-- **Single Responsibility**: each class has one purpose (FolderScanner, ChunkedUploader, ConflictResolver, JwtService, etc.).
-- **Open‑Closed**: new storage backends can be added without modifying sync or controller logic.
-- **Liskov Substitution**: any implementation of FileStorage or ChunkStorageService can be swapped.
-- **Interface Segregation**: focused interfaces (FileStorage, ChunkStorageService) keep the code decoupled.
-- **Dependency Inversion**: high‑level modules depend on abstractions; constructors inject the dependencies.
-- **Strategy Pattern**: conflict resolution strategies are prepared.
-- **Factory Pattern**: used for creating the appropriate storage backend based on configuration.
+#### Full File Storage Backends
 
-## Scalability & Production Features
+1. Local Storage (`./uploads`)
+2. Cloudflare R2 (S3 Compatible)
 
-- **Stateless JWT** – no sessions; any server instance can handle any request.
-- **Shared PostgreSQL** – multiple server instances share the same metadata.
-- **RabbitMQ** – async sync tasks are decoupled from HTTP requests.
-- **Parallel chunk upload** – client uploads up to 5 chunks simultaneously, improving throughput.
-- **Rate limiting** – per‑IP token bucket (100 requests/minute) prevents abuse.
-- **Database migrations** – Flyway manages schema versions safely.
-- **Embedded monitoring** – JavaMelody dashboard at `/monitoring` for real‑time metrics.
-- **Horizontal scaling** – demonstrated by running two server instances behind Nginx with load balancing.
-- **Parallel folder upload** – files inside a folder are uploaded concurrently (up to 5 at a time) while preserving the directory structure.
-- **Real‑time WebSocket messaging** – Chat messages are broadcast via RabbitMQ, enabling seamless scaling across multiple server instances.
-- **Active user tracking with Redis** – Tracks which users are currently viewing a shared folder; stale entries are cleaned up by a scheduled job to prevent ghost users.
+Switch using:
 
-## How to Run
+```properties
+storage.type=local
+```
 
-### Prerequisites
+or
 
-- Java 17 (or 25 – the code works with both)
-- Maven (or use the Maven wrapper)
-- PostgreSQL instance (e.g., Neon.tech free tier) for metadata
-- Cloudflare R2 account (optional, for object storage)
+```properties
+storage.type=r2
+```
 
-### Running the Server
+#### Chunk Storage Implementations
 
-1. Navigate to the server directory.
-2. Create a `.env` file (or set environment variables) with the following:
-    - `DB_URL`, `DB_USER`, `DB_PASSWORD` for PostgreSQL
-    - `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` (if using R2)
-    - `JWT_SECRET` (a long random string, at least 32 characters)
-3. Configure `application.properties`:
-    - Set `storage.type=r2` for Cloudflare R2, or `storage.type=local` for local disk.
-4. Run with Maven:
-   ```
-   mvn spring-boot:run
-   ```
-   The server starts on port 8080.
+**LocalDiskChunkStorage**
 
-### Running the Admin GUI
+* Stores chunks locally
+* Reassembles chunks on the server
+* Saves final file using the configured storage backend
 
-1. Navigate to the client directory.
-2. Run the `ServerAdminApp` class (from IDE or via Maven exec plugin).
-3. In the startup dialog, enter the server URL (e.g., `http://localhost:8080`). If you don’t have an account, use the **Register** tab. Then log in with your username and password.
+**R2ChunkStorageService**
 
-### Running the Sync Client
+* Uses S3 Multipart Upload
+* Sends chunks directly to R2
+* No local disk assembly required
 
-1. Run the `ClientApplication` class (or a custom launcher).
-2. Provide the local folder path and the server URL. The client will authenticate (you need to pass username and password) and then keep the folder synchronised.
+### Synchronization
 
-## Conclusion
+* Asynchronous background synchronization
+* RabbitMQ-backed processing
+* Task-based sync execution
 
-The project successfully implements a Dropbox‑like system with a modern architecture. It demonstrates asynchronous background processing, stateless authentication, cloud object storage, a message queue, parallel uploads, rate limiting, database migrations, and embedded monitoring – all essential for a production‑ready, horizontally scalable application. The system is fully self‑contained and ready to be deployed on any infrastructure.
+```http
+POST /api/sync/start
+```
+
+Returns a task ID.
+
+Clients poll:
+
+```http
+GET /api/sync/status/{taskId}
+```
+
+until completion.
+
+### Folder Size Caching
+
+Folder sizes are automatically maintained and updated during:
+
+* Upload
+* Delete
+* Move
+* Edit
+
+This eliminates recursive size calculations during file listings.
+
+### Streaming Transfers
+
+* Streaming uploads
+* Streaming downloads
+* No full-file memory loading
+
+### Conflict Detection
+
+The client sends the original file hash.
+
+If the server detects modifications:
+
+```http
+409 Conflict
+```
+
+is returned.
+
+### Database
+
+* PostgreSQL metadata storage
+* Multi-instance support
+
+### Messaging & Background Processing
+
+* RabbitMQ queue processing
+* Decoupled synchronization execution
+
+### Rate Limiting
+
+Bucket4j limits each IP to:
+
+```text
+100 requests/minute
+```
+
+### Monitoring
+
+JavaMelody dashboard:
+
+```text
+/monitoring
+```
+
+Provides:
+
+* CPU usage
+* Memory usage
+* HTTP metrics
+* SQL metrics
+* JVM statistics
+
+### Shared Folders
+
+Supports:
+
+* Shared folder creation
+* READ/WRITE permissions
+* Access requests
+* Request approval
+* Folder deletion
+
+### Permission System
+
+Each file includes:
+
+```text
+READ
+WRITE
+NONE
+```
+
+permission values.
+
+### Real-Time Features
+
+#### WebSocket Updates
+
+Provides:
+
+* File creation events
+* File updates
+* File deletions
+* Folder updates
+* Chat messaging
+
+#### Redis Active User Tracking
+
+Tracks:
+
+* Active folder viewers
+* Automatic stale-user cleanup
+
+---
+
+## Client Features (JavaFX)
+
+### Startup
+
+Provides:
+
+* Login
+* Registration
+* Password reset
+
+### File Explorer
+
+Displays:
+
+* File path
+* Human-readable size
+* Last modified date
+
+Supports:
+
+* Upload
+* Download
+* Delete
+* Move
+* Create file
+* Create folder
+* Refresh
+
+### Navigation
+
+* Breadcrumb navigation
+* Folder double-click navigation
+* Parent folder (`..`) navigation
+
+### Upload System
+
+Supports:
+
+* Single file uploads
+* Folder uploads
+* Structure preservation
+
+Files larger than **5 MB** use chunked uploads with up to **5 parallel chunks**.
+
+### Download System
+
+Provides:
+
+* Streaming downloads
+* Real-time progress tracking
+
+### Text Editing
+
+Supports:
+
+* `.txt` editing
+* Conflict detection
+* Side-by-side merge view
+
+### PDF Viewer
+
+Supports:
+
+* Zoom
+* Page navigation
+* Fit-to-width
+
+### DOCX Editor
+
+Supports:
+
+* Rich text editing
+* Bold
+* Italic
+* Underline
+
+Uses:
+
+* Apache POI
+* JSoup
+
+### Image Viewer
+
+Supported formats:
+
+* PNG
+* JPG
+* JPEG
+* GIF
+* BMP
+
+Features:
+
+* Zoom
+* Fit-to-window
+* Original size
+
+### Media Player
+
+Supported formats:
+
+* MP3
+* WAV
+* MP4
+* AVI
+* MOV
+* MKV
+
+Features:
+
+* Play/Pause
+* Seek
+* Volume control
+* Time display
+
+### Shared Folder Management
+
+Supports:
+
+* Folder creation
+* Member management
+* Permission updates
+* Access approval
+* Folder deletion
+
+### Real-Time Chat
+
+Provides:
+
+* Live messaging
+* Active collaborator list
+* Message history
+
+### Real-Time File Updates
+
+Automatically refreshes UI when:
+
+* Files are created
+* Files are modified
+* Files are deleted
+
+### Automatic Background Synchronization
+
+Every **5 minutes**, the client:
+
+1. Scans local files
+2. Sends state to server
+3. Executes synchronization actions
+4. Resolves conflicts when necessary
+
+### Global Progress Tracking
+
+Displays:
+
+* Current operation
+* Real-time progress
+
+Prevents conflicting operations by disabling controls during execution.
+
+### Permission-Aware UI
+
+* Delete → WRITE only
+* Download → READ or WRITE
+
+### Drag & Drop
+
+Supports moving files and folders directly within the file explorer.
+
+---
+
+# OOP & SOLID Principles
+
+### Single Responsibility Principle
+
+Each class has a single responsibility:
+
+* FolderScanner
+* ChunkedUploader
+* ConflictResolver
+* JwtService
+
+### Open/Closed Principle
+
+Storage backends can be extended without modifying existing logic.
+
+### Liskov Substitution Principle
+
+Implementations of:
+
+* FileStorage
+* ChunkStorageService
+
+can be substituted transparently.
+
+### Interface Segregation Principle
+
+Focused interfaces prevent unnecessary dependencies.
+
+### Dependency Inversion Principle
+
+Dependencies are injected through abstractions.
+
+### Design Patterns Used
+
+#### Strategy Pattern
+
+Used for conflict resolution strategies.
+
+#### Factory Pattern
+
+Used for storage backend selection.
+
+---
+
+# Scalability & Production Features
+
+* Stateless JWT authentication
+* Shared PostgreSQL database
+* RabbitMQ asynchronous processing
+* Parallel chunk uploads
+* Flyway database migrations
+* Bucket4j rate limiting
+* JavaMelody monitoring
+* Horizontal server scaling
+* Parallel folder uploads
+* Real-time WebSocket communication
+* Redis-based active user tracking
+
+---
+
+# How to Run
+
+## Prerequisites
+
+* Java 17 (or Java 25)
+* Maven
+* PostgreSQL
+* Cloudflare R2 (optional)
+* RabbitMQ (optional)
+* Redis (required for chat and active user tracking)
+
+---
+
+## Running the Server
+
+### 1. Navigate to Server Module
+
+```bash
+cd server
+```
+
+### 2. Configure Environment Variables
+
+Required variables:
+
+```text
+DB_URL=
+DB_USER=
+DB_PASSWORD=
+JWT_SECRET=
+REDIS_HOST=
+REDIS_PORT=
+
+# Optional – R2 storage (if storage.type=r2)
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+R2_ENDPOINT=
+R2_BUCKET_NAME=
+R2_REGION=auto
+
+# Optional – RabbitMQ (if not using local defaults)
+CLOUDAMQP_URL=
+
+# Optional – Redis authentication
+REDIS_PASSWORD=
+REDIS_USER=
+
+# Optional – Password reset emails
+MAIL_USERNAME=
+MAIL_PASSWORD=
+
+# Optional – JavaMelody monitoring dashboard
+METRICS_PASSWORD=
+```
+
+### 3. Configure Storage Backend
+
+```properties
+storage.type=r2
+```
+
+### 4. Build and Run
+
+```bash
+mvn clean package
+java -jar target/server-*.jar
+```
+
+Server starts on:
+
+```text
+http://localhost:8080
+```
+
+---
+
+## Running the Client
+
+### 1. Navigate to Client Module
+
+```bash
+cd client
+```
+
+### 2. Build
+
+```bash
+mvn clean package
+```
+
+### 3. Run
+
+```bash
+java -jar target/client-*.jar
+```
+
+Or run:
+
+```text
+GUIApplication
+```
+
+directly from your IDE.
+
+### 4. Login
+
+Enter:
+
+```text
+http://localhost:8080
+```
+
+as the server URL and either:
+
+* Register a new account
+* Log in with existing credentials
+
+The background synchronization service starts automatically after login.
+
+---
+
+# Running Multiple Server Nodes (Horizontal Scaling)
+
+To demonstrate horizontal scaling, the `demo/run-servers.bat` script starts **four server instances** on ports **8080–8083** (all binding to `0.0.0.0`).
+
+Each instance:
+
+* Shares the same PostgreSQL database
+* Uses the same JWT secret
+* Operates as a stateless server
+* Can handle requests interchangeably
+
+This setup demonstrates how the system can scale horizontally by distributing client requests across multiple backend nodes.
+
+## Using a Load Balancer (Nginx)
+
+For production deployments, **Nginx** can be configured as a reverse proxy with **round-robin load balancing**.
+
+### Example Nginx Configuration
+
+```nginx
+upstream backend {
+    server 127.0.0.1:8080;
+    server 127.0.0.1:8081;
+    server 127.0.0.1:8082;
+    server 127.0.0.1:8083;
+}
+
+server {
+    listen 80;
+
+    location / {
+        proxy_pass http://backend;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+### How It Works
+
+1. The client sends requests to Nginx.
+2. Nginx distributes requests across the available server nodes.
+3. Each node accesses the same PostgreSQL database.
+4. JWT authentication remains valid across all nodes because the same secret key is used.
+5. If one node becomes unavailable, traffic can continue to be served by the remaining nodes.
+
+### Benefits
+
+* Improved throughput through request distribution
+* Better resource utilization
+* Fault tolerance
+* Horizontal scalability
+* Stateless architecture support
+
+After configuring Nginx, point the client to the load balancer URL instead of an individual server instance:
+
+```text
+http://localhost
+```
+
+All requests will then be routed through Nginx and distributed across the available backend servers.
+
+# Conclusion
+
+This project successfully implements a Dropbox-like distributed file synchronization platform using a modern, production-oriented architecture.
+
+It combines:
+
+* Stateless authentication
+* Cloud object storage
+* Asynchronous processing
+* RabbitMQ messaging
+* Redis state management
+* Parallel uploads
+* Rate limiting
+* Database migrations
+* Embedded monitoring
+
+The result is a fully self-contained, horizontally scalable system ready for deployment in real-world environments.

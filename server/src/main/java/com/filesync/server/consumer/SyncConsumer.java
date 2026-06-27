@@ -39,6 +39,7 @@ public class SyncConsumer {
 
     @RabbitListener(queues = "${sync.queue.name:sync.queue}")
     public void processSync(SyncMessage syncMessage) {
+        // get the task from rabbitMQ
         String taskId = syncMessage.getTaskId();
         SyncRequestDto syncRequestDto = syncMessage.getSyncRequestDto();
         log.info("Consumer received sync task {}", taskId);
@@ -46,24 +47,22 @@ public class SyncConsumer {
         String ownerId = syncRequestDto.getOwnerId();
 
         try {
-            // Mark task as processing
+            // Mark as processing
             SyncTask syncTask = syncTaskRepository.findById(taskId).orElseThrow();
             syncTask.setStatus("PROCESSING");
             syncTask.setUpdatedAt(LocalDateTime.now());
             syncTaskRepository.save(syncTask);
             syncTaskRepository.flush();
 
-            // Fetch server files (ALL files for this user/folder)
+            // Fetch server files (shared or personal)
             List<FileMetadataEntity> serverFiles;
             if (folderId != null) {
-                // Shared folder sync – all files under that folderId
                 serverFiles = fileMetadataRepository.findByFolderId(folderId);
             } else {
-                // Personal sync – ALL files owned by the user (including subfolders)
                 serverFiles = fileMetadataRepository.findByOwnerId(ownerId);
             }
 
-            // Build map: relativePath → FileMetadataDto
+            // Index server files by relative path
             Map<String, FileMetadataDto> serverFileMap = new HashMap<>();
             for (FileMetadataEntity entity : serverFiles) {
                 serverFileMap.put(entity.getRelativePath(), convertToDto(entity));
@@ -71,34 +70,31 @@ public class SyncConsumer {
 
             List<SyncActionDto> actionDtos = new ArrayList<>();
 
-            // Process client files
+            // Compare each client file against the server state
             for (FileMetadataDto clientFile : syncRequestDto.getClientFiles()) {
                 String path = clientFile.getRelativePath();
                 FileMetadataDto serverFile = serverFileMap.get(path);
 
                 if (serverFile == null) {
-                    // File exists locally but not on server → upload
                     actionDtos.add(new SyncActionDto(SyncActionType.UPLOAD, clientFile, "Client's new file"));
                 } else {
-                    // File exists on both sides – compare hashes
                     if (Objects.equals(clientFile.getSha256Hash(), serverFile.getSha256Hash())) {
                         actionDtos.add(new SyncActionDto(SyncActionType.NO_ACTION, clientFile, "In sync"));
                     } else {
-                        // Different content → conflict (both sides modified)
                         actionDtos.add(new SyncActionDto(SyncActionType.CONFLICT, clientFile, "Both modified"));
                     }
                     serverFileMap.remove(path);
                 }
             }
 
-            // Remaining server files → client must download them
+            // Remaining server files → download
             for (FileMetadataDto serverFile : serverFileMap.values()) {
                 actionDtos.add(new SyncActionDto(SyncActionType.DOWNLOAD, serverFile, "Server new file"));
             }
 
             log.info("Sync comparison complete for taskId={}, actions count: {}", taskId, actionDtos.size());
 
-            // Serialize and store actions
+            // Serialize actions and mark task completed
             String actionJson = objectMapper.writeValueAsString(actionDtos);
             syncTask.setActionsJson(actionJson);
             syncTask.setStatus("COMPLETED");

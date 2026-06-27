@@ -68,8 +68,9 @@ public class SyncController {
         // store in taskRepo
         taskRepository.save(task);
         log.debug("Task saved with status PENDING");
-        // call the startSync method
+        // create sync message
         SyncMessage message = new SyncMessage(taskId, requestDto);
+        // send to rabbitMq
         rabbitTemplate.convertAndSend(RabbitMQConfig.SYNC_EXCHANGE, RabbitMQConfig.SYNC_ROUTING_KEY, message);
 
         log.info("Async processing started for taskId={}", taskId);
